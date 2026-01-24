@@ -1,0 +1,111 @@
+# =========================
+# macOS
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# =========================
+# Xcode
+# =========================
+DerivedData/
+build/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# User-specific Xcode settings
+xcuserdata/
+
+# =========================
+# Swift Package Manager
+# =========================
+.build/
+.swiftpm/
+Package.resolved
+
+# =========================
+# CocoaPods (if ever used)
+# =========================
+Pods/
+Podfile.lock
+
+# =========================
+# Carthage (if ever used)
+# =========================
+Carthage/Build/
+
+# =========================
+# Firebase
+# =========================
+GoogleService-Info.plist
+firebase-debug.log
+.firestore/
+.firebase/
+
+# =========================
+# Core ML / Vision
+# =========================
+*.mlmodelc
+*.mlpackage
+*.mlproj
+*.mlmodelc.zip
+
+# =========================
+# Core Data / SwiftData
+# =========================
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# =========================
+# Logs & Debug
+# =========================
+*.log
+*.trace
+*.pid
+
+# =========================
+# Fastlane (if added later)
+# =========================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# =========================
+# Archives & Exports
+# =========================
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcarchive
+
+# =========================
+# Temporary / Backup Files
+# =========================
+*~
+*.swp
+*.tmp
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+*.secret
+Secrets.plist
+
+# =========================
+# Playground
+# =========================
+timeline.xctimeline
+playground.xcworkspace
+
+# =========================
+# Optional: AI / Data Exports
+# =========================
+*.csv
+*.jsonl
+reference_landmarks/
+training_data/
