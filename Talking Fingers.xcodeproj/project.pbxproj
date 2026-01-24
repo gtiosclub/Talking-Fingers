@@ -10,6 +10,11 @@
 		1D6151B42F25266700ECCBCF /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D6151B32F25266700ECCBCF /* Vision.framework */; };
 		1D6151B62F25267700ECCBCF /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D6151B52F25267700ECCBCF /* SwiftData.framework */; };
 		1D6151B82F25268B00ECCBCF /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D6151B72F25268B00ECCBCF /* CoreML.framework */; };
+		1D6151BD2F25282600ECCBCF /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151BC2F25282600ECCBCF /* FirebaseAnalytics */; };
+		1D6151BF2F25282600ECCBCF /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151BE2F25282600ECCBCF /* FirebaseAuth */; };
+		1D6151C12F25282600ECCBCF /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151C02F25282600ECCBCF /* FirebaseCore */; };
+		1D6151C32F25282600ECCBCF /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151C22F25282600ECCBCF /* FirebaseFirestore */; };
+		1D6151C52F25282600ECCBCF /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151C42F25282600ECCBCF /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,8 +67,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D6151B62F25267700ECCBCF /* SwiftData.framework in Frameworks */,
+				1D6151BF2F25282600ECCBCF /* FirebaseAuth in Frameworks */,
 				1D6151B42F25266700ECCBCF /* Vision.framework in Frameworks */,
+				1D6151BD2F25282600ECCBCF /* FirebaseAnalytics in Frameworks */,
+				1D6151C12F25282600ECCBCF /* FirebaseCore in Frameworks */,
+				1D6151C52F25282600ECCBCF /* FirebaseStorage in Frameworks */,
 				1D6151B82F25268B00ECCBCF /* CoreML.framework in Frameworks */,
+				1D6151C32F25282600ECCBCF /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -135,6 +145,11 @@
 			);
 			name = "Talking Fingers";
 			packageProductDependencies = (
+				1D6151BC2F25282600ECCBCF /* FirebaseAnalytics */,
+				1D6151BE2F25282600ECCBCF /* FirebaseAuth */,
+				1D6151C02F25282600ECCBCF /* FirebaseCore */,
+				1D6151C22F25282600ECCBCF /* FirebaseFirestore */,
+				1D6151C42F25282600ECCBCF /* FirebaseStorage */,
 			);
 			productName = "Talking Fingers";
 			productReference = 1D6151862F25232700ECCBCF /* Talking Fingers.app */;
@@ -218,6 +233,9 @@
 			);
 			mainGroup = 1D61517D2F25232700ECCBCF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1D6151872F25232700ECCBCF /* Products */;
 			projectDirPath = "";
@@ -638,6 +656,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.8.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1D6151BC2F25282600ECCBCF /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		1D6151BE2F25282600ECCBCF /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		1D6151C02F25282600ECCBCF /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		1D6151C22F25282600ECCBCF /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		1D6151C42F25282600ECCBCF /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D6151BB2F25282600ECCBCF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1D61517E2F25232700ECCBCF /* Project object */;
 }
