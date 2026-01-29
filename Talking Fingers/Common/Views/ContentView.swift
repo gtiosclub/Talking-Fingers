@@ -42,11 +42,17 @@ struct MainNavigationView: View {
             Group {
                 switch selectedSection {
                 case .home:
-                    HomeView()
+                    NavigationStack {
+                        HomeView()
+                    }
                 case .flashcards:
-                    FlashcardView()
+                    NavigationStack {
+                        FlashcardView()
+                    }
                 case .stats:
-                    StatsView()
+                    NavigationStack {
+                        StatsView()
+                    }
                 case .none:
                     Text("Select a section")
                 }
