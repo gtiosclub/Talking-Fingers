@@ -62,12 +62,12 @@ struct Login: View {
     var body: some View {
         VStack {
             TextField("Email", text: $email)
-                .textInputAutocapitalization(.never)
+//                .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             SecureField("Password", text: $password)
                 .textContentType(.oneTimeCode)
-                .textInputAutocapitalization(.never)
+//                .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             Button(action: {
