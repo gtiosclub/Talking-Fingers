@@ -65,7 +65,7 @@ struct Talking_FingersApp: App {
     
     var body: some Scene {
         WindowGroup {
-            EntryView()
+            ContentView()
                 .environment(authVM)
         }
         .modelContainer(sharedModelContainer)
