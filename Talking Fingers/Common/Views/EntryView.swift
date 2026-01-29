@@ -147,24 +147,3 @@ struct HomeView: View {
         }
     }
 }
-
-// 1. Create a platform-agnostic way to refer to the style
-#if os(iOS)
-typealias UniversalAutocapitalizationStyle = TextInputAutocapitalization
-#else
-// On Mac, we create a "fake" version so the compiler recognizes the names
-enum UniversalAutocapitalizationStyle {
-    case never, words, sentences, characters
-}
-#endif
-
-extension View {
-    func universalAutocapitalization(_ style: UniversalAutocapitalizationStyle) -> some View {
-        #if os(iOS)
-        return self.textInputAutocapitalization(style)
-        #else
-        // On Mac, we just return the view unchanged
-        return self
-        #endif
-    }
-}
