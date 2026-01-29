@@ -98,16 +98,16 @@ struct Register: View {
     var body: some View {
         VStack {
             TextField("Name", text: $name)
-                .textInputAutocapitalization(.words)
+//                .textInputAutocapitalization(.words)
                 .autocorrectionDisabled(true)
                 .padding()
             TextField("Email", text: $email)
-                .textInputAutocapitalization(.never)
+//                .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             SecureField("Password", text: $password)
                 .textContentType(.none)
-                .textInputAutocapitalization(.never)
+//                .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             Button(action: {
