@@ -62,12 +62,14 @@ struct Login: View {
     var body: some View {
         VStack {
             TextField("Email", text: $email)
-//                .textInputAutocapitalization(.never)
+
+                .universalAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             SecureField("Password", text: $password)
                 .textContentType(.oneTimeCode)
-//                .textInputAutocapitalization(.never)
+
+                .universalAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             Button(action: {
@@ -98,16 +100,17 @@ struct Register: View {
     var body: some View {
         VStack {
             TextField("Name", text: $name)
-//                .textInputAutocapitalization(.words)
+                .universalAutocapitalization(.words)
                 .autocorrectionDisabled(true)
                 .padding()
             TextField("Email", text: $email)
-//                .textInputAutocapitalization(.never)
+                .universalAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             SecureField("Password", text: $password)
                 .textContentType(.none)
-//                .textInputAutocapitalization(.never)
+
+                .universalAutocapitalization(.never)
                 .autocorrectionDisabled(true)
                 .padding()
             Button(action: {
@@ -145,3 +148,23 @@ struct HomeView: View {
     }
 }
 
+// 1. Create a platform-agnostic way to refer to the style
+#if os(iOS)
+typealias UniversalAutocapitalizationStyle = TextInputAutocapitalization
+#else
+// On Mac, we create a "fake" version so the compiler recognizes the names
+enum UniversalAutocapitalizationStyle {
+    case never, words, sentences, characters
+}
+#endif
+
+extension View {
+    func universalAutocapitalization(_ style: UniversalAutocapitalizationStyle) -> some View {
+        #if os(iOS)
+        return self.textInputAutocapitalization(style)
+        #else
+        // On Mac, we just return the view unchanged
+        return self
+        #endif
+    }
+}

@@ -8,19 +8,37 @@
 import SwiftUI
 import SwiftData
 import FirebaseCore
+// 1. Conditional Imports
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
+// 2. Cross-Platform Delegate
+class AppDelegate: NSObject {
+    // This will work for iOS
+    #if os(iOS)
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        setupFirebase()
+        return true
+    }
+    #endif
 
-class AppDelegate: NSObject, UIApplicationDelegate {
-  func application(_ application: UIApplication,
-                   didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-      //FirebaseApp.configure()
-      if let app = FirebaseApp.app() {
-          print("Firebase configured with name: \(app.name)")
-      } else {
-          print("Firebase configuration failed")
-      }
-    return true
-  }
+    // This will work for macOS
+    #if os(macOS)
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        setupFirebase()
+    }
+    #endif
+
+    private func setupFirebase() {
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+            print("Firebase configured successfully.")
+        }
+    }
 }
 
 @main

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D0AAC3F2F2C00A0003A1BA8 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D0AAC3E2F2C00A0003A1BA8 /* UIKit.framework */; platformFilters = (ios, xros, ); };
 		1D6151B42F25266700ECCBCF /* Vision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D6151B32F25266700ECCBCF /* Vision.framework */; };
 		1D6151B62F25267700ECCBCF /* SwiftData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D6151B52F25267700ECCBCF /* SwiftData.framework */; };
 		1D6151B82F25268B00ECCBCF /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D6151B72F25268B00ECCBCF /* CoreML.framework */; };
@@ -36,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1D0AAC3E2F2C00A0003A1BA8 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
 		1D6151862F25232700ECCBCF /* Talking Fingers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Talking Fingers.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D6151952F25232800ECCBCF /* Talking FingersTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Talking FingersTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D61519F2F25232800ECCBCF /* Talking FingersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Talking FingersUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -69,6 +71,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D6151B62F25267700ECCBCF /* SwiftData.framework in Frameworks */,
+				1D0AAC3F2F2C00A0003A1BA8 /* UIKit.framework in Frameworks */,
 				1D6151BF2F25282600ECCBCF /* FirebaseAuth in Frameworks */,
 				1D6151B42F25266700ECCBCF /* Vision.framework in Frameworks */,
 				1D6151BD2F25282600ECCBCF /* FirebaseAnalytics in Frameworks */,
@@ -121,6 +124,7 @@
 		1D6151B22F25266700ECCBCF /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				1D0AAC3E2F2C00A0003A1BA8 /* UIKit.framework */,
 				1D6151B72F25268B00ECCBCF /* CoreML.framework */,
 				1D6151B52F25267700ECCBCF /* SwiftData.framework */,
 				1D6151B32F25266700ECCBCF /* Vision.framework */,
@@ -463,13 +467,14 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = 1;
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Debug;
@@ -507,13 +512,14 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = 1;
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
