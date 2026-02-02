@@ -1,5 +1,3 @@
-## Member Rules/FAQ
-
 ### Firebase Setup (EVERYONE MUST DO!!)
 Go to the firebase console, select our project, click the gear icon and scroll down to the bottom of general, download the info.plist into the top most level of your talking fingers directory.
 
@@ -49,5 +47,6 @@ Access the Figma [here](https://www.figma.com/design/53KeLSMLHKRXHLfHG4y1h5/Talk
   - This way the file will only run/be used if the target is on the correct os
  
 Most of this stuff will be handled and mentioned by officers in tickets where this is necessary, so don't really worry about remembering this stuff right now.
+
 
 
