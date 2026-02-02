@@ -3,7 +3,6 @@ Go to the firebase console, select our project, click the gear icon and scroll d
 
 ### Git Rules
 - Every time you work on the repository, pull from main
-- Before making a pr, pull from main and push to the branch again
 - Make a branch for every issue/task
 
 ### Figma
@@ -47,6 +46,7 @@ Access the Figma [here](https://www.figma.com/design/53KeLSMLHKRXHLfHG4y1h5/Talk
   - This way the file will only run/be used if the target is on the correct os
  
 Most of this stuff will be handled and mentioned by officers in tickets where this is necessary, so don't really worry about remembering this stuff right now.
+
 
 
 
