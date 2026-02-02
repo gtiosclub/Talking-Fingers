@@ -45,7 +45,8 @@ Access the Figma [here](https://www.figma.com/design/53KeLSMLHKRXHLfHG4y1h5/Talk
   - Put all of the code in the files either within and “#if os(ios)” or “#if os(macos)” macro
   - This way the file will only run/be used if the target is on the correct os
  
-Most of this stuff will be handled and mentioned by officers in tickets where this is necessary, so don't really worry about remembering this stuff right now.
+Most of this stuff will be handled and mentioned by officers in tickets where this is necessary, so don't worry about remembering this stuff right now.
+
 
 
 
