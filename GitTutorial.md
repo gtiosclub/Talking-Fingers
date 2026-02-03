@@ -1,7 +1,11 @@
+# Git Tutorial for Xcode
 
-Below is a typical workflow from start to finish that you should follow when you deal with Xcode and Github:  
+## Video: [text](https://youtu.be/pqnPP57Hs9s)
 
-1.  On Xcode create a new branch from **main**, and let's call it `isabel`
+## Workflow:
+Below is a typical workflow from start to finish that you should follow when you deal with Xcode and Github:
+
+1.  On Xcode create a new branch from **main** (via your _issue/task_ from projects). For now, let's call it `isabel`
 
 2.  Then you start working and making changes to it, and at this point your branch is ahead of main because of your changes, **but** it could also be behind main in some files because **others** may have created a PR and their work got approved to merge into the main but in your own branch you don't have those changes.
 
