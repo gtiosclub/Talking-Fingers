@@ -9,14 +9,13 @@ import Foundation
 
 @Model
 class StatsFlashcard {
-    @Attribute(.unique) var id: String
-    var term: String
+    @Attribute(.unique) var term: String
     var definition: String
     var lastSucceeded: Date?
     var starred: Bool
+    var progress: ProgressType
     
-    init(id: String, term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool) {
-        self.id = id
+    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool) {
         self.term = term
         self.definition = definition
         self.lastSucceeded = nil
