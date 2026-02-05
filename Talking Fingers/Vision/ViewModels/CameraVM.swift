@@ -122,4 +122,12 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
+    
+    func convertVisionPointToScreenPosition(visionPoint: CGPoint, viewSize: CGSize) -> CGPoint {
+        
+        let x = visionPoint.x * viewSize.width
+        let y = (1 - visionPoint.y) * viewSize.height
+        
+        return CGPoint(x: x, y: y)
+    }
 }
