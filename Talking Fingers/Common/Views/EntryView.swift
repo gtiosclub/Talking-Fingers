@@ -12,44 +12,39 @@ struct EntryView: View {
     @State private var isLogin: Bool = true
     @Environment(AuthenticationViewModel.self) var authVM
     var body: some View {
-        if authVM.currentUser != nil {
-            TabsView()
-                .environment(authVM)
-        } else {
-            VStack {
-                HStack {
-                    Button(action: {self.isLogin = true}) {
-                        VStack(spacing: 8) {
-                            if (isLogin) {
-                                Text("Login")
-                                    .foregroundColor(Color.black)
-                            } else {
-                                Text("Login")
-                                    .foregroundColor(Color.gray.opacity(0.3))
-                            }
+        VStack {
+            HStack {
+                Button(action: {self.isLogin = true}) {
+                    VStack(spacing: 8) {
+                        if (isLogin) {
+                            Text("Login")
+                                .foregroundColor(Color.black)
+                        } else {
+                            Text("Login")
+                                .foregroundColor(Color.gray.opacity(0.3))
                         }
                     }
-                    .padding()
-                    Button(action: {self.isLogin = false}) {
-                        VStack(spacing: 8) {
-                            if (isLogin) {
-                                Text("Register")
-                                    .foregroundColor(Color.gray.opacity(0.3))
-                            } else {
-                                Text("Register")
-                                    .foregroundColor(Color.black)
-                            }
+                }
+                .padding()
+                Button(action: {self.isLogin = false}) {
+                    VStack(spacing: 8) {
+                        if (isLogin) {
+                            Text("Register")
+                                .foregroundColor(Color.gray.opacity(0.3))
+                        } else {
+                            Text("Register")
+                                .foregroundColor(Color.black)
                         }
                     }
-                    .padding()
                 }
-                if (isLogin) {
-                    Login()
-                        .environment(authVM)
-                } else {
-                    Register()
-                        .environment(authVM)
-                }
+                .padding()
+            }
+            if (isLogin) {
+                Login()
+                    .environment(authVM)
+            } else {
+                Register()
+                    .environment(authVM)
             }
         }
     }
@@ -131,19 +126,4 @@ struct Register: View {
     }
 }
 
-struct HomeView: View {
-    @Environment(AuthenticationViewModel.self) var authVM
-    var body: some View {
-        VStack {
-            Text("Hello \(authVM.currentUser?.name ?? "Unknown")")
-            Text("This is the main page for Talking Fingers")
-            Text("Go to TabsView to add tabs for the other views")
-            Button(action: {
-                authVM.signOut()
-            }) {
-                Text("Sign Out")
-            }
-            .padding()
-        }
-    }
-}
+

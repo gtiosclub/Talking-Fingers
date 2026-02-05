@@ -11,13 +11,14 @@ struct ContentView: View {
     @Environment(AuthenticationViewModel.self) var authVM
     
     var body: some View {
-        if authVM.currentUser != nil {
-            MainNavigationView()
-                .environment(authVM)
-        } else {
-            EntryView()
-                .environment(authVM)
+        Group {
+            if authVM.currentUser != nil {
+                MainNavigationView()
+            } else {
+                EntryView()
+            }
         }
+        .environment(authVM)
     }
 }
 
@@ -29,7 +30,7 @@ struct MainNavigationView: View {
         NavigationSplitView {
             // Sidebar
             List(selection: $selectedSection) {
-                Label("Home", systemImage: "house.fill")
+                Label("Vision", systemImage: "eyeglasses")
                     .tag(NavigationSection.home)
                 Label("Flashcards", systemImage: "rectangle.stack.fill")
                     .tag(NavigationSection.flashcards)
@@ -39,25 +40,26 @@ struct MainNavigationView: View {
             .navigationTitle("Talking Fingers")
         } detail: {
             // Detail view based on selection
-            Group {
-                switch selectedSection {
-                case .home:
-                    NavigationStack {
-                        HomeView()
-                    }
-                case .flashcards:
-                    NavigationStack {
-                        FlashcardView()
-                    }
-                case .stats:
-                    NavigationStack {
-                        StatsView()
-                    }
-                case .none:
-                    Text("Select a section")
-                }
+            detailView(for: selectedSection ?? .home)
+                .environment(authVM)
+        }
+    }
+    
+    @ViewBuilder
+    private func detailView(for section: NavigationSection) -> some View {
+        switch section {
+        case .home:
+            NavigationStack {
+                CameraView()
             }
-            .environment(authVM)
+        case .flashcards:
+            NavigationStack {
+                FlashcardView()
+            }
+        case .stats:
+            NavigationStack {
+                StatsView()
+            }
         }
     }
     
