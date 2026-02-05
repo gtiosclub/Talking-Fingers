@@ -8,14 +8,15 @@ import SwiftData
 import Foundation
 
 @Model
-class Flashcard {
+class StatsFlashcard {
     @Attribute(.unique) var id: String
     var term: String
     var definition: String
     var lastSucceeded: Date?
     var starred: Bool
     
-    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool) {
+    init(id: String, term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool) {
+        self.id = id
         self.term = term
         self.definition = definition
         self.lastSucceeded = nil

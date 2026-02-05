@@ -47,22 +47,9 @@
 		AA7EB8AD2F297DA1006432B7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		1D0AAE4E2F353306003A1BA8 /* Exceptions for "Talking Fingers" folder in "Talking Fingers" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Talking-Fingers-Info.plist",
-			);
-			target = 1D6151852F25232700ECCBCF /* Talking Fingers */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1D6151882F25232700ECCBCF /* Talking Fingers */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				1D0AAE4E2F353306003A1BA8 /* Exceptions for "Talking Fingers" folder in "Talking Fingers" target */,
-			);
 			path = "Talking Fingers";
 			sourceTree = "<group>";
 		};
