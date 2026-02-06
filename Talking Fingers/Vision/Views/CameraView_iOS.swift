@@ -45,7 +45,7 @@ struct CameraView: View {
                 ForEach(JointsSheetView.jointLabels.filter { jointVisibility[$0.name] == true },
                         id: \.name) { joint in
                     if let point = try? hand?.recognizedPoint(joint.name),
-                       point.confidence > 0.9 {
+                       point.confidence > 0.5 {
                         let pos = cameraVM.convertVisionPointToScreenPosition(
                             visionPoint: point.location, viewSize: geo.size)
                         Text(joint.label)
