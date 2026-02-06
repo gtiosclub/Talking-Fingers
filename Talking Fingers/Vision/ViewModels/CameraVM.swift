@@ -101,7 +101,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     // THIS IS THE BRAIN: Where Vision meets the Camera
-    // runs 30-60 times a second - every video frame processed here
+    // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool { // Free temporary Vision/CoreMedia objects each frame to prevent memory buildup
             let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler

@@ -4,7 +4,7 @@
 //
 //  Created by Jihoon Kim on 1/29/26.
 //
-
+#if os(ios)
 
 import SwiftUI
 import AVFoundation
@@ -75,3 +75,5 @@ struct CameraPreviewView: UIViewRepresentable {
 #Preview {
     CameraView()
 }
+
+#endif
