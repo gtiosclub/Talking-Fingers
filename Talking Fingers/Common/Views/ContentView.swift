@@ -51,6 +51,7 @@ struct MainNavigationView: View {
         case .home:
             NavigationStack {
                 CameraView()
+                    .environment(authVM)
             }
         case .flashcards:
             NavigationStack {
