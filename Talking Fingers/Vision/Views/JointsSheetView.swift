@@ -12,6 +12,9 @@ import Vision
 struct JointsSheetView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var jointVisibility: [VNHumanHandPoseObservation.JointName: Bool]
+    @Binding var dotsVisibility: Bool
+    @Binding var handOutlineVisibility: Bool
+    @Binding var handSkeletonVisibility: Bool
 
     // Human-readable labels for each joint
     static let jointLabels: [(name: VNHumanHandPoseObservation.JointName, label: String)] = [
@@ -41,6 +44,23 @@ struct JointsSheetView: View {
     var body: some View {
         VStack {
             List {
+                // Dots toggle
+                Toggle("Show Dots", isOn: $dotsVisibility)
+                // Hand outline toggle
+                Toggle("Show Hand Outline", isOn: $handOutlineVisibility)
+                // Hand skeleton
+                Toggle("Show Hand Skeleton", isOn: $handSkeletonVisibility)
+                // All joints toggle
+                Toggle("Toggle All Joints", isOn: Binding(
+                    get: {
+                        Self.jointLabels.allSatisfy { binding(for: $0.name).wrappedValue }
+                    },
+                    set: { newValue in
+                        for joint in Self.jointLabels {
+                            binding(for: joint.name).wrappedValue = newValue
+                        }
+                    }
+                ))
                 ForEach(Self.jointLabels, id: \.name) { joint in
                     Toggle(joint.label, isOn: binding(for: joint.name))
                 }
@@ -64,12 +84,18 @@ struct JointsSheetView: View {
 }
 
 #Preview {
-    @Previewable @State var preview: [VNHumanHandPoseObservation.JointName: Bool] = [
+    @Previewable @State var previewJoints: [VNHumanHandPoseObservation.JointName: Bool] = [
         .thumbTip: true,
         .indexTip: false
     ]
+    @Previewable @State var previewDots: Bool = true
+    @Previewable @State var previewHandOutline: Bool = true
+    @Previewable @State var previewHandSkeleton: Bool = true
     NavigationStack {
-        JointsSheetView(jointVisibility: $preview)
+        JointsSheetView(jointVisibility: $previewJoints,
+        dotsVisibility: $previewDots,
+        handOutlineVisibility: $previewHandOutline,
+        handSkeletonVisibility: $previewHandSkeleton)
     }
 }
 
