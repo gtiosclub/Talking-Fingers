@@ -14,6 +14,7 @@ struct CameraView: View {
     
     @State private var cameraVM: CameraVM = CameraVM()
     @State private var hand: VNHumanHandPoseObservation?
+    @State private var hand2: VNHumanHandPoseObservation?
     
     var body: some View {
         ZStack {
@@ -31,12 +32,34 @@ struct CameraView: View {
             GeometryReader { geo in
                 
                 if let thumbTip = try? hand?.recognizedPoint(.thumbTip),
-                   thumbTip.confidence > 0.5 {
+                   thumbTip.confidence > 0.9 {
                     
                     let pos = cameraVM.convertVisionPointToScreenPosition(visionPoint: thumbTip.location, viewSize: geo.size)
                     Text("Thumb Tip")
                         .position(pos)
                 }
+                if let thumbTip = try? hand2?.recognizedPoint(.thumbTip),
+                   thumbTip.confidence > 0.9 {
+                    
+                    let pos = cameraVM.convertVisionPointToScreenPosition(visionPoint: thumbTip.location, viewSize: geo.size)
+                    Text("Thumb Tip 2")
+                        .position(pos)
+                }
+                if let indexTip = try? hand?.recognizedPoint(.indexTip),
+                   indexTip.confidence > 0.9 {
+                    
+                    let pos = cameraVM.convertVisionPointToScreenPosition(visionPoint: indexTip.location, viewSize: geo.size)
+                    Text("Index Tip 1")
+                        .position(pos)
+                }
+                if let indexTip = try? hand2?.recognizedPoint(.indexTip),
+                   indexTip.confidence > 0.9 {
+                    
+                    let pos = cameraVM.convertVisionPointToScreenPosition(visionPoint: indexTip.location, viewSize: geo.size)
+                    Text("Index Tip 2")
+                        .position(pos)
+                }
+                
             }
             
         }
@@ -46,6 +69,7 @@ struct CameraView: View {
 
             cameraVM.onPoseDetected = { observations in
                 hand = observations.first
+                hand2 = observations.last
             }
         }
         .onDisappear {

@@ -107,7 +107,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
             
             let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
-            handPoseRequest.maximumHandCount = 1 // Focus on one hand for better performance initially
+            handPoseRequest.maximumHandCount = 2 // Focus on one hand for better performance initially
 
             do {
                 try handler.perform([handPoseRequest]) // analyze the hand pose
