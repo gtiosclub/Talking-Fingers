@@ -13,20 +13,23 @@ class FlashcardModel {
     var lastSucceeded: Date?
     var starred: Bool
     var progress: ProgressType
+    var category: String
     
-    init(term: String, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType) {
+    init(term: String, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType, category: String) {
         self.term = term
         self.id = id
         self.lastSucceeded = lastSucceeded
         self.starred = starred
         self.progress = progress
+        self.category = category
     }
     
-    init(term: String, id: UUID) {
+    init(term: String, id: UUID, category: String) {
         self.term = term
         self.id = id
         self.lastSucceeded = nil
         self.starred = false
         self.progress = .new
+        self.category = category
     }
 }
