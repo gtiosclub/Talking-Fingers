@@ -73,78 +73,9 @@ struct CameraView: View {
 
             GeometryReader { geo in
                 
-                // Render hand outline if visible
-                if handOutlineVisibility {
-                    // Render outline for each hand
-                    ForEach(hands, id: \.uuid) { hand in
-                        let points = perimeterJoints.compactMap { jointName -> CGPoint? in
-                            guard let point = try? hand.recognizedPoint(jointName),
-                                  point.confidence > 0.5 else { return nil }
-                            return cameraVM.convertVisionPointToScreenPosition(visionPoint: point.location, viewSize: geo.size)
-                        }
-                        
-                        if points.count > 3 {
-                            Path { path in
-                                path.addLines(points)
-                                path.closeSubpath()
-                            }
-                            .fill(Color.green.opacity(0.3))
-                            .stroke(Color.green, lineWidth: 2)
-                        }
-                    }
-                }
-                
-                // Render each hand's labels
-                ForEach(hands, id: \.uuid) { hand in
-                    // Render labels (and points if turned visible)
-                    ForEach(JointsSheetView.jointLabels.filter { jointVisibility[$0.name] == true },
-                            id: \.name) { joint in
-                        
-                        if let point = try? hand.recognizedPoint(joint.name),
-                           point.confidence > 0.5 {
-                            let pos = cameraVM.convertVisionPointToScreenPosition(
-                                visionPoint: point.location, viewSize: geo.size)
-                            ZStack {
-                                Text("\(getHandLabel(for: hand))\(joint.label)")
-                                    .font(.caption2)
-                                    .padding(4)
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .position(pos)
-                                
-                                // Only render if dots turned visisble
-                                if (dotsVisibility) {
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 7, height: 7)
-                                        .position(pos)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Render hand skeleton if visible
-                if handSkeletonVisibility {
-                    ForEach(hands, id: \.uuid) { hand in
-                        Path { path in
-                            for connection in handConnections {
-                                // Draw if both points are visible
-                                if let p1 = try? hand.recognizedPoint(connection.0),
-                                   let p2 = try? hand.recognizedPoint(connection.1),
-                                   p1.confidence > 0.5, p2.confidence > 0.5,
-                                   jointVisibility[connection.0] == true, jointVisibility[connection.1] == true {
-                                    
-                                    let start = cameraVM.convertVisionPointToScreenPosition(visionPoint: p1.location, viewSize: geo.size)
-                                    let end = cameraVM.convertVisionPointToScreenPosition(visionPoint: p2.location, viewSize: geo.size)
-                                    
-                                    path.move(to: start)
-                                    path.addLine(to: end)
-                                }
-                            }
-                        }
-                        .stroke(getHandColor(for: hand).opacity(0.6), lineWidth: 3)
-                    }
-                }
+                handOutlineOverlay(in: geo.size)
+                jointLabelsOverlay(in: geo.size)
+                skeletonOverlay(in: geo.size)
                 
             }
         }
@@ -172,20 +103,86 @@ struct CameraView: View {
             }
         }
     }
-    // Get left/right label for hand (using this func instead of ternary because of compiler confusion)
-    private func getHandLabel(for hand: VNHumanHandPoseObservation) -> String {
-        if cameraVM.isMirrored {
-            return hand.chirality == .left ? "R " : "L "
-        } else {
-            return hand.chirality == .left ? "L " : "R "
+    
+    @ViewBuilder
+    private func handOutlineOverlay(in size: CGSize) -> some View {
+        if handOutlineVisibility {
+            ForEach(hands, id: \.uuid) { hand in
+                let points = perimeterJoints.compactMap { jointName -> CGPoint? in
+                    guard let point = try? hand.recognizedPoint(jointName),
+                          point.confidence > 0.5 else { return nil }
+                    return cameraVM.convertVisionPointToScreenPosition(visionPoint: point.location, viewSize: size)
+                }
+                
+                if points.count > 3 {
+                    Path { path in
+                        path.addLines(points)
+                        path.closeSubpath()
+                    }
+                    .fill(Color.green.opacity(0.3))
+                    .stroke(Color.green, lineWidth: 2)
+                }
+            }
         }
     }
-    // Get left/right hand color (adjust for mirror)
-    private func getHandColor(for hand: VNHumanHandPoseObservation) -> Color {
-        let isVisualLeft = cameraVM.isMirrored ? (hand.chirality == .right) : (hand.chirality == .left)
+
+    @ViewBuilder
+    private func jointLabelsOverlay(in size: CGSize) -> some View {
+        ForEach(hands, id: \.uuid) { hand in
+            let visibleJoints = JointsSheetView.jointLabels.filter { jointVisibility[$0.name] == true }
             
-        return isVisualLeft ? .blue : .purple
+            ForEach(visibleJoints, id: \.name) { joint in
+                if let point = try? hand.recognizedPoint(joint.name), point.confidence > 0.5 {
+                    let pos = cameraVM.convertVisionPointToScreenPosition(visionPoint: point.location, viewSize: size)
+                    // Adjust label based on chirality and camera mirror
+                    let handSide = (cameraVM.isMirrored ? (hand.chirality == .left ? "R" : "L") : (hand.chirality == .left ? "L" : "R"))
+                    
+                    ZStack {
+                        Text("\(handSide) \(joint.label)")
+                            .font(.caption2)
+                            .padding(4)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .position(pos)
+                        
+                        if dotsVisibility {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 7, height: 7)
+                                .position(pos)
+                        }
+                    }
+                }
+            }
+        }
     }
+    
+    @ViewBuilder
+    private func skeletonOverlay(in size: CGSize) -> some View {
+        if handSkeletonVisibility {
+            ForEach(hands, id: \.uuid) { hand in
+                // Adjust color based on chirality and camera mirror
+                let handSkeletonColor = (cameraVM.isMirrored ? (hand.chirality == .left ? Color.purple : Color.blue) : (hand.chirality == .left ? Color.blue : Color.purple))
+                Path { path in
+                    for connection in handConnections {
+                        // Draw if both points are visible
+                        if let p1 = try? hand.recognizedPoint(connection.0),
+                           let p2 = try? hand.recognizedPoint(connection.1),
+                           p1.confidence > 0.5, p2.confidence > 0.5,
+                           jointVisibility[connection.0] == true, jointVisibility[connection.1] == true {
+                            
+                            let start = cameraVM.convertVisionPointToScreenPosition(visionPoint: p1.location, viewSize: size)
+                            let end = cameraVM.convertVisionPointToScreenPosition(visionPoint: p2.location, viewSize: size)
+                            
+                            path.move(to: start)
+                            path.addLine(to: end)
+                        }
+                    }
+                }
+                .stroke(handSkeletonColor.opacity(0.6), lineWidth: 3)
+            }
+        }
+    }
+    
 }
 
 struct CameraPreviewView: UIViewRepresentable {
