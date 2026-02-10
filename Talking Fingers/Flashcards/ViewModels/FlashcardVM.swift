@@ -10,7 +10,15 @@ import Combine
 
 @Observable
 class FlashcardVM {
-
-    @Published var flashcards: [FlashcardModel] = []
-
+    var flashcards: [FlashcardModel] = []
+    
+    func searchFlashCard(input: String) -> [String] {
+        var results = [String]()
+        for card in flashcards {
+            if card.term.lowercased().contains(input.lowercased()) {
+                results.append(card.term)
+            }
+        }
+        return results
+    }
 }
