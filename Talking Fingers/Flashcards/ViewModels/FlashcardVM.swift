@@ -11,6 +11,8 @@ import Combine
 @Observable
 class FlashcardVM {
 
-    @Published var flashcards: [FlashcardModel] = []
-
+    var flashcards: [FlashcardModel] = []
+    func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
+        flashcards.filter { $0.category == category }
+    }
 }
