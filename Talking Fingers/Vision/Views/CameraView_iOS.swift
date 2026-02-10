@@ -12,6 +12,14 @@ import Vision
 
 struct CameraView: View {
 
+    // Recording state
+    @State private var isRecording: Bool = false
+    @State private var recordingStartTime: Date? = nil
+    @State private var recordedPoses: [(TimeInterval, VNHumanHandPoseObservation)] = []
+
+    // Optional callback to return the recorded data to a caller
+    var onRecordingFinished: (([(TimeInterval, VNHumanHandPoseObservation)]) -> Void)? = nil
+
     @State private var showJointsSheet: Bool = false
 
     @State private var cameraVM: CameraVM = CameraVM()
@@ -85,6 +93,13 @@ struct CameraView: View {
 
             cameraVM.onPoseDetected = { observations in
                 hands = observations
+                // While recording, capture each observation with an elapsed timestamp
+                if isRecording, let start = recordingStartTime {
+                    let elapsed = Date().timeIntervalSince(start)
+                    for obs in observations {
+                        recordedPoses.append((elapsed, obs))
+                    }
+                }
             }
         }
         .onDisappear {
@@ -94,6 +109,16 @@ struct CameraView: View {
             JointsSheetView(jointVisibility: $jointVisibility, dotsVisibility: $dotsVisibility, handOutlineVisibility: $handOutlineVisibility, handSkeletonVisibility: $handSkeletonVisibility)
         }
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: {
+                    toggleRecording()
+                }) {
+                    Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(isRecording ? .red : .red, .primary)
+                        .accessibilityLabel(isRecording ? "Stop Recording" : "Start Recording")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: {
                     showJointsSheet = true
@@ -183,6 +208,23 @@ struct CameraView: View {
         }
     }
     
+    private func toggleRecording() {
+        if isRecording {
+            // Stop recording and return the data
+            isRecording = false
+            if let callback = onRecordingFinished {
+                callback(recordedPoses)
+            } else {
+                // Fallback: log the result for visibility during development
+                print("Recorded poses count: \(recordedPoses.count)")
+            }
+        } else {
+            // Start recording: reset buffer and timestamp
+            recordedPoses.removeAll(keepingCapacity: true)
+            recordingStartTime = Date()
+            isRecording = true
+        }
+    }
 }
 
 struct CameraPreviewView: UIViewRepresentable {
@@ -204,8 +246,13 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 #Preview {
-    CameraView()
-        .environment(AuthenticationViewModel())
+    CameraView(onRecordingFinished: { tuples in
+        // Example: print the first 3 entries
+        print("Preview received \(tuples.count) recorded tuples")
+        print(tuples.prefix(3))
+    })
+    .environment(AuthenticationViewModel())
 }
 
 #endif
+
