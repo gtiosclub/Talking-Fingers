@@ -70,6 +70,7 @@ struct CameraView: View {
                     description: Text("Please allow camera access in Settings to use sign language recognition.")
                 )
             }
+            
 
             GeometryReader { geo in
                 

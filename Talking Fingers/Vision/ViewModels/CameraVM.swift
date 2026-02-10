@@ -17,6 +17,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     // This closure will pass the vision observations back to your UI or Logic
     var onPoseDetected: (([VNHumanHandPoseObservation]) -> Void)?
+    // Keep track of normalized hand observations
+    var normalizedHands: [NormalizedHand] = []
 
     var isAuthorized = false
     
@@ -119,6 +121,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 // Send the hand landmarks back to the main thread for UI/Logic
                 DispatchQueue.main.async {
                     self.onPoseDetected?(observations)
+                    // store noramlized hands, update aspect ratio if changed
+                    self.normalizedHands = observations.compactMap { NormalizedHand(from: $0, aspect: 720.0 / 1280.0) }
                 }
             } catch {
                 print("Vision error: \(error)")
