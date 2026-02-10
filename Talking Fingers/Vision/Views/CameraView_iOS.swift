@@ -62,7 +62,7 @@ struct CameraView: View {
         ZStack {
             if cameraVM.isAuthorized {
                 CameraPreviewView(session: cameraVM.session)
-                    .ignoresSafeArea()
+                    
             } else {
                 ContentUnavailableView(
                     "Camera Access Required",
@@ -79,6 +79,7 @@ struct CameraView: View {
                 
             }
         }
+        .ignoresSafeArea()
         .onAppear {
             cameraVM.checkPermission()
             cameraVM.start()
