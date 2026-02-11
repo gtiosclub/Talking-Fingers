@@ -106,6 +106,7 @@ struct CameraView: View {
             }
             .padding(.top, 12)
         }
+        .ignoresSafeArea()
         .onAppear {
             cameraVM.checkPermission()
             cameraVM.start()
