@@ -66,6 +66,7 @@ struct CameraView: View {
                     // Camera "window" that holds the live feed + ALL overlays
                     ZStack {
                         CameraPreviewView(session: cameraVM.session)
+                            .ignoresSafeArea()
 
                         // IMPORTANT: GeometryReader is inside the window,
                         // so size is the window size (keeps overlays aligned).
@@ -106,7 +107,6 @@ struct CameraView: View {
             }
             .padding(.top, 12)
         }
-        .ignoresSafeArea()
         .onAppear {
             cameraVM.checkPermission()
             cameraVM.start()
