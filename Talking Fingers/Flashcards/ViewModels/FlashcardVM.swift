@@ -11,6 +11,5 @@ import Combine
 @Observable
 class FlashcardVM {
 
-    @Published var flashcards: [FlashcardModel] = []
 
 }

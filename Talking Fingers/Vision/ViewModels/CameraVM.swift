@@ -136,4 +136,21 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         
         return CGPoint(x: x, y: y)
     }
+    
+    // Filter frames
+    func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
+        return references.filter({t -> Bool in
+            guard let allPoints = try? t.1.recognizedPoints(.all) else {
+                return false
+            }
+            
+            let joints = allPoints.values.filter { $0.confidence > 0.3 }
+            
+            guard joints.count >= 12 else {
+                return false
+            }
+
+            return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
+        })
+    }
 }
