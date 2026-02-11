@@ -24,6 +24,11 @@ struct CameraView: View {
 
     @State private var cameraVM: CameraVM = CameraVM()
     @State private var hands: [VNHumanHandPoseObservation] = []
+
+    // Future-proof placeholder: if/when body pose is added, another PR can populate this.
+    // This file already knows how to print hands; body printing can be appended without refactors.
+    @State private var bodyPoses: [VNHumanBodyPoseObservation] = []
+
     @Environment(AuthenticationViewModel.self) var authVM
 
     /// Tracks which joints the user wants visible on the overlay.
@@ -121,6 +126,7 @@ struct CameraView: View {
 
             cameraVM.onPoseDetected = { observations, pts in
                 hands = observations
+
                 // While recording, capture each observation with the provided CMTime timestamp
                 if isRecording {
                     if recordingStartTime == nil { recordingStartTime = pts }
@@ -152,6 +158,17 @@ struct CameraView: View {
                         .accessibilityLabel(isRecording ? "Stop Recording" : "Start Recording")
                 }
             }
+
+            // NEW: Debug print button for confidence + coords of currently-labeled joints
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: {
+                    printLabeledLandmarkDebug()
+                }) {
+                    Image(systemName: "waveform.path.ecg")
+                }
+                .accessibilityLabel("Print landmark confidence and coordinates")
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: {
                     showJointsSheet = true
@@ -161,6 +178,81 @@ struct CameraView: View {
             }
         }
     }
+
+    // MARK: - Debug printing
+
+    /// Prints confidence + normalized coordinates for all joints currently enabled in the labels sheet.
+    /// Also prints "big feature" info for each hand (bounding box + center + size).
+    private func printLabeledLandmarkDebug() {
+        print("----- Landmark Debug -----")
+        print("Hands detected: \(hands.count), Body poses detected: \(bodyPoses.count)")
+
+        // Joints currently "labeled" = toggled on in the sheet
+        let enabledJoints = JointsSheetView.jointLabels
+            .map(\.name)
+            .filter { jointVisibility[$0] == true }
+
+        if enabledJoints.isEmpty {
+            print("No joints are enabled in the labels sheet (jointVisibility all false).")
+        }
+
+        for (handIndex, hand) in hands.enumerated() {
+            let side = (cameraVM.isMirrored
+                        ? (hand.chirality == .left ? "R" : "L")
+                        : (hand.chirality == .left ? "L" : "R"))
+            print("Hand[\(handIndex)] side=\(side) uuid=\(hand.uuid)")
+
+            // 1) Print joint confidences + normalized coords for enabled joints
+            for j in enabledJoints {
+                if let p = try? hand.recognizedPoint(j) {
+                    print("  \(j.rawValue): conf=\(String(format: "%.3f", p.confidence)) loc=(\(String(format: "%.3f", p.location.x)), \(String(format: "%.3f", p.location.y)))")
+                } else {
+                    print("  \(j.rawValue): (no point)")
+                }
+            }
+
+            // 2) Print "big landmark features" for the hand: bbox/center/size
+            // Build box from a stable set of joints (perimeter + skeleton endpoints + enabled labels)
+            var boxJoints = Set<VNHumanHandPoseObservation.JointName>()
+            enabledJoints.forEach { boxJoints.insert($0) }
+            perimeterJoints.forEach { boxJoints.insert($0) }
+            for (a, b) in handConnections { boxJoints.insert(a); boxJoints.insert(b) }
+
+            let pts: [CGPoint] = boxJoints.compactMap { j in
+                guard let p = try? hand.recognizedPoint(j), p.confidence > 0.5 else { return nil }
+                return p.location
+            }
+
+            if let bbox = boundingBox(of: pts) {
+                let center = CGPoint(x: bbox.midX, y: bbox.midY)
+                print("  Hand bbox (norm img): min=(\(String(format: "%.3f", bbox.minX)), \(String(format: "%.3f", bbox.minY))) " +
+                      "max=(\(String(format: "%.3f", bbox.maxX)), \(String(format: "%.3f", bbox.maxY))) " +
+                      "w=\(String(format: "%.3f", bbox.width)) h=\(String(format: "%.3f", bbox.height)) " +
+                      "center=(\(String(format: "%.3f", center.x)), \(String(format: "%.3f", center.y)))")
+            } else {
+                print("  Hand bbox: not enough confident points (>0.5) to compute bbox")
+            }
+        }
+
+        // Future-ready: once another PR starts populating bodyPoses, this can be extended.
+        if !bodyPoses.isEmpty {
+            print("Body pose observations are available (bodyPoses populated).")
+        }
+
+        print("-------------------------")
+    }
+
+    /// Bounding box helper for Vision-normalized points.
+    private func boundingBox(of points: [CGPoint]) -> CGRect? {
+        guard points.count >= 2 else { return nil }
+        let xs = points.map(\.x)
+        let ys = points.map(\.y)
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max() else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    // MARK: - Overlays
 
     @ViewBuilder
     private func handOutlineOverlay(in size: CGSize) -> some View {
@@ -245,7 +337,9 @@ struct CameraView: View {
             }
         }
     }
-    
+
+    // MARK: - Recording
+
     private func toggleRecording() {
         if isRecording {
             // Stop recording and return the data
@@ -296,4 +390,3 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 #endif
-
