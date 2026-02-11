@@ -12,13 +12,13 @@ import Vision
 
 struct CameraView: View {
 
-    // Recording state
+    // Recording state (use CMTime from CMSampleBuffer instead of Date/TimeInterval)
     @State private var isRecording: Bool = false
-    @State private var recordingStartTime: Date? = nil
-    @State private var recordedPoses: [(TimeInterval, VNHumanHandPoseObservation)] = []
+    @State private var recordingStartTime: CMTime? = nil
+    @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
 
     // Optional callback to return the recorded data to a caller
-    var onRecordingFinished: (([(TimeInterval, VNHumanHandPoseObservation)]) -> Void)? = nil
+    var onRecordingFinished: (([(CMTime, VNHumanHandPoseObservation)]) -> Void)? = nil
 
     @State private var showJointsSheet: Bool = false
 
@@ -91,13 +91,13 @@ struct CameraView: View {
             cameraVM.checkPermission()
             cameraVM.start()
 
-            cameraVM.onPoseDetected = { observations in
+            cameraVM.onPoseDetected = { observations, pts in
                 hands = observations
-                // While recording, capture each observation with an elapsed timestamp
-                if isRecording, let start = recordingStartTime {
-                    let elapsed = Date().timeIntervalSince(start)
+                // While recording, capture each observation with the provided CMTime timestamp
+                if isRecording {
+                    if recordingStartTime == nil { recordingStartTime = pts }
                     for obs in observations {
-                        recordedPoses.append((elapsed, obs))
+                        recordedPoses.append((pts, obs))
                     }
                 }
             }
@@ -218,10 +218,13 @@ struct CameraView: View {
                 // Fallback: log the result for visibility during development
                 print("Recorded poses count: \(recordedPoses.count)")
             }
+            // Clear recorded poses after delivering them so memory doesn't accumulate
+            recordedPoses.removeAll(keepingCapacity: true)
+            recordingStartTime = nil
         } else {
             // Start recording: reset buffer and timestamp
             recordedPoses.removeAll(keepingCapacity: true)
-            recordingStartTime = Date()
+            recordingStartTime = nil
             isRecording = true
         }
     }
