@@ -9,14 +9,27 @@ import Foundation
 
 class FlashcardModel {
     var term: String
-    var definition: String
+    var id: UUID = UUID()
     var lastSucceeded: Date?
     var starred: Bool
+    var progress: ProgressType
+    var category: String
     
-    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool) {
+    init(term: String, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType, category: String) {
         self.term = term
-        self.definition = definition
+        self.id = id
+        self.lastSucceeded = lastSucceeded
+        self.starred = starred
+        self.progress = progress
+        self.category = category
+    }
+    
+    init(term: String, id: UUID, category: String) {
+        self.term = term
+        self.id = id
         self.lastSucceeded = nil
         self.starred = false
+        self.progress = .new
+        self.category = category
     }
 }

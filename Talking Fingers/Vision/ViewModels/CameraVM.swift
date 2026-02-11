@@ -19,6 +19,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var onPoseDetected: (([VNHumanHandPoseObservation]) -> Void)?
 
     var isAuthorized = false
+    
+    // Add to keep track of observations relative to camera
+    var isMirrored = true
 
     override init() {
         super.init()
@@ -71,7 +74,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         // Ensure orientation is correct for the front camera
         if let connection = videoOutput.connection(with: .video) {
             connection.videoOrientation = .portrait
-            connection.isVideoMirrored = true // Mirroring makes it feel natural for sign language practice
+            connection.isVideoMirrored = self.isMirrored // Mirroring makes it feel natural for sign language practice
         }
     }
 
@@ -107,11 +110,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
             
             let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
-            handPoseRequest.maximumHandCount = 1 // Focus on one hand for better performance initially
+            handPoseRequest.maximumHandCount = 2 // Two hands
 
             do {
                 try handler.perform([handPoseRequest]) // analyze the hand pose
-                guard let observations = handPoseRequest.results else { return } // extract results
+                let observations = handPoseRequest.results ?? [] // extract results
                 
                 // Send the hand landmarks back to the main thread for UI/Logic
                 DispatchQueue.main.async {
