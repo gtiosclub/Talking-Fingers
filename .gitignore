@@ -110,3 +110,10 @@ playground.xcworkspace
 *.jsonl
 reference_landmarks/
 training_data/
+
+# =========================
+# Python
+# =========================
+.venv/
+__pycache__/
+*.pyc
