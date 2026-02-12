@@ -10,6 +10,11 @@ import Combine
 
 @Observable
 class FlashcardVM {
-
+  var flashcards: [FlashcardModel] = []
+    
+  
+  func filterStarred(from flashcards: [FlashcardModel]) -> [FlashcardModel] {
+        flashcards.filter { $0.starred }
+    }
 
 }
