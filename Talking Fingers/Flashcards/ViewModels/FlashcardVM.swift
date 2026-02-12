@@ -22,7 +22,7 @@ class FlashcardVM {
             case .new:
                 progressTotal += 0
             case .learning:
-                progressTotal += 30
+                progressTotal += 40
             case .polishing:
                 progressTotal += 70
             case .mastered:
