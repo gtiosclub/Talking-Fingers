@@ -1,10 +1,3 @@
-//
-//  README.md
-//  Talking Fingers
-//
-//  Created by Jagat Sachdeva on 2/12/26.
-//
-
 # Qwen Core ML Conversion Tooling
 
 This folder contains scripts and dependencies to convert the Hugging Face model
@@ -47,5 +40,19 @@ When done:
 deactivate
 ```
 
-                                                                        
-                                                                        
+## Generate Core ML Artifact
+
+From repository root:
+```bash
+cd Tools/qwen_coreml
+source .venv/bin/activate
+python covert.py
+```
+
+This will create/update files in Tools/qwen_coreml/output/.
+
+Expected outputs (check with `ls -la`):
+* output/QwenSentenceGen.mlpackage/
+* output/tokenizer.json
+* output/tokenizer_config.json
+* output/chat_template.jinja (optional but useful)
