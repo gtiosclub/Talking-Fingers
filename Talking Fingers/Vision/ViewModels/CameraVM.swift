@@ -15,8 +15,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
     
-    // This closure will pass the vision observations back to your UI or Logic
-    var onPoseDetected: (([VNHumanHandPoseObservation]) -> Void)?
+    // This closure will pass the vision observations and the sample buffer back to your UI or Logic
+    // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
+    var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
 
     var isAuthorized = false
     
@@ -107,6 +108,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool { // Free temporary Vision/CoreMedia objects each frame to prevent memory buildup
+            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            
             let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
             
             let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
@@ -116,9 +119,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 try handler.perform([handPoseRequest]) // analyze the hand pose
                 let observations = handPoseRequest.results ?? [] // extract results
                 
-                // Send the hand landmarks back to the main thread for UI/Logic
+                // Send the hand landmarks and sample buffer back to the main thread for UI/Logic
                 DispatchQueue.main.async {
-                    self.onPoseDetected?(observations)
+                    self.onPoseDetected?(observations, pts)
                 }
             } catch {
                 print("Vision error: \(error)")
@@ -132,5 +135,22 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let y = (1 - visionPoint.y) * viewSize.height
         
         return CGPoint(x: x, y: y)
+    }
+    
+    // Filter frames
+    func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
+        return references.filter({t -> Bool in
+            guard let allPoints = try? t.1.recognizedPoints(.all) else {
+                return false
+            }
+            
+            let joints = allPoints.values.filter { $0.confidence > 0.3 }
+            
+            guard joints.count >= 12 else {
+                return false
+            }
+
+            return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
+        })
     }
 }
