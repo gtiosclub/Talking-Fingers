@@ -7,12 +7,12 @@
 
 import AVFoundation
 import Vision
+import CoreMotion
 
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession() // connects camera hardware to the app
     private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
-    
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
     
     // This closure will pass the vision observations back to your UI or Logic
@@ -25,6 +25,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // Add to keep track of observations relative to camera
     var isMirrored = true
 
+    private let motionManager = CMMotionManager()
+    var currentPitch: Double = 0.0
+    
     override init() {
         super.init()
     }
@@ -81,6 +84,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func start() {
+        self.startMotionUpdates()
         sessionQueue.async {
             // Wait for authorization
             guard self.isAuthorized else { return }
@@ -98,11 +102,29 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
     
     func stop() {
+        self.stopMotionUpdates()
         sessionQueue.async {
             if self.session.isRunning {
                 self.session.stopRunning()
             }
         }
+    }
+    
+    func startMotionUpdates() {
+            guard motionManager.isDeviceMotionAvailable else { return }
+            
+            motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
+            motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+                guard let motion = motion else { return }
+                
+                // In Portrait orientation:
+                // Pitch is the rotation around the X-axis (tilting the top of the phone toward/away from you)
+                self?.currentPitch = motion.attitude.pitch
+            }
+        }
+
+    func stopMotionUpdates() {
+        motionManager.stopDeviceMotionUpdates()
     }
 
     // THIS IS THE BRAIN: Where Vision meets the Camera
@@ -122,7 +144,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 DispatchQueue.main.async {
                     self.onPoseDetected?(observations)
                     // store noramlized hands, update aspect ratio if changed
-                    self.normalizedHands = observations.compactMap { NormalizedHand(from: $0, aspect: 720.0 / 1280.0) }
+                    self.normalizedHands = observations.compactMap { NormalizedHand(from: $0, pitch: self.currentPitch - (.pi / 2)) }
                 }
             } catch {
                 print("Vision error: \(error)")

@@ -1,48 +1,32 @@
-//
-//  NormalizedHandModel.swift
-//  Talking Fingers
-//
-//  Created by Remy Laurens on 2/9/26.
-//
-
 import Foundation
 import Vision
+import CoreGraphics
 
-struct NormalizedHand {
+struct NormalizedHand: Identifiable {
     let id = UUID()
     let joints: [VNHumanHandPoseObservation.JointName: CGPoint]
     
-    init?(from observation: VNHumanHandPoseObservation, aspect: CGFloat = 720.0 / 1280.0) {
+    init?(from observation: VNHumanHandPoseObservation, pitch: Double) {
+        var correctedJoints: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+        guard let allPoints = try? observation.recognizedPoints(.all) else { return nil }
         
-        guard let wrist = try? observation.recognizedPoint(.wrist),
-              let middleMCP = try? observation.recognizedPoint(.middleMCP) else {
-            return nil
-        }
-
-        let wristPoint = CGPoint(x: wrist.location.x * aspect, y: wrist.location.y)
-        let mcpPoint = CGPoint(x: middleMCP.location.x * aspect, y: middleMCP.location.y)
-
-        let dx = mcpPoint.x - wristPoint.x
-        let dy = mcpPoint.y - wristPoint.y
-        let distance = sqrt(dx*dx + dy*dy)
-        let angle = atan2(dy, dx) - (CGFloat.pi / 2)
-
-        var normalizedJoints: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
-        let joints = try? observation.recognizedPoints(.all)
+        // Aspect ratio
+        let width: CGFloat = 720
+        let height: CGFloat = 1280
+        let correctionFactor = CGFloat(cos(pitch))
         
-        joints?.forEach { (name, point) in
+        guard abs(correctionFactor) > 0.1 else { return nil }
+        
+        for (name, point) in allPoints {
+            let pixelY = point.location.y * height
             
-            let tx = (point.location.x * aspect) - wristPoint.x
-            let ty = point.location.y - wristPoint.y
-
-            let cost = cos(-angle)
-            let sint = sin(-angle)
-
-            let rx = (tx * cost - ty * sint) / distance
-            let ry = (tx * sint + ty * cost) / distance
-
-            normalizedJoints[name] = CGPoint(x: rx, y: ry)
+            let centeredY = pixelY - (height / 2)
+            let correctedY = (centeredY / correctionFactor) + (height / 2)
+            
+            let finalY = correctedY / height
+            
+            correctedJoints[name] = CGPoint(x: point.location.x, y: finalY)
         }
-        self.joints = normalizedJoints
+        self.joints = correctedJoints
     }
 }
