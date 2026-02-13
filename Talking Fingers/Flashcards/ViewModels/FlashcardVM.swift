@@ -10,14 +10,23 @@ import Combine
 
 @Observable
 class FlashcardVM {
-
-  var flashcards: [FlashcardModel] = []
+    var flashcards: [FlashcardModel] = []
     
-  func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
+    func searchFlashCard(input: String) -> [String] {
+        var results = [String]()
+        for card in flashcards {
+            if card.term.lowercased().contains(input.lowercased()) {
+                results.append(card.term)
+            }
+        }
+        return results
+    }    
+  
+    func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
         flashcards.filter { $0.category == category }
     }    
   
-  func filterStarred(from flashcards: [FlashcardModel]) -> [FlashcardModel] {
+    func filterStarred(from flashcards: [FlashcardModel]) -> [FlashcardModel] {
         flashcards.filter { $0.starred }
     }
 
