@@ -51,6 +51,8 @@ firebase-debug.log
 *.mlpackage
 *.mlproj
 *.mlmodelc.zip
+/Tools/qwen_coreml/output/*
+!/Tools/qwen_coreml/output/.gitkeep
 
 # =========================
 # Core Data / SwiftData
