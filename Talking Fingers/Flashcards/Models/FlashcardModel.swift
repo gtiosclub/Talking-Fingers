@@ -7,7 +7,7 @@
 
 import Foundation
 
-class FlashcardModel {
+class FlashcardModel : Codable {
     var term: String
     var id: UUID = UUID()
     var lastSucceeded: Date?
