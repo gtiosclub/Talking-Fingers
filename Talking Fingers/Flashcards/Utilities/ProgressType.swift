@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum ProgressType {
+public enum ProgressType: Codable {
     case new
     case learning
     case polishing
