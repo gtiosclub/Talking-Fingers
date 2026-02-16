@@ -137,6 +137,27 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return CGPoint(x: x, y: y)
     }
     
+    //returns translated list that treats some anchor joint (e.x. wrist) as the origin (0,0) and the locations of every other join relative to it
+    func convertAbsolutePointsToRelativePoints(_ hand: VNHumanHandPoseObservation,
+                        joints: [VNHumanHandPoseObservation.JointName],
+                        anchor: VNHumanHandPoseObservation.JointName = .wrist,
+                        minConf: Float = 0.5) -> [CGPoint]? {
+        guard
+            let a = try? hand.recognizedPoint(anchor),
+            a.confidence >= minConf
+        else { return nil }
+
+        var rel: [CGPoint] = []
+        rel.reserveCapacity(joints.count)
+
+        for j in joints {
+            guard let p = try? hand.recognizedPoint(j), p.confidence >= minConf else { return nil }
+            rel.append(CGPoint(x: p.location.x - a.location.x,
+                               y: p.location.y - a.location.y))
+        }
+        return rel
+    }
+    
     // Filter frames
     func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
         return references.filter({t -> Bool in
