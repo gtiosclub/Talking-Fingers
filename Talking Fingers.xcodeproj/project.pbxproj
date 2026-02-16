@@ -16,7 +16,7 @@
 		1D6151C12F25282600ECCBCF /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151C02F25282600ECCBCF /* FirebaseCore */; };
 		1D6151C32F25282600ECCBCF /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151C22F25282600ECCBCF /* FirebaseFirestore */; };
 		1D6151C52F25282600ECCBCF /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 1D6151C42F25282600ECCBCF /* FirebaseStorage */; };
-		AA7EB8AE2F297DA1006432B7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AA7EB8AD2F297DA1006432B7 /* GoogleService-Info.plist */; };
+		33ADDFFE2F43D38D0026E25E /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 33ADDFFD2F43D38D0026E25E /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,7 +44,7 @@
 		1D6151B32F25266700ECCBCF /* Vision.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Vision.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/Vision.framework; sourceTree = DEVELOPER_DIR; };
 		1D6151B52F25267700ECCBCF /* SwiftData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftData.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/SwiftData.framework; sourceTree = DEVELOPER_DIR; };
 		1D6151B72F25268B00ECCBCF /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/CoreML.framework; sourceTree = DEVELOPER_DIR; };
-		AA7EB8AD2F297DA1006432B7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		33ADDFFD2F43D38D0026E25E /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -102,7 +102,7 @@
 		1D61517D2F25232700ECCBCF = {
 			isa = PBXGroup;
 			children = (
-				AA7EB8AD2F297DA1006432B7 /* GoogleService-Info.plist */,
+				33ADDFFD2F43D38D0026E25E /* GoogleService-Info.plist */,
 				1D6151882F25232700ECCBCF /* Talking Fingers */,
 				1D6151982F25232800ECCBCF /* Talking FingersTests */,
 				1D6151A22F25232800ECCBCF /* Talking FingersUITests */,
@@ -260,7 +260,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA7EB8AE2F297DA1006432B7 /* GoogleService-Info.plist in Resources */,
+				33ADDFFE2F43D38D0026E25E /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,7 +442,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Talking Fingers/Talking Fingers.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V86YQ472JY;
+				DEVELOPMENT_TEAM = B47335DT66;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
@@ -478,7 +478,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.nikola.talking-fingers10";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sow.talking-fingers10";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -503,7 +503,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Talking Fingers/Talking Fingers.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V86YQ472JY;
+				DEVELOPMENT_TEAM = B47335DT66;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
@@ -539,8 +539,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.nikola.talking-fingers1";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.nikola;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sk.talking-fingers1";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;

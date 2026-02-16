@@ -1,13 +1,12 @@
+
 //
 //  CameraViewModel.swift
 //  Talking Fingers
 //
 //  Created by Jihoon Kim on 1/29/26.
 //
-
 import AVFoundation
 import Vision
-
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession() // connects camera hardware to the app
@@ -17,17 +16,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     // This closure will pass the vision observations and the sample buffer back to your UI or Logic
     // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
-    var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
-
+    var onPoseDetected: (([VNHumanHandPoseObservation], [VNHumanBodyPoseObservation], CMTime) -> Void)?
     var isAuthorized = false
     
     // Add to keep track of observations relative to camera
     var isMirrored = true
-
     override init() {
         super.init()
     }
-
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -45,7 +41,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             isAuthorized = false
         }
     }
-
     private func setupSession() {
         session.beginConfiguration()
         defer { session.commitConfiguration() } // Always commit, even on early return
@@ -78,7 +73,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             connection.isVideoMirrored = self.isMirrored // Mirroring makes it feel natural for sign language practice
         }
     }
-
     func start() {
         sessionQueue.async {
             // Wait for authorization
@@ -103,7 +97,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
-
     // THIS IS THE BRAIN: Where Vision meets the Camera
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -114,14 +107,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             
             let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
             handPoseRequest.maximumHandCount = 2 // Two hands
-
+            
+            let bodyPoseRequest = VNDetectHumanBodyPoseRequest() // defines a body pose request
             do {
-                try handler.perform([handPoseRequest]) // analyze the hand pose
-                let observations = handPoseRequest.results ?? [] // extract results
+                try handler.perform([handPoseRequest, bodyPoseRequest]) // analyze both hand and body pose
+                let handObservations = handPoseRequest.results ?? [] // extract hand results
+                let bodyObservations = bodyPoseRequest.results ?? [] // extract body results
                 
-                // Send the hand landmarks and sample buffer back to the main thread for UI/Logic
+                // Send the hand landmarks, body landmarks, and sample buffer back to the main thread for UI/Logic
                 DispatchQueue.main.async {
-                    self.onPoseDetected?(observations, pts)
+                    self.onPoseDetected?(handObservations, bodyObservations, pts)
                 }
             } catch {
                 print("Vision error: \(error)")
@@ -149,7 +144,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             guard joints.count >= 12 else {
                 return false
             }
-
             return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
         })
     }
