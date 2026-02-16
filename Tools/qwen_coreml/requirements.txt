@@ -1,0 +1,5 @@
+numpy<2.4
+torch==2.7.0
+transformers
+safetensors
+coremltools
