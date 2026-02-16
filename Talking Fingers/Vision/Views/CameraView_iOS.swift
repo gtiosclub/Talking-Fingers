@@ -121,6 +121,7 @@ struct CameraView: View {
 
             cameraVM.onPoseDetected = { observations, pts in
                 hands = observations
+
                 // While recording, capture each observation with the provided CMTime timestamp
                 if isRecording {
                     if recordingStartTime == nil { recordingStartTime = pts }
@@ -248,14 +249,24 @@ struct CameraView: View {
     
     private func toggleRecording() {
         if isRecording {
-            // Stop recording and return the data
+            // Stop recording
             isRecording = false
+
+            //Filter + append to JSON before clearing buffer
+            let timeIntervalRefs: [(TimeInterval, VNHumanHandPoseObservation)] = recordedPoses.map { pair in
+                (CMTimeGetSeconds(pair.0), pair.1)
+            }
+            let filtered = cameraVM.filterReferences(for: timeIntervalRefs)
+            cameraVM.appendReferencesToJSON(filtered: filtered)
+
+            // Existing behavior: return the data
             if let callback = onRecordingFinished {
                 callback(recordedPoses)
             } else {
                 // Fallback: log the result for visibility during development
                 print("Recorded poses count: \(recordedPoses.count)")
             }
+
             // Clear recorded poses after delivering them so memory doesn't accumulate
             recordedPoses.removeAll(keepingCapacity: true)
             recordingStartTime = nil
@@ -296,4 +307,3 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 #endif
-
