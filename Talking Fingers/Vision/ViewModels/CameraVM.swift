@@ -112,6 +112,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
+   
 
     // --- Recording controls (from main) ---
     func toggleRecording() {
@@ -187,11 +188,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let y = (1 - visionPoint.y) * viewSize.height
         return CGPoint(x: x, y: y)
     }
-
-    // Filtering from main (SignFrame-based)
+    
     func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
         return frames.filter { frame in
             guard frame.joints.count >= 12 else { return false }
+            
             let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
             return avgConfidence >= 0.7
         }

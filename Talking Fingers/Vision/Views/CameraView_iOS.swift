@@ -11,7 +11,7 @@ import Vision
 
 struct CameraView: View {
 
-    // Main-style recording callback (keep main behavior)
+    //
     var onRecordingFinished: (([SignFrame]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
