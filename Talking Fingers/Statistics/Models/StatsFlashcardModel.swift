@@ -15,10 +15,11 @@ class StatsFlashcard {
     var starred: Bool
     var progress: ProgressType
     
-    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool) {
+    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool = false) {
         self.term = term
         self.definition = definition
-        self.lastSucceeded = nil
-        self.starred = false
+        self.lastSucceeded = lastSucceeded
+        self.starred = starred
+        self.progress = .new
     }
 }
