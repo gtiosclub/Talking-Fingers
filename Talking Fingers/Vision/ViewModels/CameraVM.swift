@@ -1,4 +1,3 @@
-
 //
 //  CameraViewModel.swift
 //  Talking Fingers
@@ -7,23 +6,36 @@
 //
 import AVFoundation
 import Vision
+
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+
     let session = AVCaptureSession() // connects camera hardware to the app
-    private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
-    
-    private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
-    
-    // This closure will pass the vision observations and the sample buffer back to your UI or Logic
-    // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
-    var onPoseDetected: (([VNHumanHandPoseObservation], [VNHumanBodyPoseObservation], CMTime) -> Void)?
+    private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for vision
+
+    private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run camera on background thread
+
+    // --- Recording Logic (from main) ---
+    var isRecording = false
+    private(set) var recordedFrames: [SignFrame] = []
+    var recordingStartTime: CMTime? = nil
+
+    // --- Callbacks ---
+    // Keep main signature so merge works with main as-is
+    var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
+
+    // Additive callback for body pose (doesn't break main)
+    var onBodyPoseDetected: (([VNHumanBodyPoseObservation], CMTime) -> Void)?
+
     var isAuthorized = false
-    
-    // Add to keep track of observations relative to camera
+
+    // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
+
     override init() {
         super.init()
     }
+
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -41,55 +53,58 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             isAuthorized = false
         }
     }
+
     private func setupSession() {
         session.beginConfiguration()
         defer { session.commitConfiguration() } // Always commit, even on early return
-        
-        session.sessionPreset = .hd1280x720 // 720p — clear preview without the memory cost of full 1080p
-        
-        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front), // choose front facing camera
+
+        session.sessionPreset = .hd1280x720 // 720p
+
+        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera,
+                                                       for: .video,
+                                                       position: .front),
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else { return }
-        
-        // Cap frame rate to 24 fps to balance memory/CPU with the higher resolution
+
+        // Cap frame rate to 24 fps
         do {
             try videoDevice.lockForConfiguration()
-            videoDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 24) // min = 24 fps
-            videoDevice.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 24) // max = 24 fps
+            videoDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 24)
+            videoDevice.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 24)
             videoDevice.unlockForConfiguration()
         } catch {
             print("Could not configure frame rate: \(error)")
         }
-        
-        if session.canAddInput(videoInput) { session.addInput(videoInput) } // connect the camera input to the session
-        
-        videoOutput.alwaysDiscardsLateVideoFrames = true // Drop frames if processing can't keep up, prevents memory buildup
-        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange] // Efficient pixel format
-        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "video.output.queue")) // process frames from the camera
-        if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) } // output video output
-        
-        // Ensure orientation is correct for the front camera
+
+        if session.canAddInput(videoInput) { session.addInput(videoInput) }
+
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+        videoOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String:
+                kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+        ]
+        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "video.output.queue"))
+        if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
+
         if let connection = videoOutput.connection(with: .video) {
             connection.videoOrientation = .portrait
-            connection.isVideoMirrored = self.isMirrored // Mirroring makes it feel natural for sign language practice
+            connection.isVideoMirrored = self.isMirrored
         }
     }
+
     func start() {
         sessionQueue.async {
-            // Wait for authorization
             guard self.isAuthorized else { return }
-            
-            // 1. Configure if needed
+
             if self.session.inputs.isEmpty {
                 self.setupSession()
             }
-            
-            // 2. Start only if not already running
+
             if !self.session.isRunning {
                 self.session.startRunning()
             }
         }
     }
-    
+
     func stop() {
         sessionQueue.async {
             if self.session.isRunning {
@@ -97,54 +112,88 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
-    // THIS IS THE BRAIN: Where Vision meets the Camera
-    // runs 24 times a second - every video frame processed here
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        autoreleasepool { // Free temporary Vision/CoreMedia objects each frame to prevent memory buildup
+
+    // --- Recording controls (from main) ---
+    func toggleRecording() {
+        if isRecording {
+            isRecording = false
+            let filtered = filterFrames(recordedFrames)
+            recordedFrames = filtered
+            print("Filtered and saved \(recordedFrames.count) frames")
+        } else {
+            recordedFrames.removeAll(keepingCapacity: true)
+            recordingStartTime = nil
+            isRecording = true
+        }
+    }
+
+    func clearBuffer() {
+        recordedFrames.removeAll(keepingCapacity: true)
+        recordingStartTime = nil
+    }
+
+    // THIS IS THE BRAIN: Vision + Camera
+    func captureOutput(_ output: AVCaptureOutput,
+                       didOutput sampleBuffer: CMSampleBuffer,
+                       from connection: AVCaptureConnection) {
+
+        autoreleasepool {
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            
-            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
-            
-            let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
-            handPoseRequest.maximumHandCount = 2 // Two hands
-            
-            let bodyPoseRequest = VNDetectHumanBodyPoseRequest() // defines a body pose request
+
+            let handler = VNImageRequestHandler(
+                cmSampleBuffer: sampleBuffer,
+                orientation: .up,
+                options: [:]
+            )
+
+            let handPoseRequest = VNDetectHumanHandPoseRequest()
+            handPoseRequest.maximumHandCount = 2
+
+            let bodyPoseRequest = VNDetectHumanBodyPoseRequest()
+
             do {
-                try handler.perform([handPoseRequest, bodyPoseRequest]) // analyze both hand and body pose
-                let handObservations = handPoseRequest.results ?? [] // extract hand results
-                let bodyObservations = bodyPoseRequest.results ?? [] // extract body results
-                
-                // Send the hand landmarks, body landmarks, and sample buffer back to the main thread for UI/Logic
+                try handler.perform([handPoseRequest, bodyPoseRequest])
+
+                let handObservations = handPoseRequest.results ?? []
+                let bodyObservations = bodyPoseRequest.results ?? []
+
                 DispatchQueue.main.async {
-                    self.onPoseDetected?(handObservations, bodyObservations, pts)
+                    // Keep main behavior
+                    self.onPoseDetected?(handObservations, pts)
+
+                    // New body callback (for overlays/labels)
+                    self.onBodyPoseDetected?(bodyObservations, pts)
+
+                    // Recording still uses hand observations (matches main)
+                    if self.isRecording {
+                        if self.recordingStartTime == nil { self.recordingStartTime = pts }
+                        for observation in handObservations {
+                            let frame = SignFrame(from: observation, at: pts)
+                            self.recordedFrames.append(frame)
+                        }
+                    }
                 }
             } catch {
                 print("Vision error: \(error)")
             }
         }
     }
-    
+
+    // NOTE: Kept identical to main for merge safety.
+    // If your overlays look horizontally flipped when mirrored,
+    // update this later in a separate PR (since it changes behavior).
     func convertVisionPointToScreenPosition(visionPoint: CGPoint, viewSize: CGSize) -> CGPoint {
-        
         let x = visionPoint.x * viewSize.width
         let y = (1 - visionPoint.y) * viewSize.height
-        
         return CGPoint(x: x, y: y)
     }
-    
-    // Filter frames
-    func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
-        return references.filter({t -> Bool in
-            guard let allPoints = try? t.1.recognizedPoints(.all) else {
-                return false
-            }
-            
-            let joints = allPoints.values.filter { $0.confidence > 0.3 }
-            
-            guard joints.count >= 12 else {
-                return false
-            }
-            return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
-        })
+
+    // Filtering from main (SignFrame-based)
+    func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
+        return frames.filter { frame in
+            guard frame.joints.count >= 12 else { return false }
+            let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
+            return avgConfidence >= 0.7
+        }
     }
 }
