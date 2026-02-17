@@ -17,13 +17,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     // Keep track of normalized hand observations
     var normalizedHands: [NormalizedHand] = []
+    // --- Recording Logic ---
+    var isRecording = false
+    private(set) var recordedFrames: [SignFrame] = []
+    var recordingStartTime: CMTime? = nil
+    
+    
     // This closure will pass the vision observations and the sample buffer back to your UI or Logic
     // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
     var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
-
     var isAuthorized = false
-    
-    // Add to keep track of observations relative to camera
     var isMirrored = true
 
     private let motionManager = CMMotionManager()
@@ -127,15 +130,29 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func stopMotionUpdates() {
         motionManager.stopDeviceMotionUpdates()
     }
+    func toggleRecording() {
+            if isRecording {
+                isRecording = false
+                // Apply filtering when stopping
+                let filtered = filterFrames(recordedFrames)
+                recordedFrames = filtered
+                print("Filtered and saved \(recordedFrames.count) frames")
+            } else {
+                recordedFrames.removeAll(keepingCapacity: true)
+                isRecording = true
+            }
+        }
+        
+        func clearBuffer() {
+            recordedFrames.removeAll(keepingCapacity: true)
+        }
 
     // THIS IS THE BRAIN: Where Vision meets the Camera
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool { // Free temporary Vision/CoreMedia objects each frame to prevent memory buildup
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            
             let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
-            
             let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
             handPoseRequest.maximumHandCount = 2 // Two hands
 
@@ -148,6 +165,13 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     self.onPoseDetected?(observations, pts)
                     self.normalizedHands = observations.compactMap { NormalizedHand(from: $0, pitch: self.currentPitch - (.pi / 2)) }
                     
+                    
+                    if self.isRecording {
+                        for observation in observations {
+                            let frame = SignFrame(from: observation, at: pts)
+                            self.recordedFrames.append(frame)
+                        }
+                    }
                 }
             } catch {
                 print("Vision error: \(error)")
@@ -163,20 +187,12 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return CGPoint(x: x, y: y)
     }
     
-    // Filter frames
-    func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
-        return references.filter({t -> Bool in
-            guard let allPoints = try? t.1.recognizedPoints(.all) else {
-                return false
-            }
+    func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
+        return frames.filter { frame in
+            guard frame.joints.count >= 12 else { return false }
             
-            let joints = allPoints.values.filter { $0.confidence > 0.3 }
-            
-            guard joints.count >= 12 else {
-                return false
-            }
-
-            return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
-        })
+            let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
+            return avgConfidence >= 0.7
+        }
     }
 }
