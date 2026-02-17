@@ -12,13 +12,8 @@ import Vision
 
 struct CameraView: View {
 
-    // Recording state (use CMTime from CMSampleBuffer instead of Date/TimeInterval)
-    @State private var isRecording: Bool = false
-    @State private var recordingStartTime: CMTime? = nil
-    @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
-
-    // Optional callback to return the recorded data to a caller
-    var onRecordingFinished: (([(CMTime, VNHumanHandPoseObservation)]) -> Void)? = nil
+    //
+    var onRecordingFinished: (([SignFrame]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
 
@@ -198,11 +193,13 @@ struct CameraView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: { toggleRecording() }) {
-                    Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
+                Button(action: {
+                    toggleRecording()
+                }) {
+                    Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(isRecording ? .red : .red, .primary)
-                        .accessibilityLabel(isRecording ? "Stop Recording" : "Start Recording")
+                        .foregroundStyle(.red, .primary)
+                        .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -364,19 +361,15 @@ struct CameraView: View {
     // MARK: - Recording (unchanged)
 
     private func toggleRecording() {
-        if isRecording {
-            isRecording = false
-            if let callback = onRecordingFinished {
-                callback(recordedPoses)
-            } else {
-                print("Recorded poses count: \(recordedPoses.count)")
-            }
-            recordedPoses.removeAll(keepingCapacity: true)
-            recordingStartTime = nil
+        if cameraVM.isRecording {
+            cameraVM.toggleRecording()
+            
+            let finalData = cameraVM.recordedFrames
+            onRecordingFinished?(finalData)
+            
+            cameraVM.clearBuffer()
         } else {
-            recordedPoses.removeAll(keepingCapacity: true)
-            recordingStartTime = nil
-            isRecording = true
+            cameraVM.toggleRecording()
         }
     }
 }

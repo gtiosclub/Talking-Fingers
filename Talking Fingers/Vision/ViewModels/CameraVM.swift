@@ -8,22 +8,33 @@
 import AVFoundation
 import Vision
 import CoreGraphics
+import CoreMotion
 
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession() // connects camera hardware to the app
-    private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for Vision
-
-    private let sessionQueue = DispatchQueue(label: "camera.session.queue") // background camera thread
-
-    // This closure will pass the vision observations and an accurate frame timestamp back to UI/Logic
+    private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
+    private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
+    
+    // Keep track of normalized hand observations
+    var normalizedHands: [NormalizedHand] = []
+    // --- Recording Logic ---
+    var isRecording = false
+    private(set) var recordedFrames: [SignFrame] = []
+    var recordingStartTime: CMTime? = nil
+    
+    
+    // This closure will pass the vision observations and the sample buffer back to your UI or Logic
+    // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
     var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
-
     var isAuthorized = false
 
     // Track mirroring for correct left/right interpretation
     var isMirrored = true
 
+    private let motionManager = CMMotionManager()
+    var currentPitch: Double = 0.0
+    
     override init() {
         super.init()
     }
@@ -81,6 +92,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func start() {
+        self.startMotionUpdates()
         sessionQueue.async {
             guard self.isAuthorized else { return }
 
@@ -95,22 +107,54 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func stop() {
+        self.stopMotionUpdates()
         sessionQueue.async {
             if self.session.isRunning {
                 self.session.stopRunning()
             }
         }
     }
+    
+    func startMotionUpdates() {
+            guard motionManager.isDeviceMotionAvailable else { return }
+            
+            motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
+            motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+                guard let motion = motion else { return }
+                
+                // In Portrait orientation:
+                // Pitch is the rotation around the X-axis (tilting the top of the phone toward/away from you)
+                self?.currentPitch = motion.attitude.pitch
+            }
+        }
+
+    func stopMotionUpdates() {
+        motionManager.stopDeviceMotionUpdates()
+    }
+    func toggleRecording() {
+            if isRecording {
+                isRecording = false
+                // Apply filtering when stopping
+                let filtered = filterFrames(recordedFrames)
+                recordedFrames = filtered
+                print("Filtered and saved \(recordedFrames.count) frames")
+            } else {
+                recordedFrames.removeAll(keepingCapacity: true)
+                isRecording = true
+            }
+        }
+        
+        func clearBuffer() {
+            recordedFrames.removeAll(keepingCapacity: true)
+        }
 
     // Vision + camera frame processing
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool {
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-
-            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
-
-            let handPoseRequest = VNDetectHumanHandPoseRequest()
-            handPoseRequest.maximumHandCount = 2
+            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
+            let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
+            handPoseRequest.maximumHandCount = 2 // Two hands
 
             do {
                 try handler.perform([handPoseRequest])
@@ -118,6 +162,15 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 DispatchQueue.main.async {
                     self.onPoseDetected?(observations, pts)
+                    self.normalizedHands = observations.compactMap { NormalizedHand(from: $0, pitch: self.currentPitch - (.pi / 2)) }
+                    
+                    
+                    if self.isRecording {
+                        for observation in observations {
+                            let frame = SignFrame(from: observation, at: pts)
+                            self.recordedFrames.append(frame)
+                        }
+                    }
                 }
             } catch {
                 print("Vision error: \(error)")
@@ -146,6 +199,15 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
             return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
         })
+    }
+    
+    func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
+        return frames.filter { frame in
+            guard frame.joints.count >= 12 else { return false }
+            
+            let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
+            return avgConfidence >= 0.7
+        }
     }
 
     // MARK: - Scale invariance / normalization (added)
