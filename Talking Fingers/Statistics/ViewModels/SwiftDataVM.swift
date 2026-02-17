@@ -12,4 +12,15 @@ import Foundation
 @Observable
 class SwiftDataVM {
     
+    func updateFlashcardProgress(flashcards: [StatsFlashcard], scores: [Int]) {
+        guard flashcards.count == scores.count else { return }
+        
+        for index in 0..<scores.count {
+            if scores[index] == 1 {
+                flashcards[index].progress = flashcards[index].progress.increase()
+            } else if scores[index] == -1 {
+                flashcards[index].progress = flashcards[index].progress.decrease()
+            }
+        }
+    }
 }
