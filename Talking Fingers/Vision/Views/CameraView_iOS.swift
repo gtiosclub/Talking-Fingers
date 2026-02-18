@@ -1,4 +1,3 @@
-
 //
 //  CameraView.swift
 //  Talking Fingers
@@ -19,7 +18,7 @@ struct CameraView: View {
     @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
 
     // Optional callback to return the recorded data to a caller
-    var onRecordingFinished: (([SignFrame]) -> Void)?
+    var onRecordingFinished: (([(CMTime, VNHumanHandPoseObservation)]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
 
@@ -388,6 +387,7 @@ struct CameraView: View {
             recordedPoses.removeAll(keepingCapacity: true)
             recordingStartTime = nil
         } else {
+            isRecording = true
             cameraVM.toggleRecording()
         }
     }
