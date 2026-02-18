@@ -4,7 +4,6 @@
 //
 //  Created by Jihoon Kim on 1/29/26.
 //
-
 import AVFoundation
 import Vision
 import Foundation
@@ -13,6 +12,7 @@ import CoreGraphics
 
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+
     let session = AVCaptureSession() // connects camera hardware to the app
     private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
@@ -23,12 +23,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var isRecording = false
     private(set) var recordedFrames: [SignFrame] = []
     var recordingStartTime: CMTime? = nil
-    
-    
-    // This closure will pass the vision observations and the sample buffer back to your UI or Logic
-    // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
+
+    // --- Callbacks ---
+    // Keep main signature so merge works with main as-is
     var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
+
+    // Additive callback for body pose (doesn't break main)
+    var onBodyPoseDetected: (([VNHumanBodyPoseObservation], CMTime) -> Void)?
+
     var isAuthorized = false
+
+    // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
 
     private let motionManager = CMMotionManager()
@@ -64,8 +69,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else { return }
-        
-        // Cap frame rate to 24 fps to balance memory/CPU with the higher resolution
+
+        // Cap frame rate to 24 fps
         do {
             try videoDevice.lockForConfiguration()
             videoDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 24)
@@ -105,7 +110,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
-    
+
     func stop() {
         self.stopMotionUpdates()
         sessionQueue.async {
@@ -132,42 +137,57 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         motionManager.stopDeviceMotionUpdates()
     }
     func toggleRecording() {
-            if isRecording {
-                isRecording = false
-                // Apply filtering when stopping
-                let filtered = filterFrames(recordedFrames)
-                recordedFrames = filtered
-                print("Filtered and saved \(recordedFrames.count) frames")
-            } else {
-                recordedFrames.removeAll(keepingCapacity: true)
-                isRecording = true
-            }
-        }
-        
-        func clearBuffer() {
+        if isRecording {
+            isRecording = false
+            let filtered = filterFrames(recordedFrames)
+            recordedFrames = filtered
+            print("Filtered and saved \(recordedFrames.count) frames")
+        } else {
             recordedFrames.removeAll(keepingCapacity: true)
+            recordingStartTime = nil
+            isRecording = true
         }
+    }
+
+    func clearBuffer() {
+        recordedFrames.removeAll(keepingCapacity: true)
+        recordingStartTime = nil
+    }
 
     // THIS IS THE BRAIN: Where Vision meets the Camera
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool {
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
-            let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
-            handPoseRequest.maximumHandCount = 2 // Two hands
+
+            let handler = VNImageRequestHandler(
+                cmSampleBuffer: sampleBuffer,
+                orientation: .up,
+                options: [:]
+            )
+
+            let handPoseRequest = VNDetectHumanHandPoseRequest()
+            handPoseRequest.maximumHandCount = 2
+
+            let bodyPoseRequest = VNDetectHumanBodyPoseRequest()
 
             do {
-                try handler.perform([handPoseRequest])
-                let observations = handPoseRequest.results ?? []
-                
+                try handler.perform([handPoseRequest, bodyPoseRequest])
+
+                let handObservations = handPoseRequest.results ?? []
+                let bodyObservations = bodyPoseRequest.results ?? []
+
                 DispatchQueue.main.async {
-                    self.onPoseDetected?(observations, pts)
-                    self.normalizedHands = observations.compactMap {NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2)) }
-                    
-                    
+                    // Keep main behavior
+                    self.onPoseDetected?(handObservations, pts)
+                    self.normalizedHands = handObservations.compactMap {NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2)) }
+                    // New body callback (for overlays/labels)
+                    self.onBodyPoseDetected?(bodyObservations, pts)
+
+                    // Recording still uses hand observations (matches main)
                     if self.isRecording {
-                        for observation in observations {
+                        if self.recordingStartTime == nil { self.recordingStartTime = pts }
+                        for observation in handObservations {
                             let frame = SignFrame(from: observation, at: pts)
                             self.recordedFrames.append(frame)
                         }
@@ -178,7 +198,10 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
-    
+
+    // NOTE: Kept identical to main for merge safety.
+    // If your overlays look horizontally flipped when mirrored,
+    // update this later in a separate PR (since it changes behavior).
     func convertVisionPointToScreenPosition(visionPoint: CGPoint, viewSize: CGSize) -> CGPoint {
         let x = visionPoint.x * viewSize.width
         let y = (1 - visionPoint.y) * viewSize.height
