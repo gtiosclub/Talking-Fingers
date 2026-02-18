@@ -1,3 +1,4 @@
+
 //
 //  CameraView.swift
 //  Talking Fingers
@@ -18,7 +19,7 @@ struct CameraView: View {
     @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
 
     // Optional callback to return the recorded data to a caller
-    var onRecordingFinished: (([(CMTime, VNHumanHandPoseObservation)]) -> Void)? = nil
+    var onRecordingFinished: (([SignFrame]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
 
@@ -39,6 +40,10 @@ struct CameraView: View {
     @State private var dotsVisibility: Bool = true
     @State private var handOutlineVisibility: Bool = true
     @State private var handSkeletonVisibility: Bool = true
+
+    // Scale invariance (does NOT change on-screen overlay; used for debug/features)
+    @State private var normalizedHands: [CameraVM.NormalizedHand] = []
+    @State private var showScaleDebugBox: Bool = false
 
     // Store all joint connections for drawing lines
     let handConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
@@ -66,13 +71,29 @@ struct CameraView: View {
         .wrist
     ]
 
+    // Joints used for normalization (union of everything we draw/care about)
+    private var jointsForNormalization: [VNHumanHandPoseObservation.JointName] {
+        var set = Set<VNHumanHandPoseObservation.JointName>()
+
+        // all label joints
+        for j in JointsSheetView.jointLabels.map(\.name) { set.insert(j) }
+
+        // perimeter joints
+        for j in perimeterJoints { set.insert(j) }
+
+        // skeleton endpoints
+        for (a, b) in handConnections { set.insert(a); set.insert(b) }
+
+        return Array(set)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
 
                 if cameraVM.isAuthorized {
                     // Camera "window" that holds the live feed + ALL overlays
-                    ZStack {
+                    ZStack(alignment: .topLeading) {
                         CameraPreviewView(session: cameraVM.session)
                             .ignoresSafeArea()
 
@@ -82,6 +103,13 @@ struct CameraView: View {
                             handOutlineOverlay(in: geo.size)
                             jointLabelsOverlay(in: geo.size)
                             skeletonOverlay(in: geo.size)
+                        }
+
+                        // Optional scale debug box (drawn inside the camera window)
+                        if showScaleDebugBox {
+                            scaleDebugBoxView
+                                .padding(12)
+                                .allowsHitTesting(false)
                         }
                     }
                     // Stable portrait camera window that still takes most of the screen.
@@ -129,24 +157,49 @@ struct CameraView: View {
                         recordedPoses.append((pts, obs))
                     }
                 }
+
+                // Compute scale-invariant unit-box coordinates (does not affect overlay)
+                normalizedHands = observations.compactMap { hand in
+                    cameraVM.normalizeHandToUnitBox(
+                        hand: hand,
+                        joints: jointsForNormalization,
+                        minConfidence: 0.5,
+                        centerInBox: true
+                    )
+                }
             }
         }
         .onDisappear {
             cameraVM.stop()
         }
         .sheet(isPresented: $showJointsSheet) {
-            JointsSheetView(
-                jointVisibility: $jointVisibility,
-                dotsVisibility: $dotsVisibility,
-                handOutlineVisibility: $handOutlineVisibility,
-                handSkeletonVisibility: $handSkeletonVisibility
-            )
+            // ✅ No NavigationStack/Form here.
+            // This preserves the exact JointsSheetView UI (and its single Done).
+            VStack(spacing: 0) {
+                // Debug toggle row styled like a normal settings row
+                HStack {
+                    Text("Show scale debug box")
+                    Spacer()
+                    Toggle("", isOn: $showScaleDebugBox)
+                        .labelsHidden()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+
+                Divider()
+
+                // Original sheet UI unchanged
+                JointsSheetView(
+                    jointVisibility: $jointVisibility,
+                    dotsVisibility: $dotsVisibility,
+                    handOutlineVisibility: $handOutlineVisibility,
+                    handSkeletonVisibility: $handSkeletonVisibility
+                )
+            }
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: {
-                    toggleRecording()
-                }) {
+                Button(action: { toggleRecording() }) {
                     Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(isRecording ? .red : .red, .primary)
@@ -154,14 +207,78 @@ struct CameraView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: {
-                    showJointsSheet = true
-                }) {
+                Button(action: { showJointsSheet = true }) {
                     Image(systemName: "gearshape.fill")
                 }
             }
         }
     }
+
+    // MARK: - Scale debug box UI
+
+    private var scaleDebugBoxView: some View {
+        Group {
+            if let nh = normalizedHands.first {
+                let boxSize: CGFloat = 170
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.black.opacity(0.25))
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(.white.opacity(0.9), lineWidth: 2)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Normalized (unit box)")
+                            .font(.caption)
+                            .foregroundStyle(.white)
+
+                        Text(String(format: "raw w=%.3f h=%.3f", nh.rawBounds.width, nh.rawBounds.height))
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                    ForEach(
+                        [
+                            VNHumanHandPoseObservation.JointName.wrist,
+                            .thumbTip, .indexTip, .middleTip, .ringTip, .littleTip
+                        ],
+                        id: \.self
+                    ) { j in
+                        if let p = nh.unitPoints[j] {
+                            Circle()
+                                .fill(.white)
+                                .frame(width: 7, height: 7)
+                                .position(mapUnit(p, boxSize: boxSize))
+                        }
+                    }
+
+                    Path { path in
+                        for (a, b) in handConnections {
+                            if let p1 = nh.unitPoints[a], let p2 = nh.unitPoints[b] {
+                                let s = mapUnit(p1, boxSize: boxSize)
+                                let e = mapUnit(p2, boxSize: boxSize)
+                                path.move(to: s)
+                                path.addLine(to: e)
+                            }
+                        }
+                    }
+                    .stroke(.white.opacity(0.55), lineWidth: 2)
+                }
+                .frame(width: boxSize, height: boxSize)
+            }
+        }
+    }
+
+    private func mapUnit(_ p: CGPoint, boxSize: CGFloat) -> CGPoint {
+        CGPoint(
+            x: p.x * boxSize,
+            y: (1 - p.y) * boxSize
+        )
+    }
+
+    // MARK: - Overlays (unchanged)
 
     @ViewBuilder
     private func handOutlineOverlay(in size: CGSize) -> some View {
@@ -194,7 +311,6 @@ struct CameraView: View {
                 if let point = try? hand.recognizedPoint(joint.name), point.confidence > 0.5 {
                     let pos = cameraVM.convertVisionPointToScreenPosition(visionPoint: point.location, viewSize: size)
 
-                    // Adjust label based on chirality and camera mirror
                     let handSide = (cameraVM.isMirrored
                                     ? (hand.chirality == .left ? "R" : "L")
                                     : (hand.chirality == .left ? "L" : "R"))
@@ -222,7 +338,6 @@ struct CameraView: View {
     private func skeletonOverlay(in size: CGSize) -> some View {
         if handSkeletonVisibility {
             ForEach(hands, id: \.uuid) { hand in
-                // Adjust color based on chirality and camera mirror
                 let handSkeletonColor = (cameraVM.isMirrored
                                          ? (hand.chirality == .left ? Color.purple : Color.blue)
                                          : (hand.chirality == .left ? Color.blue : Color.purple))
@@ -246,7 +361,9 @@ struct CameraView: View {
             }
         }
     }
-    
+
+    // MARK: - Recording (unchanged)
+
     private func toggleRecording() {
         if isRecording {
             // Stop recording
@@ -271,10 +388,7 @@ struct CameraView: View {
             recordedPoses.removeAll(keepingCapacity: true)
             recordingStartTime = nil
         } else {
-            // Start recording: reset buffer and timestamp
-            recordedPoses.removeAll(keepingCapacity: true)
-            recordingStartTime = nil
-            isRecording = true
+            cameraVM.toggleRecording()
         }
     }
 }
@@ -299,7 +413,6 @@ struct CameraPreviewView: UIViewRepresentable {
 
 #Preview {
     CameraView(onRecordingFinished: { tuples in
-        // Example: print the first 3 entries
         print("Preview received \(tuples.count) recorded tuples")
         print(tuples.prefix(3))
     })

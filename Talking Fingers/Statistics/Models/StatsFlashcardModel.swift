@@ -21,4 +21,6 @@ class StatsFlashcard {
         self.starred = false
         self.progress = progress
     }
+    
+    
 }

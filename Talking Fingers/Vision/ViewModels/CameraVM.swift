@@ -8,24 +8,32 @@
 import AVFoundation
 import Vision
 import Foundation
+import CoreMotion
 import CoreGraphics
 
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession() // connects camera hardware to the app
     private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
-    
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
+    
+    // Keep track of normalized hand observations
+    var normalizedHands: [NormalizedHandModel] = []
+    // --- Recording Logic ---
+    var isRecording = false
+    private(set) var recordedFrames: [SignFrame] = []
+    var recordingStartTime: CMTime? = nil
+    
     
     // This closure will pass the vision observations and the sample buffer back to your UI or Logic
     // The sample buffer is provided so callers can derive an accurate `CMTime` timestamp.
     var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
-
     var isAuthorized = false
-    
-    // Add to keep track of observations relative to camera
     var isMirrored = true
 
+    private let motionManager = CMMotionManager()
+    var currentPitch: Double = 0.0
+    
     override init() {
         super.init()
     }
@@ -84,6 +92,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func start() {
+        self.startMotionUpdates()
         sessionQueue.async {
             guard self.isAuthorized else { return }
             
@@ -98,23 +107,55 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
     
     func stop() {
+        self.stopMotionUpdates()
         sessionQueue.async {
             if self.session.isRunning {
                 self.session.stopRunning()
             }
         }
     }
+    
+    func startMotionUpdates() {
+            guard motionManager.isDeviceMotionAvailable else { return }
+            
+            motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
+            motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+                guard let motion = motion else { return }
+                
+                // In Portrait orientation:
+                // Pitch is the rotation around the X-axis (tilting the top of the phone toward/away from you)
+                self?.currentPitch = motion.attitude.pitch
+            }
+        }
+
+    func stopMotionUpdates() {
+        motionManager.stopDeviceMotionUpdates()
+    }
+    func toggleRecording() {
+            if isRecording {
+                isRecording = false
+                // Apply filtering when stopping
+                let filtered = filterFrames(recordedFrames)
+                recordedFrames = filtered
+                print("Filtered and saved \(recordedFrames.count) frames")
+            } else {
+                recordedFrames.removeAll(keepingCapacity: true)
+                isRecording = true
+            }
+        }
+        
+        func clearBuffer() {
+            recordedFrames.removeAll(keepingCapacity: true)
+        }
 
     // THIS IS THE BRAIN: Where Vision meets the Camera
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool {
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            
-            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
-            
-            let handPoseRequest = VNDetectHumanHandPoseRequest()
-            handPoseRequest.maximumHandCount = 2
+            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:]) // creates a request handler
+            let handPoseRequest = VNDetectHumanHandPoseRequest() // defines a hand pose request
+            handPoseRequest.maximumHandCount = 2 // Two hands
 
             do {
                 try handler.perform([handPoseRequest])
@@ -122,6 +163,15 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 
                 DispatchQueue.main.async {
                     self.onPoseDetected?(observations, pts)
+                    self.normalizedHands = observations.compactMap {NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2)) }
+                    
+                    
+                    if self.isRecording {
+                        for observation in observations {
+                            let frame = SignFrame(from: observation, at: pts)
+                            self.recordedFrames.append(frame)
+                        }
+                    }
                 }
             } catch {
                 print("Vision error: \(error)")
@@ -135,7 +185,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return CGPoint(x: x, y: y)
     }
     
-    // Filter frames
     func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
         return references.filter({ t -> Bool in
             guard let allPoints = try? t.1.recognizedPoints(.all) else {
@@ -144,9 +193,84 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             
             let joints = allPoints.values.filter { $0.confidence > 0.3 }
             guard joints.count >= 12 else { return false }
-
             return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
         })
+    }
+    // Filter frames
+    func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
+        return frames.filter { frame in
+            guard frame.joints.count >= 12 else { return false }
+            
+            let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
+            return avgConfidence >= 0.7
+        }
+    }
+    
+    struct NormalizedHand {
+        /// Points normalized into a standard unit bounding box [0,1]x[0,1]
+        let unitPoints: [VNHumanHandPoseObservation.JointName: CGPoint]
+
+        /// Bounding box in Vision normalized image coords (0..1)
+        let rawBounds: CGRect
+
+        /// Uniform scale applied (1 / max(width,height))
+        let scale: CGFloat
+
+        /// Translation applied before scale (subtracting minX/minY)
+        let translation: CGPoint
+        
+        /// Optional padding to center the scaled hand within the unit box
+        let padding: CGPoint
+    }
+    
+    func normalizeHandToUnitBox(
+            hand: VNHumanHandPoseObservation,
+            joints: [VNHumanHandPoseObservation.JointName],
+            minConfidence: Float = 0.5,
+            centerInBox: Bool = true
+        ) -> NormalizedHand? {
+
+        // 1) Gather reliable landmarks in Vision normalized coordinates (0..1)
+        var raw: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+        raw.reserveCapacity(joints.count)
+
+        for j in joints {
+            guard let p = try? hand.recognizedPoint(j),
+                    p.confidence >= minConfidence else { continue }
+            raw[j] = p.location
+        }
+
+        guard raw.count >= 3 else { return nil }
+
+        // 2) Compute bounding box
+        let xs = raw.values.map { $0.x }
+        let ys = raw.values.map { $0.y }
+        guard let minX = xs.min(), let maxX = xs.max(),
+                let minY = ys.min(), let maxY = ys.max() else { return nil }
+
+        let width = max(maxX - minX, 1e-6)
+        let height = max(maxY - minY, 1e-6)
+        let bounds = CGRect(x: minX, y: minY, width: width, height: height)
+
+        // 3) Translate to origin, 4) uniform scale to fit inside 1x1
+        let s = 1.0 / max(width, height)
+        let translation = CGPoint(x: -minX, y: -minY)
+
+        // 5) optional centering padding
+        let scaledW = width * s
+        let scaledH = height * s
+        let padding = centerInBox ? CGPoint(x: (1 - scaledW) * 0.5, y: (1 - scaledH) * 0.5): .zero
+
+        var unit: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+        unit.reserveCapacity(raw.count)
+
+        for (j, p) in raw {
+            let ux = (p.x + translation.x) * s + padding.x
+            let uy = (p.y + translation.y) * s + padding.y
+            unit[j] = CGPoint(x: ux, y: uy)
+        }
+
+        return NormalizedHand(unitPoints: unit, rawBounds: bounds, scale: s, translation: translation, padding: padding)
     }
 
     // MARK: - JSON reference saving (append)
