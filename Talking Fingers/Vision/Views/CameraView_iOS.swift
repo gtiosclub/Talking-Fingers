@@ -1,3 +1,4 @@
+
 //
 //  CameraView.swift
 //  Talking Fingers
@@ -12,7 +13,12 @@ import Vision
 
 struct CameraView: View {
 
-    //
+    // Recording state (use CMTime from CMSampleBuffer instead of Date/TimeInterval)
+    @State private var isRecording: Bool = false
+    @State private var recordingStartTime: CMTime? = nil
+    @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
+
+    // Optional callback to return the recorded data to a caller
     var onRecordingFinished: (([SignFrame]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
@@ -193,13 +199,11 @@ struct CameraView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: {
-                    toggleRecording()
-                }) {
-                    Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
+                Button(action: { toggleRecording() }) {
+                    Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(.red, .primary)
-                        .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
+                        .foregroundStyle(isRecording ? .red : .red, .primary)
+                        .accessibilityLabel(isRecording ? "Stop Recording" : "Start Recording")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -366,7 +370,7 @@ struct CameraView: View {
             
             let finalData = cameraVM.recordedFrames
             onRecordingFinished?(finalData)
-            
+                
             cameraVM.clearBuffer()
         } else {
             cameraVM.toggleRecording()
@@ -401,4 +405,3 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 #endif
-
