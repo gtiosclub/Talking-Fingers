@@ -11,8 +11,13 @@ import Vision
 
 struct CameraView: View {
 
-    //
-    var onRecordingFinished: (([SignFrame]) -> Void)?
+    // Recording state (use CMTime from CMSampleBuffer instead of Date/TimeInterval)
+    @State private var isRecording: Bool = false
+    @State private var recordingStartTime: CMTime? = nil
+    @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
+
+    // Optional callback to return the recorded data to a caller
+    var onRecordingFinished: (([(CMTime, VNHumanHandPoseObservation)]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
     @State private var cameraVM: CameraVM = CameraVM()
@@ -46,7 +51,11 @@ struct CameraView: View {
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
-    // Store all hand joint connections for drawing lines
+    // Scale invariance (does NOT change on-screen overlay; used for debug/features)
+    @State private var normalizedHands: [CameraVM.NormalizedHand] = []
+    @State private var showScaleDebugBox: Bool = false
+
+    // Store all joint connections for drawing lines
     let handConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
         // Thumb
         (.wrist, .thumbCMC), (.thumbCMC, .thumbMP), (.thumbMP, .thumbIP), (.thumbIP, .thumbTip),
@@ -78,11 +87,28 @@ struct CameraView: View {
         .wrist
     ]
 
+    // Joints used for normalization (union of everything we draw/care about)
+    private var jointsForNormalization: [VNHumanHandPoseObservation.JointName] {
+        var set = Set<VNHumanHandPoseObservation.JointName>()
+
+        // all label joints
+        for j in JointsSheetView.jointLabels.map(\.name) { set.insert(j) }
+
+        // perimeter joints
+        for j in perimeterJoints { set.insert(j) }
+
+        // skeleton endpoints
+        for (a, b) in handConnections { set.insert(a); set.insert(b) }
+
+        return Array(set)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 if cameraVM.isAuthorized {
-                    ZStack {
+                    // Camera "window" that holds the live feed + ALL overlays
+                    ZStack(alignment: .topLeading) {
                         CameraPreviewView(session: cameraVM.session)
                             .ignoresSafeArea()
 
@@ -92,6 +118,13 @@ struct CameraView: View {
                             bodyJointLabelsOverlay(in: geo.size)
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
+                        }
+
+                        // Optional scale debug box (drawn inside the camera window)
+                        if showScaleDebugBox {
+                            scaleDebugBoxView
+                                .padding(12)
+                                .allowsHitTesting(false)
                         }
                     }
                     .aspectRatio(9.0 / 16.0, contentMode: .fit)
@@ -137,41 +170,136 @@ struct CameraView: View {
             cameraVM.onBodyPoseDetected = { bodyObservations, pts in
                 bodies = bodyObservations
                 _ = pts
+
+                // While recording, capture each observation with the provided CMTime timestamp
+                if isRecording {
+                    if recordingStartTime == nil { recordingStartTime = pts }
+                    for obs in observations {
+                        recordedPoses.append((pts, obs))
+                    }
+                }
+
+                // Compute scale-invariant unit-box coordinates (does not affect overlay)
+                normalizedHands = observations.compactMap { hand in
+                    cameraVM.normalizeHandToUnitBox(
+                        hand: hand,
+                        joints: jointsForNormalization,
+                        minConfidence: 0.5,
+                        centerInBox: true
+                    )
+                }
             }
         }
         .onDisappear {
             cameraVM.stop()
         }
         .sheet(isPresented: $showJointsSheet) {
-            JointsSheetView(
-                jointVisibility: $jointVisibility,
-                bodyJointVisibility: $bodyJointVisibility,
-                dotsVisibility: $dotsVisibility,
-                handOutlineVisibility: $handOutlineVisibility,
-                handSkeletonVisibility: $handSkeletonVisibility,
-                bodySkeletonVisibility: $bodySkeletonVisibility
-            )
+            // ✅ No NavigationStack/Form here.
+            // This preserves the exact JointsSheetView UI (and its single Done).
+            VStack(spacing: 0) {
+                // Debug toggle row styled like a normal settings row
+                HStack {
+                    Text("Show scale debug box")
+                    Spacer()
+                    Toggle("", isOn: $showScaleDebugBox)
+                        .labelsHidden()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+
+                Divider()
+
+                // Original sheet UI unchanged
+                JointsSheetView(
+                    jointVisibility: $jointVisibility,
+                    dotsVisibility: $dotsVisibility,
+                    handOutlineVisibility: $handOutlineVisibility,
+                    handSkeletonVisibility: $handSkeletonVisibility
+                )
+            }
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: {
-                    toggleRecording()
-                }) {
-                    Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
+                Button(action: { toggleRecording() }) {
+                    Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(.red, .primary)
-                        .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
+                        .foregroundStyle(isRecording ? .red : .red, .primary)
+                        .accessibilityLabel(isRecording ? "Stop Recording" : "Start Recording")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: {
-                    showJointsSheet = true
-                }) {
+                Button(action: { showJointsSheet = true }) {
                     Image(systemName: "gearshape.fill")
                 }
             }
         }
     }
+
+    // MARK: - Scale debug box UI
+
+    private var scaleDebugBoxView: some View {
+        Group {
+            if let nh = normalizedHands.first {
+                let boxSize: CGFloat = 170
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(.black.opacity(0.25))
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(.white.opacity(0.9), lineWidth: 2)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Normalized (unit box)")
+                            .font(.caption)
+                            .foregroundStyle(.white)
+
+                        Text(String(format: "raw w=%.3f h=%.3f", nh.rawBounds.width, nh.rawBounds.height))
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                    ForEach(
+                        [
+                            VNHumanHandPoseObservation.JointName.wrist,
+                            .thumbTip, .indexTip, .middleTip, .ringTip, .littleTip
+                        ],
+                        id: \.self
+                    ) { j in
+                        if let p = nh.unitPoints[j] {
+                            Circle()
+                                .fill(.white)
+                                .frame(width: 7, height: 7)
+                                .position(mapUnit(p, boxSize: boxSize))
+                        }
+                    }
+
+                    Path { path in
+                        for (a, b) in handConnections {
+                            if let p1 = nh.unitPoints[a], let p2 = nh.unitPoints[b] {
+                                let s = mapUnit(p1, boxSize: boxSize)
+                                let e = mapUnit(p2, boxSize: boxSize)
+                                path.move(to: s)
+                                path.addLine(to: e)
+                            }
+                        }
+                    }
+                    .stroke(.white.opacity(0.55), lineWidth: 2)
+                }
+                .frame(width: boxSize, height: boxSize)
+            }
+        }
+    }
+
+    private func mapUnit(_ p: CGPoint, boxSize: CGFloat) -> CGPoint {
+        CGPoint(
+            x: p.x * boxSize,
+            y: (1 - p.y) * boxSize
+        )
+    }
+
+    // MARK: - Overlays (unchanged)
 
     @ViewBuilder
     private func handOutlineOverlay(in size: CGSize) -> some View {
@@ -324,15 +452,34 @@ struct CameraView: View {
         }
     }
 
+  
+    // MARK: - Recording (unchanged)
+
     private func toggleRecording() {
-        if cameraVM.isRecording {
-            cameraVM.toggleRecording()
+        if isRecording {
+            // Stop recording
+            isRecording = false
 
-            let finalData = cameraVM.recordedFrames
-            onRecordingFinished?(finalData)
+            //Filter + append to JSON before clearing buffer
+            let timeIntervalRefs: [(TimeInterval, VNHumanHandPoseObservation)] = recordedPoses.map { pair in
+                (CMTimeGetSeconds(pair.0), pair.1)
+            }
+            let filtered = cameraVM.filterReferences(for: timeIntervalRefs)
+            cameraVM.appendReferencesToJSON(filtered: filtered)
 
-            cameraVM.clearBuffer()
+            // Existing behavior: return the data
+            if let callback = onRecordingFinished {
+                callback(recordedPoses)
+            } else {
+                // Fallback: log the result for visibility during development
+                print("Recorded poses count: \(recordedPoses.count)")
+            }
+
+            // Clear recorded poses after delivering them so memory doesn't accumulate
+            recordedPoses.removeAll(keepingCapacity: true)
+            recordingStartTime = nil
         } else {
+            isRecording = true
             cameraVM.toggleRecording()
         }
     }
