@@ -180,7 +180,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 DispatchQueue.main.async {
                     // Keep main behavior
                     self.onPoseDetected?(handObservations, pts)
-                    self.normalizedHands = observations.compactMap {NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2)) }
+                    self.normalizedHands = handObservations.compactMap {NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2)) }
                     // New body callback (for overlays/labels)
                     self.onBodyPoseDetected?(bodyObservations, pts)
 

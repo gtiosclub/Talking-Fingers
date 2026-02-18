@@ -91,13 +91,18 @@ struct CameraView: View {
     private var jointsForNormalization: [VNHumanHandPoseObservation.JointName] {
         var set = Set<VNHumanHandPoseObservation.JointName>()
 
-        // all label joints
-        for j in JointsSheetView.jointLabels.map(\.name) { set.insert(j) }
+        // All hand label joints from the sheet
+        for label in JointsSheetView.handJointLabels {
+            set.insert(label.name)
+        }
 
-        // perimeter joints
+        // Include any body joints that might be relevant if needed (no-op for hand normalization)
+        // for label in JointsSheetView.bodyJointLabels { set.insert(label.name) }
+
+        // Perimeter joints
         for j in perimeterJoints { set.insert(j) }
 
-        // skeleton endpoints
+        // Skeleton endpoints
         for (a, b) in handConnections { set.insert(a); set.insert(b) }
 
         return Array(set)
@@ -160,15 +165,15 @@ struct CameraView: View {
             cameraVM.start()
 
             // Main-compatible hand callback
-            cameraVM.onPoseDetected = { observations, pts in
-                hands = observations
+            cameraVM.onBodyPoseDetected = { bodyObservations, pts in
+                bodies = bodyObservations
                 // recording is handled inside CameraVM (main behavior)
                 _ = pts
             }
 
             // Additive body callback (issue functionality)
-            cameraVM.onBodyPoseDetected = { bodyObservations, pts in
-                bodies = bodyObservations
+            cameraVM.onPoseDetected = { observations, pts in
+                hands = observations
                 _ = pts
 
                 // While recording, capture each observation with the provided CMTime timestamp
@@ -212,9 +217,11 @@ struct CameraView: View {
                 // Original sheet UI unchanged
                 JointsSheetView(
                     jointVisibility: $jointVisibility,
+                    bodyJointVisibility: $bodyJointVisibility,
                     dotsVisibility: $dotsVisibility,
                     handOutlineVisibility: $handOutlineVisibility,
-                    handSkeletonVisibility: $handSkeletonVisibility
+                    handSkeletonVisibility: $handSkeletonVisibility,
+                    bodySkeletonVisibility: $bodySkeletonVisibility
                 )
             }
         }
@@ -511,3 +518,4 @@ struct CameraPreviewView: UIViewRepresentable {
     .environment(AuthenticationViewModel())
 }
 #endif
+
