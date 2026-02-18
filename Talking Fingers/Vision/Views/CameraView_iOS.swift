@@ -1,4 +1,3 @@
-
 //
 //  CameraView.swift
 //  Talking Fingers
@@ -19,7 +18,7 @@ struct CameraView: View {
     @State private var recordedPoses: [(CMTime, VNHumanHandPoseObservation)] = []
 
     // Optional callback to return the recorded data to a caller
-    var onRecordingFinished: (([SignFrame]) -> Void)?
+    var onRecordingFinished: (([(CMTime, VNHumanHandPoseObservation)]) -> Void)?
 
     @State private var showJointsSheet: Bool = false
 
@@ -365,14 +364,30 @@ struct CameraView: View {
     // MARK: - Recording (unchanged)
 
     private func toggleRecording() {
-        if cameraVM.isRecording {
-            cameraVM.toggleRecording()
-            
-            let finalData = cameraVM.recordedFrames
-            onRecordingFinished?(finalData)
-                
-            cameraVM.clearBuffer()
+        if isRecording {
+            // Stop recording
+            isRecording = false
+
+            //Filter + append to JSON before clearing buffer
+            let timeIntervalRefs: [(TimeInterval, VNHumanHandPoseObservation)] = recordedPoses.map { pair in
+                (CMTimeGetSeconds(pair.0), pair.1)
+            }
+            let filtered = cameraVM.filterReferences(for: timeIntervalRefs)
+            cameraVM.appendReferencesToJSON(filtered: filtered)
+
+            // Existing behavior: return the data
+            if let callback = onRecordingFinished {
+                callback(recordedPoses)
+            } else {
+                // Fallback: log the result for visibility during development
+                print("Recorded poses count: \(recordedPoses.count)")
+            }
+
+            // Clear recorded poses after delivering them so memory doesn't accumulate
+            recordedPoses.removeAll(keepingCapacity: true)
+            recordingStartTime = nil
         } else {
+            isRecording = true
             cameraVM.toggleRecording()
         }
     }
