@@ -2,7 +2,7 @@ import Foundation
 import Vision
 import CoreGraphics
 
-struct NormalizedHand: Identifiable {
+struct NormalizedHandModel: Identifiable {
     let id = UUID()
     let joints: [VNHumanHandPoseObservation.JointName: CGPoint]
     

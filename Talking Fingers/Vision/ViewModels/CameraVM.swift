@@ -8,6 +8,7 @@
 import AVFoundation
 import Vision
 import CoreMotion
+import CoreGraphics
 
 @Observable
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -16,7 +17,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
     
     // Keep track of normalized hand observations
-    var normalizedHands: [NormalizedHand] = []
+    var normalizedHands: [NormalizedHandModel] = []
     // --- Recording Logic ---
     var isRecording = false
     private(set) var recordedFrames: [SignFrame] = []
@@ -163,7 +164,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 // Send the hand landmarks and sample buffer back to the main thread for UI/Logic
                 DispatchQueue.main.async {
                     self.onPoseDetected?(observations, pts)
-                    self.normalizedHands = observations.compactMap { NormalizedHand(from: $0, pitch: self.currentPitch - (.pi / 2)) }
+                    self.normalizedHands = observations.compactMap {NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2)) }
                     
                     
                     if self.isRecording {
@@ -194,5 +195,72 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
             return avgConfidence >= 0.7
         }
+    }
+    
+    struct NormalizedHand {
+        /// Points normalized into a standard unit bounding box [0,1]x[0,1]
+        let unitPoints: [VNHumanHandPoseObservation.JointName: CGPoint]
+
+        /// Bounding box in Vision normalized image coords (0..1)
+        let rawBounds: CGRect
+
+        /// Uniform scale applied (1 / max(width,height))
+        let scale: CGFloat
+
+        /// Translation applied before scale (subtracting minX/minY)
+        let translation: CGPoint
+        
+        /// Optional padding to center the scaled hand within the unit box
+        let padding: CGPoint
+    }
+    
+    func normalizeHandToUnitBox(
+            hand: VNHumanHandPoseObservation,
+            joints: [VNHumanHandPoseObservation.JointName],
+            minConfidence: Float = 0.5,
+            centerInBox: Bool = true
+        ) -> NormalizedHand? {
+
+        // 1) Gather reliable landmarks in Vision normalized coordinates (0..1)
+        var raw: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+        raw.reserveCapacity(joints.count)
+
+        for j in joints {
+            guard let p = try? hand.recognizedPoint(j),
+                    p.confidence >= minConfidence else { continue }
+            raw[j] = p.location
+        }
+
+        guard raw.count >= 3 else { return nil }
+
+        // 2) Compute bounding box
+        let xs = raw.values.map { $0.x }
+        let ys = raw.values.map { $0.y }
+        guard let minX = xs.min(), let maxX = xs.max(),
+                let minY = ys.min(), let maxY = ys.max() else { return nil }
+
+        let width = max(maxX - minX, 1e-6)
+        let height = max(maxY - minY, 1e-6)
+        let bounds = CGRect(x: minX, y: minY, width: width, height: height)
+
+        // 3) Translate to origin, 4) uniform scale to fit inside 1x1
+        let s = 1.0 / max(width, height)
+        let translation = CGPoint(x: -minX, y: -minY)
+
+        // 5) optional centering padding
+        let scaledW = width * s
+        let scaledH = height * s
+        let padding = centerInBox ? CGPoint(x: (1 - scaledW) * 0.5, y: (1 - scaledH) * 0.5): .zero
+
+        var unit: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+        unit.reserveCapacity(raw.count)
+
+        for (j, p) in raw {
+            let ux = (p.x + translation.x) * s + padding.x
+            let uy = (p.y + translation.y) * s + padding.y
+            unit[j] = CGPoint(x: ux, y: uy)
+        }
+
+        return NormalizedHand(unitPoints: unit, rawBounds: bounds, scale: s, translation: translation, padding: padding)
     }
 }
