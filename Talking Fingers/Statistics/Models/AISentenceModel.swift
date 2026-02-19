@@ -26,9 +26,9 @@ struct AISentenceModel: Identifiable, Codable {
     var practiceType: PracticeType
     var difficulty: Difficulty
 
-    init(words: [String], score: [Int], practiceType: PracticeType, difficulty: Difficulty, gloss: [String]) {
+    init(sentence: String, score: [Int], practiceType: PracticeType, difficulty: Difficulty, gloss: [String]) {
         self.id = UUID()
-        self.words = words
+        self.sentence = sentence
         self.score = score
         self.practiceType = practiceType
         self.difficulty = difficulty
