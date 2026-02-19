@@ -7,20 +7,19 @@
 import SwiftData
 import Foundation
 
+@Model
 class StatsFlashcard {
-    var term: String
+    @Attribute(.unique) var term: String
     var definition: String
     var lastSucceeded: Date?
     var starred: Bool
     var progress: ProgressType
     
-    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool, progress: ProgressType) {
+    init(term: String, definition: String, lastSucceeded: Date? = nil, starred: Bool = false) {
         self.term = term
         self.definition = definition
-        self.lastSucceeded = nil
-        self.starred = false
-        self.progress = progress
+        self.lastSucceeded = lastSucceeded
+        self.starred = starred
+        self.progress = .new
     }
-    
-    
 }
