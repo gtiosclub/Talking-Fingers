@@ -11,21 +11,16 @@ import Foundation
 
 @Observable
 class SwiftDataVM {
-    
-    // MARK: - Properties
     private var modelContext: ModelContext?
     
-    // MARK: - Initialization
     init(modelContext: ModelContext? = nil) {
         self.modelContext = modelContext
     }
     
-    // MARK: - Enhanced Prompt Generation with Learning Path Principles
     func generatePromptForLLM(from flashcards: [StatsFlashcard]) -> String {
         return PromptGenerator.generatePromptForLLM(from: flashcards)
     }
     
-    // MARK: - Data Operations
     func fetchFlashcards() -> [StatsFlashcard] {
         guard let modelContext = modelContext else { return [] }
         
@@ -47,4 +42,15 @@ class SwiftDataVM {
     }
     
     
+    func updateFlashcardProgress(flashcards: [StatsFlashcard], scores: [Int]) {
+        guard flashcards.count == scores.count else { return }
+        
+        for index in 0..<scores.count {
+            if scores[index] == 1 {
+                flashcards[index].progress = flashcards[index].progress.increase()
+            } else if scores[index] == -1 {
+                flashcards[index].progress = flashcards[index].progress.decrease()
+            }
+        }
+    }
 }

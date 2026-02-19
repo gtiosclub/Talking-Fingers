@@ -13,6 +13,7 @@ build/
 *.xcuserstate
 *.xcscmblueprint
 *.xccheckout
+*.pbxproj
 
 # User-specific Xcode settings
 xcuserdata/
@@ -50,6 +51,8 @@ firebase-debug.log
 *.mlpackage
 *.mlproj
 *.mlmodelc.zip
+/Tools/qwen_coreml/output/*
+!/Tools/qwen_coreml/output/.gitkeep
 
 # =========================
 # Core Data / SwiftData
@@ -109,3 +112,10 @@ playground.xcworkspace
 *.jsonl
 reference_landmarks/
 training_data/
+
+# =========================
+# Python
+# =========================
+.venv/
+__pycache__/
+*.pyc
