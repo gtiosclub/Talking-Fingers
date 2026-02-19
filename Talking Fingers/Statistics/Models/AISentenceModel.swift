@@ -20,7 +20,7 @@ enum Difficulty: String, Codable {
 
 struct AISentenceModel: Identifiable, Codable {
     var id = UUID()
-    var words: [String]
+    var sentence: String
     var gloss: [String]
     var score: [Int]
     var practiceType: PracticeType
