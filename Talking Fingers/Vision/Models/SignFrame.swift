@@ -9,25 +9,10 @@ import Foundation
 import Vision
 import CoreMedia
 
-struct JointInfo: Codable {
-    let name: String
+struct Joint: Codable {
     let x: Double
     let y: Double
     let confidence: Float
-}
-
-enum HandSide: String, Codable {
-    case left
-    case right
-    case unknown
-    
-    init(from vnChirality: VNChirality) {
-        switch vnChirality {
-        case .left: self = .left
-        case .right: self = .right
-        case .unknown: self = .unknown
-        }
-    }
 }
 
 struct SignFrame: Identifiable, Codable {
@@ -35,29 +20,47 @@ struct SignFrame: Identifiable, Codable {
     private let seconds: Double
     private let timescale: Int32
     
-    let joints: [JointInfo]
-    let chirality: HandSide // Use the Enum here
+    let joints: [String: Joint]
     
     var timestamp: CMTime {
         CMTime(seconds: seconds, preferredTimescale: timescale)
     }
 
-    init(from observation: VNHumanHandPoseObservation, at time: CMTime) {
+    init(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at time: CMTime) {
         self.id = UUID()
         self.seconds = time.seconds
         self.timescale = time.timescale
         
-        // Clean conversion using our Enum init
-        self.chirality = HandSide(from: observation.chirality)
+        var tempJoints: [String: Joint] = [:]
         
-        let allPoints = (try? observation.recognizedPoints(.all)) ?? [:]
-        self.joints = allPoints.compactMap { (key, point) in
-            JointInfo(
-                name: key.rawValue.rawValue,
-                x: point.location.x,
-                y: point.location.y,
-                confidence: point.confidence
-            )
+        if let body = body {
+            let bodyPoints = (try? body.recognizedPoints(.all)) ?? [:]
+            for (key, point) in bodyPoints where point.confidence > 0.3 {
+                tempJoints[key.rawValue.rawValue] = Joint(
+                    x: point.location.x,
+                    y: point.location.y,
+                    confidence: point.confidence
+                )
+            }
         }
+        
+        for hand in hands {
+            let prefix = hand.chirality == .left ? "left" : "right"
+            let handPoints = (try? hand.recognizedPoints(.all)) ?? [:]
+            
+            for (key, point) in handPoints where point.confidence > 0.3 {
+                let rawName = key.rawValue.rawValue
+                
+                let formattedName = prefix + rawName.prefix(1).uppercased() + String(rawName.dropFirst())
+                
+                tempJoints[formattedName] = Joint(
+                    x: point.location.x,
+                    y: point.location.y,
+                    confidence: point.confidence
+                )
+            }
+        }
+        
+        self.joints = tempJoints
     }
 }
