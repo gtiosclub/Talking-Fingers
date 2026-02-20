@@ -96,9 +96,6 @@ struct CameraView: View {
             set.insert(label.name)
         }
 
-        // Include any body joints that might be relevant if needed (no-op for hand normalization)
-        // for label in JointsSheetView.bodyJointLabels { set.insert(label.name) }
-
         // Perimeter joints
         for j in perimeterJoints { set.insert(j) }
 
@@ -164,14 +161,13 @@ struct CameraView: View {
             cameraVM.checkPermission()
             cameraVM.start()
 
-            // Main-compatible hand callback
+            // Main-compatible body callback
             cameraVM.onBodyPoseDetected = { bodyObservations, pts in
                 bodies = bodyObservations
-                // recording is handled inside CameraVM (main behavior)
                 _ = pts
             }
 
-            // Additive body callback (issue functionality)
+            // Hand callback
             cameraVM.onPoseDetected = { observations, pts in
                 hands = observations
                 _ = pts
@@ -185,10 +181,11 @@ struct CameraView: View {
                 }
 
                 // Compute scale-invariant unit-box coordinates (does not affect overlay)
-                normalizedHands = observations.compactMap { hand in
-                    cameraVM.normalizeHandToUnitBox(
-                        hand: hand,
-                        joints: jointsForNormalization,
+                // NOTE: signature is unchanged; CameraVM now does SignFrame-based normalization internally.
+                normalizedHands = observations.compactMap { handObs in
+                    let frame = SignFrame(from: handObs, at: pts)
+                    return cameraVM.normalizeHandToUnitBox(
+                        hand: frame,
                         minConfidence: 0.5,
                         centerInBox: true
                     )
@@ -199,8 +196,6 @@ struct CameraView: View {
             cameraVM.stop()
         }
         .sheet(isPresented: $showJointsSheet) {
-            // ✅ No NavigationStack/Form here.
-            // This preserves the exact JointsSheetView UI (and its single Done).
             VStack(spacing: 0) {
                 // Debug toggle row styled like a normal settings row
                 HStack {
@@ -244,6 +239,11 @@ struct CameraView: View {
 
     // MARK: - Scale debug box UI
 
+    /// SignFrame stores joint names as `key.rawValue.rawValue`, so we derive the same key from JointName.
+    private func jointKeyString(_ joint: VNHumanHandPoseObservation.JointName) -> String {
+        joint.rawValue.rawValue
+    }
+
     private var scaleDebugBoxView: some View {
         Group {
             if let nh = normalizedHands.first {
@@ -267,6 +267,7 @@ struct CameraView: View {
                     .padding(8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
+                    // Draw a few key points (wrist + fingertips)
                     ForEach(
                         [
                             VNHumanHandPoseObservation.JointName.wrist,
@@ -274,7 +275,8 @@ struct CameraView: View {
                         ],
                         id: \.self
                     ) { j in
-                        if let p = nh.unitPoints[j] {
+                        let key = jointKeyString(j)
+                        if let p = nh.unitPoints[key] {
                             Circle()
                                 .fill(.white)
                                 .frame(width: 7, height: 7)
@@ -282,9 +284,12 @@ struct CameraView: View {
                         }
                     }
 
+                    // Draw skeleton inside the unit box
                     Path { path in
                         for (a, b) in handConnections {
-                            if let p1 = nh.unitPoints[a], let p2 = nh.unitPoints[b] {
+                            let ka = jointKeyString(a)
+                            let kb = jointKeyString(b)
+                            if let p1 = nh.unitPoints[ka], let p2 = nh.unitPoints[kb] {
                                 let s = mapUnit(p1, boxSize: boxSize)
                                 let e = mapUnit(p2, boxSize: boxSize)
                                 path.move(to: s)
@@ -459,7 +464,6 @@ struct CameraView: View {
         }
     }
 
-  
     // MARK: - Recording (unchanged)
 
     private func toggleRecording() {
@@ -478,11 +482,9 @@ struct CameraView: View {
             if let callback = onRecordingFinished {
                 callback(recordedPoses)
             } else {
-                // Fallback: log the result for visibility during development
                 print("Recorded poses count: \(recordedPoses.count)")
             }
 
-            // Clear recorded poses after delivering them so memory doesn't accumulate
             recordedPoses.removeAll(keepingCapacity: true)
             recordingStartTime = nil
         } else {
@@ -518,4 +520,3 @@ struct CameraPreviewView: UIViewRepresentable {
     .environment(AuthenticationViewModel())
 }
 #endif
-
