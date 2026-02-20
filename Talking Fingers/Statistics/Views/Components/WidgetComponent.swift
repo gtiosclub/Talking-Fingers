@@ -45,7 +45,7 @@ struct WidgetComponent: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .padding(.horizontal)
             .padding(.vertical, 12)
             .multilineTextAlignment(.leading)

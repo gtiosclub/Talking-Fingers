@@ -21,15 +21,20 @@ struct TFProgressView: View {
     @State private var dragStartCenterY: CGFloat = 0
     @State private var overlayCenterY: CGFloat = 0
     @State private var isEditing: Bool = false
+    @State private var isShowingAddSheet: Bool = false
+    @State private var showDeleteAlert: Bool = false
+    @State private var pendingDelete: WidgetItem? = nil
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack {
                 if isEditing {
                     Button(action: {
-                        // TODO: Add widgets action
+                        draggingItem = nil
+                        dragStartIndex = nil
+                        isShowingAddSheet = true
                     }) {
-                        Text("Add Widgets")
+                        Text("Add")
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(.thinMaterial)
@@ -67,22 +72,28 @@ struct TFProgressView: View {
                     }) {
                         Label("", systemImage: "person.crop.circle")
                             .font(.system(size: 32))
+                            .foregroundColor(.secondary)
                     }
                 }
             }
             .frame(maxWidth: .infinity)
             
-            Text("Progress")
-                .font(.largeTitle)
-                .bold()
+            VStack (alignment: .leading, spacing: 8) {
+                Text("Progress")
+                    .font(.largeTitle)
+                    .bold()
+                
+                Text(Date.now.formatted(date: .abbreviated, time: .omitted))
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+                    .fontWeight(.semibold)
+            }
             
-            Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                .font(.title2)
-                .foregroundColor(.secondary)
-                .fontWeight(.semibold)
             
+            
+            // Widgets
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: 16) {
                     ForEach(Array(widgets.enumerated()), id: \.element.id) { index, item in
                         WidgetComponent(title: item.title)
                             .background(
@@ -92,6 +103,8 @@ struct TFProgressView: View {
                             )
                             .opacity(draggingItem?.id == item.id ? 0 : 1)
                             .gesture(
+                                
+                                // Dragging logic
                                 DragGesture(minimumDistance: 0)
                                     .onChanged { value in
                                         guard isEditing else { return }
@@ -121,10 +134,24 @@ struct TFProgressView: View {
                                     }
                             )
                             .overlay(alignment: .trailing) {
-                                if isEditing {
+                                if isEditing, draggingItem?.id != item.id {
                                     Image(systemName: "line.3.horizontal")
                                         .foregroundStyle(.secondary)
                                         .padding()
+                                }
+                            }
+                            .overlay(alignment: .topLeading) {
+                                if isEditing, draggingItem?.id != item.id {
+                                    Button(action: {
+                                        pendingDelete = item
+                                        showDeleteAlert = true
+                                    }) {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .offset(x: -11, y: -11)
                                 }
                             }
                     }
@@ -134,9 +161,15 @@ struct TFProgressView: View {
                 }
             }
             .coordinateSpace(name: "reorderArea")
+            .scrollClipDisabled()
             .overlay(alignment: .topLeading) {
                 if isEditing, let draggingItem = draggingItem, let frame = rowFrames[draggingItem.id] {
                     WidgetComponent(title: draggingItem.title)
+                        .overlay(alignment: .trailing) {
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundStyle(.secondary)
+                                .padding()
+                        }
                         .frame(width: frame.width, height: frame.height)
                         .position(x: frame.midX, y: overlayCenterY)
                         .shadow(color: Color.black.opacity(0.1), radius: 6, x: 0, y: 4)
@@ -148,6 +181,29 @@ struct TFProgressView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding()
+        .sheet(isPresented: $isShowingAddSheet) {
+            AddWidgetSheet { newItem in
+                widgets.append(newItem)
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.white)   // ✅ solid white
+        }
+        .alert("Delete Widget?", isPresented: $showDeleteAlert, presenting: pendingDelete) { item in
+            Button("Delete", role: .destructive) {
+                withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.85)) {
+                    if let idx = widgets.firstIndex(of: item) {
+                        widgets.remove(at: idx)
+                    }
+                }
+                pendingDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDelete = nil
+            }
+        } message: { item in
+            Text("Are you sure you want to delete \(item.title)?")
+        }
     }
     
     private func insertionIndex(for centerY: CGFloat, excluding id: UUID) -> Int {
