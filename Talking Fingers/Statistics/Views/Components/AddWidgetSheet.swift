@@ -13,7 +13,7 @@ struct AddWidgetSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var name: String = ""
-    var onAdd: (WidgetItem) -> Void
+    var onAdd: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -93,7 +93,7 @@ struct AddWidgetSheet: View {
                 Spacer()
                 Button(action: {
                     let finalTitle = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                    onAdd(WidgetItem(id: UUID(), title: finalTitle.isEmpty ? "Untitled Widget" : finalTitle))
+                    onAdd(finalTitle.isEmpty ? "Untitled Widget" : finalTitle)
                     dismiss()
                 }) {
                     Text("Confirm")
