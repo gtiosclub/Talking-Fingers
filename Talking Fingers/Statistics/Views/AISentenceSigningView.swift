@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct AISentenceView: View {
+struct AISentenceSigningView: View {
     // Accepts the existing data model
     let sentenceModel: AISentenceModel
     
@@ -104,5 +104,5 @@ struct ContinueButton: View {
         gloss: ["I", "NOT", "GO", "STORE", "YESTERDAY"]
     )
     
-    AISentenceView(sentenceModel: sampleData)
+    AISentenceSigningView(sentenceModel: sampleData)
 }
