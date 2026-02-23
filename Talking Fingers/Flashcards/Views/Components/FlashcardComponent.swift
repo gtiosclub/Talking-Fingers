@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct FlashcardComponent: View {
     var card: FlashcardModel
