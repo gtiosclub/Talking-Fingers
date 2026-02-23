@@ -176,9 +176,10 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 let handObservations = handPoseRequest.results ?? []
                 let bodyObservations = bodyPoseRequest.results ?? []
+                
+                let primaryBody = bodyObservations.first
 
                 DispatchQueue.main.async {
-                    // Keep main behavior
                     self.onPoseDetected?(handObservations, pts)
 
                     // Existing pitch-correction normalization (this is not the scale-invariance unit-box normalization)
@@ -192,10 +193,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     // Recording uses SignFrame (matches your model pipeline)
                     if self.isRecording {
                         if self.recordingStartTime == nil { self.recordingStartTime = pts }
-                        for observation in handObservations {
-                            let frame = SignFrame(from: observation, at: pts)
-                            self.recordedFrames.append(frame)
-                        }
+                        
+                        let frame = SignFrame(
+                            body: primaryBody,
+                            hands: handObservations,
+                            at: pts
+                        )
+                        
+                        self.recordedFrames.append(frame)
                     }
                 }
             } catch {
@@ -252,9 +257,20 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // Filter frames (SignFrame-based)
     func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
+        let requiredBodyJoints = ["leftShoulder", "rightShoulder", "leftElbow", "rightElbow"]
+
         return frames.filter { frame in
-            guard frame.joints.count >= 12 else { return false }
-            let avgConfidence = frame.joints.reduce(0) { $0 + $1.confidence } / Float(frame.joints.count)
+            let hasBodyAnchors = requiredBodyJoints.allSatisfy { frame.joints.keys.contains($0) }
+            guard hasBodyAnchors else { return false }
+            
+            let leftHandCount = frame.joints.keys.filter { $0.hasPrefix("left") && !$0.contains("Shoulder") && !$0.contains("Elbow") }.count
+            let rightHandCount = frame.joints.keys.filter { $0.hasPrefix("right") && !$0.contains("Shoulder") && !$0.contains("Elbow") }.count
+            
+            guard leftHandCount >= 12 && rightHandCount >= 12 else { return false }
+            
+            let totalConfidence = frame.joints.values.reduce(0) { $0 + $1.confidence }
+            let avgConfidence = totalConfidence / Float(frame.joints.count)
+            
             return avgConfidence >= 0.7
         }
     }
