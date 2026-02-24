@@ -8,8 +8,16 @@
 import SwiftUI
 
 struct FlashcardView: View {
+
+    @State private var vm = FlashcardVM()
+
     var body: some View {
-        Text("this is the page to hold flashcards")
+        VStack {
+            if let card = vm.flashcards.first {
+                FlashcardComponent(card: card)
+            }
+        }
+        .padding()
     }
 }
 
