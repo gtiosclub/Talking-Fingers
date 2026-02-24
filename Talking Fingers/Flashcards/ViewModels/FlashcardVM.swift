@@ -4,13 +4,22 @@
 //
 //  Created by Isha Jain on 2/9/26.
 //
-
 import Foundation
 import Combine
-
 @Observable
 class FlashcardVM {
     var flashcards: [FlashcardModel] = []
+    
+    init() {
+        let dummyID = UUID(uuidString: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a")!
+        let dummyCard = FlashcardModel(
+            term: "Test",
+            id: dummyID,
+            category: "Test",
+            gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
+        )
+        self.flashcards = [dummyCard]
+    }
     
     func searchFlashCard(input: String) -> [String] {
         var results = [String]()
@@ -20,12 +29,12 @@ class FlashcardVM {
             }
         }
         return results
-    }    
-  
+    }
+    
     func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
         flashcards.filter { $0.category == category }
-    }    
-  
+    }
+    
     func filterStarred(from flashcards: [FlashcardModel]) -> [FlashcardModel] {
         flashcards.filter { $0.starred }
     }
