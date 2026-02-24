@@ -6,24 +6,21 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct FlashcardComponent: View {
     var card: FlashcardModel
+
     var body: some View {
-        VStack{
+        VStack {
             Text(card.term)
-            if let image = UIImage(named: card.id.uuidString) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 250)
-            }
+
+            universalImage(baseName: card.id.uuidString, ext: "png", height: 250)
+
+            Text("this is a flashcard component")
         }
-        Text("this is a flashcard component")
     }
 }
-    
+
 #Preview {
     FlashcardComponent(
         card: FlashcardModel(
@@ -33,4 +30,3 @@ struct FlashcardComponent: View {
         )
     )
 }
-
