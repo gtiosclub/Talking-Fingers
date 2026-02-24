@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+struct WordChip: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+}
+
 struct AISentenceComprehensionView: View {
     private let carouselImages = ["Image 1", "Image 2", "Image 3", "Image 4", "Image 5"]
     @State private var currentIndex = 0
@@ -17,7 +22,17 @@ struct AISentenceComprehensionView: View {
     
     private var progress: CGFloat = 0.5
 
-    private let words = ["word 1", "word 2", "word 3", "word 4", "word 5", "word 6", "word 7"]
+    /// Fixed order of all words; bank shows this order with shadows where words are on the line.
+    @State private var allWordsInOrder: [WordChip] = [
+        WordChip(text: "word 1"), WordChip(text: "word 2"), WordChip(text: "word 3"),
+        WordChip(text: "word 4"), WordChip(text: "word 5"), WordChip(text: "word 6"),
+        WordChip(text: "word 7")
+    ]
+    @State private var lineWords: [WordChip] = []
+
+    private static let lineHorizontalSpacing: CGFloat = 10
+    /// Vertical spacing between word rows; also drives notebook line positions so words sit on the lines.
+    private static let lineVerticalSpacing: CGFloat = 18
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,12 +57,12 @@ struct AISentenceComprehensionView: View {
                     .foregroundStyle(Color(white: 0.3))
             }
             .padding(.horizontal)
-            .padding(.vertical, 16)
+            .padding(.top, 16)
 
             Spacer(minLength: 0)
 
             // 2. Middle: square + lines + word bank
-            VStack(spacing: 12) {
+            VStack(spacing: 40) {
                 HStack(spacing: 16) {
                 Button {
                     currentIndex = (currentIndex - 1 + carouselImages.count) % carouselImages.count
@@ -61,14 +76,25 @@ struct AISentenceComprehensionView: View {
                 }
                 .buttonStyle(.plain)
 
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(white: 0.92))
-                    Text(currentImage)
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                ZStack(alignment: .bottom) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(white: 0.92))
+                        Text(currentImage)
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .aspectRatio(1, contentMode: .fit)
+
+                    HStack(spacing: 6) {
+                        ForEach(carouselImages.indices, id: \.self) { index in
+                            Circle()
+                                .fill(index == currentIndex ? Color(white: 0.4) : Color(white: 0.85))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    .padding(.bottom, 8)
                 }
-                .aspectRatio(1, contentMode: .fit)
 
                 Button {
                     currentIndex = (currentIndex + 1) % carouselImages.count
@@ -83,35 +109,10 @@ struct AISentenceComprehensionView: View {
                 .buttonStyle(.plain)
             }
 
-            // Notebook-style lines container - equal spacing above each line
-            VStack(spacing: 44) {
-                HStack {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.4))
-                        .frame(height: 2)
-                }
-                HStack {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.4))
-                        .frame(height: 2)
-                }
-            }
-            .padding(.vertical, 44)
-            .padding(.horizontal)
-
-            // Word bank - chips in a wrapping flow layout
-            WrappingHStack(horizontalSpacing: 10, verticalSpacing: 10) {
-                ForEach(words, id: \.self) { word in
-                    Text(word)
-                        .font(.subheadline)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .frame(minHeight: 44)
-                        .background(Color(white: 0.9))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
+            // Lines + word bank: same width as Check button (padded); content inside has no extra padding
+            VStack(spacing: 32) {
+                linesZoneView
+                bankZoneView
             }
             .padding(.horizontal)
             }
@@ -128,8 +129,111 @@ struct AISentenceComprehensionView: View {
                 .background(Color(white: 0.3))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .buttonStyle(.plain)
+                .padding(.horizontal)
         }
         .padding()
+    }
+
+    // MARK: - Lines Zone
+
+    /// Gap between the bottom of a word row and the notebook line below it.
+    private static let lineToWordGap: CGFloat = 6
+    /// Must match chip minHeight and WrappingHStack row height.
+    private static let notebookRowHeight: CGFloat = 44
+    private static var linesZoneHeight: CGFloat {
+        let secondLineY = notebookRowHeight + Self.lineVerticalSpacing + notebookRowHeight - 1 + lineToWordGap
+        return secondLineY + 4
+    }
+
+    private var linesZoneView: some View {
+        ZStack(alignment: .topLeading) {
+            notebookLinesView
+            WrappingHStack(horizontalSpacing: Self.lineHorizontalSpacing, verticalSpacing: Self.lineVerticalSpacing) {
+                ForEach(lineWords) { chip in
+                    chipView(chip, onLine: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: Self.linesZoneHeight, maxHeight: Self.linesZoneHeight, alignment: .top)
+        }
+        .frame(height: Self.linesZoneHeight)
+    }
+
+    private var notebookLinesView: some View {
+        let rowHeight = Self.notebookRowHeight
+        let gap = Self.lineToWordGap
+        // First line: just below first row of words (same as WrappingHStack row 0 bottom + gap).
+        let firstLineY = rowHeight - 1 + gap
+        // Second line: just below second row of words (row 0 + spacing + row 1 + gap).
+        let secondLineY = rowHeight + Self.lineVerticalSpacing + rowHeight - 1 + gap
+        return Color.clear
+            .frame(height: Self.linesZoneHeight)
+            .overlay(alignment: .topLeading) {
+                Group {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.4))
+                        .frame(height: 2)
+                        .offset(y: firstLineY)
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.4))
+                        .frame(height: 2)
+                        .offset(y: secondLineY)
+                }
+            }
+    }
+
+    // MARK: - Bank Zone
+
+    private var bankZoneView: some View {
+        WrappingHStack(horizontalSpacing: 10, verticalSpacing: 10) {
+            ForEach(allWordsInOrder) { chip in
+                if lineWords.contains(where: { $0.id == chip.id }) {
+                    bankShadowView(for: chip)
+                } else {
+                    chipView(chip, onLine: false)
+                }
+            }
+        }
+    }
+
+    /// Shadow placeholder in the bank: same size as the chip, darker, no text. Word stays in its slot when on the line.
+    private func bankShadowView(for chip: WordChip) -> some View {
+        Text(chip.text)
+            .font(.subheadline)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .opacity(0)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(minHeight: 44)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(white: 0.4).opacity(0.5))
+            )
+    }
+
+    // MARK: - Chip View
+
+    private func chipView(_ chip: WordChip, onLine: Bool) -> some View {
+        Text(chip.text)
+            .font(.subheadline)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(minHeight: 44)
+            .background(Color(white: 0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.spring()) {
+                    if onLine {
+                        lineWords.removeAll { $0.id == chip.id }
+                    } else {
+                        lineWords.append(chip)
+                    }
+                }
+            }
     }
 }
 
