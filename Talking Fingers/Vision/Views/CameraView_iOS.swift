@@ -474,6 +474,16 @@ struct CameraView: View {
             let filtered = cameraVM.filterReferences(for: timeIntervalRefs)
             cameraVM.appendReferencesToJSON(filtered: filtered)
 
+            // Create SignReference with recorded frames
+            let filteredFrames = cameraVM.filterFrames(cameraVM.recordedFrames)
+
+            if !filteredFrames.isEmpty {
+                let signReference = SignReference(
+                    signName: "New Recorded Sign",
+                    frames: filteredFrames
+                )
+            }
+
             // Existing behavior: return the data
             if let callback = onRecordingFinished {
                 callback(recordedPoses)

@@ -57,4 +57,16 @@ class FlashcardVM {
         }
         return progressTotal / Float(flashcards.count)
     }
+    
+    init() {
+        let dummyID = UUID(uuidString: "11111111-1111-1111-1111-111111111111") ?? UUID()
+        
+        flashcards = [
+            FlashcardModel(
+                term: "Apple",
+                id: dummyID,
+                category: "Test"
+            )
+        ]
+    }
 }
