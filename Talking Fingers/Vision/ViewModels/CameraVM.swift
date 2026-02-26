@@ -4,6 +4,7 @@
 //
 //  Created by Jihoon Kim on 1/29/26.
 //
+
 import AVFoundation
 import Vision
 import Foundation
@@ -19,6 +20,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     // Keep track of normalized hand observations
     var normalizedHands: [NormalizedHandModel] = []
+    
     // --- Recording Logic ---
     var isRecording = false
     private(set) var recordedFrames: [SignFrame] = []
@@ -121,21 +123,19 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
     
     func startMotionUpdates() {
-            guard motionManager.isDeviceMotionAvailable else { return }
-            
-            motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
-            motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
-                guard let motion = motion else { return }
-                
-                // In Portrait orientation:
-                // Pitch is the rotation around the X-axis (tilting the top of the phone toward/away from you)
-                self?.currentPitch = motion.attitude.pitch
-            }
+        guard motionManager.isDeviceMotionAvailable else { return }
+        
+        motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+            guard let motion = motion else { return }
+            self?.currentPitch = motion.attitude.pitch
         }
+    }
 
     func stopMotionUpdates() {
         motionManager.stopDeviceMotionUpdates()
     }
+
     func toggleRecording() {
         if isRecording {
             isRecording = false
@@ -181,12 +181,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 DispatchQueue.main.async {
                     self.onPoseDetected?(handObservations, pts)
-                    self.onBodyPoseDetected?(bodyObservations, pts)
-                    
+
+                    // Existing pitch-correction normalization (this is not the scale-invariance unit-box normalization)
                     self.normalizedHands = handObservations.compactMap {
                         NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2))
                     }
-                    
+
+                    // New body callback (for overlays/labels)
+                    self.onBodyPoseDetected?(bodyObservations, pts)
+
+                    // Recording uses SignFrame (matches your model pipeline)
                     if self.isRecording {
                         if self.recordingStartTime == nil { self.recordingStartTime = pts }
                         
@@ -214,11 +218,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return CGPoint(x: x, y: y)
     }
     
-    //returns translated list that treats some anchor joint (e.x. wrist) as the origin (0,0) and the locations of every other join relative to it
-    func convertAbsolutePointsToRelativePoints(_ hand: VNHumanHandPoseObservation,
-                        joints: [VNHumanHandPoseObservation.JointName],
-                        anchor: VNHumanHandPoseObservation.JointName = .wrist,
-                        minConf: Float = 0.5) -> [CGPoint]? {
+    // returns translated list that treats some anchor joint (e.x. wrist) as the origin (0,0)
+    // and the locations of every other joint relative to it
+    func convertAbsolutePointsToRelativePoints(
+        _ hand: VNHumanHandPoseObservation,
+        joints: [VNHumanHandPoseObservation.JointName],
+        anchor: VNHumanHandPoseObservation.JointName = .wrist,
+        minConf: Float = 0.5
+    ) -> [CGPoint]? {
         guard
             let a = try? hand.recognizedPoint(anchor),
             a.confidence >= minConf
@@ -235,7 +242,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return rel
     }
     
-    // Filter frames
+    // Filter frames (Vision-based) - left untouched
     func filterReferences(for references: [(TimeInterval, VNHumanHandPoseObservation)]) -> [(TimeInterval, VNHumanHandPoseObservation)] {
         return references.filter({ t -> Bool in
             guard let allPoints = try? t.1.recognizedPoints(.all) else {
@@ -247,7 +254,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             return joints.reduce(0) { $0 + $1.confidence } / Float(joints.count) >= 0.7
         })
     }
-    // Filter frames
+
+    // Filter frames (SignFrame-based)
     func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
         let requiredBodyJoints = ["leftShoulder", "rightShoulder", "leftElbow", "rightElbow"]
 
@@ -267,9 +275,12 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         }
     }
     
+    // MARK: - Scale invariance / unit-box normalization (SignFrame ONLY)
+
     struct NormalizedHand {
         /// Points normalized into a standard unit bounding box [0,1]x[0,1]
-        let unitPoints: [VNHumanHandPoseObservation.JointName: CGPoint]
+        /// keyed by SignFrame's joint name strings.
+        let unitPoints: [String: CGPoint]
 
         /// Bounding box in Vision normalized image coords (0..1)
         let rawBounds: CGRect
@@ -283,22 +294,23 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         /// Optional padding to center the scaled hand within the unit box
         let padding: CGPoint
     }
-    
+
+    /// Same name as the original normalization API, but now purely SignFrame-based.
+    /// This normalizes the hand so it always fits within a standard unit bounding box,
+    /// regardless of how large the hand appears in the camera frame.
     func normalizeHandToUnitBox(
-            hand: VNHumanHandPoseObservation,
-            joints: [VNHumanHandPoseObservation.JointName],
-            minConfidence: Float = 0.5,
-            centerInBox: Bool = true
-        ) -> NormalizedHand? {
+        hand: SignFrame,
+        minConfidence: Float = 0.5,
+        centerInBox: Bool = true
+    ) -> NormalizedHand? {
 
         // 1) Gather reliable landmarks in Vision normalized coordinates (0..1)
-        var raw: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
-        raw.reserveCapacity(joints.count)
+        var raw: [String: CGPoint] = [:]
+        raw.reserveCapacity(hand.joints.count)
 
-        for j in joints {
-            guard let p = try? hand.recognizedPoint(j),
-                    p.confidence >= minConfidence else { continue }
-            raw[j] = p.location
+        for (name, j) in hand.joints {
+            guard j.confidence >= minConfidence else { continue }
+            raw[name] = CGPoint(x: j.x, y: j.y)
         }
 
         guard raw.count >= 3 else { return nil }
@@ -307,7 +319,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let xs = raw.values.map { $0.x }
         let ys = raw.values.map { $0.y }
         guard let minX = xs.min(), let maxX = xs.max(),
-                let minY = ys.min(), let maxY = ys.max() else { return nil }
+              let minY = ys.min(), let maxY = ys.max() else { return nil }
 
         let width = max(maxX - minX, 1e-6)
         let height = max(maxY - minY, 1e-6)
@@ -320,18 +332,26 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         // 5) optional centering padding
         let scaledW = width * s
         let scaledH = height * s
-        let padding = centerInBox ? CGPoint(x: (1 - scaledW) * 0.5, y: (1 - scaledH) * 0.5): .zero
+        let padding = centerInBox
+            ? CGPoint(x: (1 - scaledW) * 0.5, y: (1 - scaledH) * 0.5)
+            : .zero
 
-        var unit: [VNHumanHandPoseObservation.JointName: CGPoint] = [:]
+        var unit: [String: CGPoint] = [:]
         unit.reserveCapacity(raw.count)
 
-        for (j, p) in raw {
+        for (name, p) in raw {
             let ux = (p.x + translation.x) * s + padding.x
             let uy = (p.y + translation.y) * s + padding.y
-            unit[j] = CGPoint(x: ux, y: uy)
+            unit[name] = CGPoint(x: ux, y: uy)
         }
 
-        return NormalizedHand(unitPoints: unit, rawBounds: bounds, scale: s, translation: translation, padding: padding)
+        return NormalizedHand(
+            unitPoints: unit,
+            rawBounds: bounds,
+            scale: s,
+            translation: translation,
+            padding: padding
+        )
     }
 
     // MARK: - JSON reference saving (append)
