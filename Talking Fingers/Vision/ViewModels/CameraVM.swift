@@ -308,9 +308,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         var raw: [String: CGPoint] = [:]
         raw.reserveCapacity(hand.joints.count)
 
-        for j in hand.joints {
+        for (name, j) in hand.joints {
             guard j.confidence >= minConfidence else { continue }
-            raw[j.name] = CGPoint(x: j.x, y: j.y)
+            raw[name] = CGPoint(x: j.x, y: j.y)
         }
 
         guard raw.count >= 3 else { return nil }

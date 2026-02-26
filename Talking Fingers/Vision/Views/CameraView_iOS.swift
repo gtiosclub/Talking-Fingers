@@ -183,7 +183,7 @@ struct CameraView: View {
                 // Compute scale-invariant unit-box coordinates (does not affect overlay)
                 // NOTE: signature is unchanged; CameraVM now does SignFrame-based normalization internally.
                 normalizedHands = observations.compactMap { handObs in
-                    let frame = SignFrame(from: handObs, at: pts)
+                    let frame = SignFrame(body: nil, hands: [handObs], at: pts)
                     return cameraVM.normalizeHandToUnitBox(
                         hand: frame,
                         minConfidence: 0.5,
@@ -520,3 +520,4 @@ struct CameraPreviewView: UIViewRepresentable {
     .environment(AuthenticationViewModel())
 }
 #endif
+
