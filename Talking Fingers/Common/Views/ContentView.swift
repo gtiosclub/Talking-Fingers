@@ -4,9 +4,7 @@
 //
 //  Created by Nikola Cao on 1/24/26.
 //
-
 import SwiftUI
-
 struct ContentView: View {
     @Environment(AuthenticationViewModel.self) var authVM
     
@@ -21,7 +19,6 @@ struct ContentView: View {
         .environment(authVM)
     }
 }
-
 struct MainNavigationView: View {
     @Environment(AuthenticationViewModel.self) var authVM
     @State private var selectedSection: NavigationSection? = .home
@@ -55,7 +52,12 @@ struct MainNavigationView: View {
             }
         case .flashcards:
             NavigationStack {
-                FlashcardView()
+                FlashcardView(flashcard: FlashcardModel(
+                    term: "Test",
+                    id: UUID(uuidString: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a")!,
+                    category: "Test",
+                    gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
+                ))
             }
         case .stats:
             NavigationStack {
@@ -68,7 +70,6 @@ struct MainNavigationView: View {
         case home, flashcards, stats
     }
 }
-
 struct StatsView: View {
     var body: some View {
         VStack {
@@ -78,7 +79,6 @@ struct StatsView: View {
         .navigationTitle("Stats")
     }
 }
-
 #Preview {
     ContentView()
 }
