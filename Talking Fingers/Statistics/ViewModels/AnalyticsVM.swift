@@ -92,6 +92,23 @@ class AnalyticsVM {
     func cancelDelete() {
         pendingDelete = nil
     }
+    
+    func totalMasteryOverTime(flashcards: [FlashcardModel]) -> AnalyticsModel {
+        let flashcardVM = FlashcardVM()
+        let progress = flashcardVM.returnProgress(flashcards: flashcards)
+        return AnalyticsModel(date: Date(), value: progress)
+    }
+
+    func flashcardsSucceededThisWeek(flashcards: [FlashcardModel]) -> Int {
+            let now = Date()
+            let oneWeekAgo = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+
+            return flashcards.filter { flashcard in
+                guard let lastSucceeded = flashcard.lastSucceeded else { return false }
+                return lastSucceeded >= oneWeekAgo && lastSucceeded <= now
+            }.count
+        }
+
 
     // MARK: - Private
 
