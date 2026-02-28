@@ -31,7 +31,7 @@ struct SentenceBuilderView: View {
                         .frame(minHeight: 90)
                     
                     if vm.answer.isEmpty {
-                        Text("Tap or drag words below to build your sentence")
+                        Text("Tap or drag words below to build your sentence (\(vm.exercise.correctOrder.count) words)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -177,6 +177,7 @@ struct SentenceBuilderView: View {
 
             DispatchQueue.main.async {
                 vm.moveToBank(tokenID: id)
+                vm.draggingTokenID = nil
             }
         }
 

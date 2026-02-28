@@ -95,8 +95,7 @@ final class SentenceBuilderVM: ObservableObject {
             submitState = .idle
             return
         }
-
-        guard answer.count < exercise.correctOrder.count else { return }
+        
         if let token = bank.first(where: { $0.id == tokenID }) {
             bank.removeAll { $0.id == tokenID }
             let safeTo = max(0, min(index, answer.count))
