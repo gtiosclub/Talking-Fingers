@@ -8,16 +8,16 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SentenceBuilderView: View {
-
+    
     @StateObject var vm: SentenceBuilderVM
     @State private var isEditingAnswer = false
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-
+            
             Text(vm.exercise.prompt)
                 .font(.headline)
-
+            
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Your answer")
@@ -29,9 +29,9 @@ struct SentenceBuilderView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(Color(.systemGray6))
                         .frame(minHeight: 90)
-
+                    
                     if vm.answer.isEmpty {
-                        Text("Tap words below to build your sentence")
+                        Text("Tap or drag words below to build your sentence")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -55,14 +55,14 @@ struct SentenceBuilderView: View {
                     handleDrop(providers, insertIndex: vm.answer.count)
                 }
             }
-
+            
             Divider()
-
+            
             VStack(alignment: .leading, spacing: 8) {
                 Text("Word bank")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
+                
                 let cols = [GridItem(.adaptive(minimum: 70), spacing: 8)]
                 LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
                     ForEach(vm.bank) { token in
@@ -74,8 +74,13 @@ struct SentenceBuilderView: View {
                             }
                     }
                 }
+                .padding(12)
             }
-                
+            .contentShape(Rectangle())
+            .onDrop(of: [UTType.text], isTargeted: nil) { providers in
+                handleBankDrop(providers)
+            }
+            
             Spacer(minLength: 8)
             Button("Submit") { vm.submit() }
                 .buttonStyle(.borderedProminent)
@@ -85,22 +90,22 @@ struct SentenceBuilderView: View {
             switch vm.submitState {
             case .idle:
                 EmptyView()
-
+                
             case .correct:
                 VStack(alignment: .leading, spacing: 10) {
                     Text("CORRECT")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.green)
-
+                    
                     HStack {
                         Button("take a break") {
                             // hook later (navigate away)
                             vm.reset()
                         }
                         .buttonStyle(.bordered)
-
+                        
                         Spacer()
-
+                        
                         Button("continue") {
                             // hook later (advance exercise)
                             vm.reset()
@@ -113,19 +118,19 @@ struct SentenceBuilderView: View {
                     Text("INCORRECT")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.red)
-
+                    
                     Text("SOLUTION: \(solution)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-
+                    
                     HStack {
                         Button("end attempt") {
                             vm.reset()
                         }
                         .buttonStyle(.bordered)
-
+                        
                         Spacer()
-
+                        
                         Button("try again") {
                             vm.tryAgain()
                         }
@@ -137,6 +142,27 @@ struct SentenceBuilderView: View {
         .padding()
     }
     private func handleDrop(_ providers: [NSItemProvider], insertIndex: Int) -> Bool {
+        guard let provider = providers.first else { return false }
+        
+        provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, _ in
+            let str: String?
+            if let data = item as? Data {
+                str = String(data: data, encoding: .utf8)
+            } else {
+                str = item as? String
+            }
+            
+            guard let uuidStr = str, let id = UUID(uuidString: uuidStr) else { return }
+            
+            DispatchQueue.main.async {
+                vm.insertOrMoveInAnswer(tokenID: id, to: insertIndex)
+            }
+        }
+        
+        return true
+    }
+    
+    private func handleBankDrop(_ providers: [NSItemProvider]) -> Bool {
         guard let provider = providers.first else { return false }
 
         provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, _ in
@@ -150,7 +176,7 @@ struct SentenceBuilderView: View {
             guard let uuidStr = str, let id = UUID(uuidString: uuidStr) else { return }
 
             DispatchQueue.main.async {
-                vm.insertOrMoveInAnswer(tokenID: id, to: insertIndex)
+                vm.moveToBank(tokenID: id)
             }
         }
 

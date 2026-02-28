@@ -104,4 +104,11 @@ final class SentenceBuilderVM: ObservableObject {
             submitState = .idle
         }
     }
+    
+    func moveToBank(tokenID: UUID) {
+        guard let idx = answer.firstIndex(where: { $0.id == tokenID }) else { return }
+        let token = answer.remove(at: idx)
+        bank.append(token)
+        submitState = .idle
+    }
 }
