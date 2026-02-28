@@ -10,15 +10,19 @@ struct SentenceExerciseModel: Identifiable, Codable, Equatable {
     let id: UUID
     let prompt: String
     let correctOrder: [String]
+    let distractors: [String]
     let wordBank: [String]
-
+    
     init(prompt: String,
-         correctOrder: [String],
-         wordBank: [String]? = nil) {
+        correctOrder: [String],
+        distractors: [String] = [],
+        wordBank: [String]? = nil) {
         self.id = UUID()
         self.prompt = prompt
         self.correctOrder = correctOrder
-        self.wordBank = wordBank ?? correctOrder.shuffled()
+        self.distractors = distractors
+        let merged = correctOrder + distractors
+        self.wordBank = wordBank ?? merged.shuffled()
     }
     var wordBankTokenModels: [WordTokenModel] {
             wordBank.map { WordTokenModel(text: $0) }
