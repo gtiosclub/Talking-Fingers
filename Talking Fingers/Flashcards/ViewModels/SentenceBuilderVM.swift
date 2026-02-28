@@ -9,28 +9,38 @@ import Combine
 
 @MainActor
 final class SentenceBuilderVM: ObservableObject {
-
+    
+    enum SubmitState: Equatable {
+        case idle
+        case correct
+        case incorrect(solution: String)
+    }
+    
     let exercise: SentenceExerciseModel
     
-    @Published private(set) var bank: [String]
-    @Published private(set) var answer: [String]
+    @Published private(set) var bank: [WordTokenModel]
+    @Published private(set) var answer: [WordTokenModel]
+    @Published private(set) var submitState: SubmitState = .idle
+    @Published var draggingTokenID: UUID?
 
     init(exercise: SentenceExerciseModel) {
         self.exercise = exercise
-        self.bank = exercise.wordBank
+        self.bank = exercise.wordBankTokenModels
         self.answer = []
     }
 
-    func addWord(_ word: String) {
-        guard let idx = bank.firstIndex(of: word) else { return }
+    func addWord(_ token: WordTokenModel) {
+        guard let idx = bank.firstIndex(where: { $0.id == token.id }) else { return }
         bank.remove(at: idx)
-        answer.append(word)
+        answer.append(token)
+        submitState = .idle
     }
 
-    func removeWord(_ word: String) {
-        guard let idx = answer.firstIndex(of: word) else { return }
+    func removeWord(_ token: WordTokenModel) {
+        guard let idx = answer.firstIndex(where: { $0.id == token.id }) else { return }
         answer.remove(at: idx)
-        bank.append(word)
+        bank.append(token)
+        submitState = .idle
     }
 
     func moveAnswer(from source: IndexSet, to destination: Int) {
@@ -44,11 +54,13 @@ final class SentenceBuilderVM: ObservableObject {
         let adjustedDest = max(0, min(answer.count, destination - removedBefore))
 
         answer.insert(contentsOf: moving, at: adjustedDest)
+        submitState = .idle
     }
 
     func reset() {
-        bank = exercise.wordBank
+        bank = exercise.wordBankTokenModels
         answer = []
+        submitState = .idle
     }
 
     var isComplete: Bool {
@@ -56,6 +68,40 @@ final class SentenceBuilderVM: ObservableObject {
     }
 
     var isCorrect: Bool {
-        answer == exercise.correctOrder
+        answer.map(\.text) == exercise.correctOrder
+    }
+    
+    func submit() {
+        guard isComplete else { return }
+
+        if isCorrect {
+            submitState = .correct
+        } else {
+            let solution = exercise.correctOrder.joined(separator: " ")
+            submitState = .incorrect(solution: solution)
+        }
+    }
+    
+    func tryAgain() {
+        submitState = .idle
+    }
+    
+    func insertOrMoveInAnswer(tokenID: UUID, to index: Int) {
+        if let from = answer.firstIndex(where: { $0.id == tokenID }) {
+            let safeTo = max(0, min(index, answer.count - 1))
+            guard from != safeTo else { return }
+            let item = answer.remove(at: from)
+            answer.insert(item, at: safeTo)
+            submitState = .idle
+            return
+        }
+
+        guard answer.count < exercise.correctOrder.count else { return }
+        if let token = bank.first(where: { $0.id == tokenID }) {
+            bank.removeAll { $0.id == tokenID }
+            let safeTo = max(0, min(index, answer.count))
+            answer.insert(token, at: safeTo)
+            submitState = .idle
+        }
     }
 }

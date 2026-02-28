@@ -20,4 +20,7 @@ struct SentenceExerciseModel: Identifiable, Codable, Equatable {
         self.correctOrder = correctOrder
         self.wordBank = wordBank ?? correctOrder.shuffled()
     }
+    var wordBankTokenModels: [WordTokenModel] {
+            wordBank.map { WordTokenModel(text: $0) }
+    }
 }
