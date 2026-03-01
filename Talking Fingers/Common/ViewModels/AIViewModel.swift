@@ -36,21 +36,13 @@ import FirebaseFirestore
         }
     }
 
-    // MARK: - Generate AI Sentences
-    
-    /// Generates 3 ASL practice sentences (easy, medium, hard) using OpenAI
-    /// - Parameter flashcards: Array of StatsFlashcard representing user's vocabulary
-    /// - Returns: Array of 3 AISentenceModel objects with different difficulty levels
-    /// - Throws: AIError if API key is missing, request fails, or response cannot be decoded
     func generateAISentences(from flashcards: [StatsFlashcard]) async throws -> [AISentenceModel] {
         guard let apiKey = openAIKey else {
             throw AIError.missingAPIKey
         }
         
-        // 1. Generate prompt using PromptGenerator
         let prompt = generatePrompt(from: flashcards)
         
-        // 2. Create OpenAI request
         let requestBody: [String: Any] = [
             "model": "gpt-4o",
             "messages": [
@@ -74,7 +66,6 @@ import FirebaseFirestore
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
         
-        // 3. Make API call
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -89,13 +80,11 @@ import FirebaseFirestore
             throw AIError.apiError
         }
         
-        // 4. Decode OpenAI response
         let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: data)
         guard let content = openAIResponse.choices.first?.message.content else {
             throw AIError.emptyResponse
         }
         
-        // 5. Parse JSON content to get sentences
         guard let contentData = content.data(using: .utf8) else {
             throw AIError.decodingError
         }
@@ -103,21 +92,17 @@ import FirebaseFirestore
         let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
         let sentencesResponse = wrapper.sentences
         
-        // 6. Convert to AISentenceModel array
         var aiSentences: [AISentenceModel] = []
         
         for sentenceData in sentencesResponse {
-            // Split sentence into individual gloss words
             let glossWords = sentenceData.sentence
                 .split(separator: ",")
                 .flatMap { $0.split(separator: " ") }
                 .map { String($0).trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
             
-            // Create score array initialized with zeros (not practiced yet)
             let score = Array(repeating: 0, count: glossWords.count)
             
-            // Map difficulty string to enum
             let difficulty: Difficulty
             switch sentenceData.difficulty.lowercased() {
             case "easy":
@@ -130,7 +115,6 @@ import FirebaseFirestore
                 difficulty = .medium
             }
             
-            // Assign practice type based on difficulty
             let practiceType: PracticeType = (difficulty == .easy) ? .words : .signs
             
             let aiSentence = AISentenceModel(
@@ -147,11 +131,6 @@ import FirebaseFirestore
         return aiSentences
     }
 
-    // MARK: - Private Helper Methods
-    
-    /// Creates prompt for OpenAI using PromptGenerator
-    /// - Parameter flashcards: User's vocabulary flashcards
-    /// - Returns: Formatted prompt string
     private func generatePrompt(from flashcards: [StatsFlashcard]) -> String {
         return PromptGenerator.generatePromptForLLM(from: flashcards)
     }

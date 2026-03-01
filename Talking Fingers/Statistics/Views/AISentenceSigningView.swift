@@ -16,26 +16,21 @@ struct AISentenceSigningView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            // 1. Top progress bar
             CustomProgressBar(progress: progress)
                 .padding(.top, 20)
             
-            // 2. Subtitle
             Text("New sentence!")
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(.gray)
             
             Spacer()
-            // 3. Core sentence display & Gloss hint
             VStack(alignment: .leading, spacing: 40) {
-                // The main sentence
                 Text(sentenceModel.sentence)
                     .font(.system(size: 40, weight: .bold))
                     .foregroundColor(.black)
                     .multilineTextAlignment(.leading)
                 
-                // The reveal gloss hint
                 HStack(spacing: 6) {
                     Image(systemName: "eye")
                     Text("Tap to reveal gloss!")
@@ -47,7 +42,6 @@ struct AISentenceSigningView: View {
             
             Spacer()
             
-            // 4. Bottom CONTINUE button
             ContinueButton()
         }
         .padding(.horizontal, 24)
