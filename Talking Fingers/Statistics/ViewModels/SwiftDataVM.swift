@@ -53,4 +53,25 @@ class SwiftDataVM {
             }
         }
     }
+    // MARK: - AI Sentence Comprehension Grading
+    func gradeSentenceComprehension(correctGloss: [String], userAnswers: [String]) -> [Int] {
+        var score: [Int] = []
+        
+        for i in 0..<correctGloss.count {
+            if i < userAnswers.count {
+                let correctWord = correctGloss[i].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let userWord = userAnswers[i].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                
+                if correctWord == userWord {
+                    score.append(1)
+                } else {
+                    score.append(-1)
+                }
+            } else {
+                score.append(-1)
+            }
+        }
+        
+        return score
+    }
 }
