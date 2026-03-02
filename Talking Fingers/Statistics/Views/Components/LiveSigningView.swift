@@ -27,7 +27,7 @@ struct LiveSigningView: View {
             // Camera placeholder
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(uiColor: .systemGray6))
+                    .fill(Color(.systemGray).opacity(0.1))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)

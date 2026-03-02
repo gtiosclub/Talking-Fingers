@@ -8,7 +8,9 @@
 import AVFoundation
 import Vision
 import Foundation
+#if os(iOS)
 import CoreMotion
+#endif
 import CoreGraphics
 
 @Observable
@@ -37,8 +39,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
-
+    #if os(iOS)
     private let motionManager = CMMotionManager()
+    #endif
     var currentPitch: Double = 0.0
     
     override init() {
@@ -93,7 +96,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         
         // Ensure orientation is correct for the front camera
         if let connection = videoOutput.connection(with: .video) {
+            #if os(iOS)
             connection.videoOrientation = .portrait
+            #else
+            connection.videoRotationAngle = 0
+            #endif
             connection.isVideoMirrored = self.isMirrored
         }
     }
@@ -123,6 +130,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
     
     func startMotionUpdates() {
+        #if os(iOS)
         guard motionManager.isDeviceMotionAvailable else { return }
         
         motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
@@ -130,10 +138,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             guard let motion = motion else { return }
             self?.currentPitch = motion.attitude.pitch
         }
+        #else
+        // maxOS: No motion tracking available
+        currentPitch = 0.0
+        #endif
     }
 
     func stopMotionUpdates() {
+        #if os(iOS)
         motionManager.stopDeviceMotionUpdates()
+        #endif
     }
 
     func toggleRecording() {
