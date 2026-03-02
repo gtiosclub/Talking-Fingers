@@ -14,7 +14,7 @@ struct WordChipView: View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color(.systemBackground))
+            .background(Color.tfSurface)
             .overlay(
                 Capsule().stroke(Color.gray.opacity(0.25), lineWidth: 1)
             )

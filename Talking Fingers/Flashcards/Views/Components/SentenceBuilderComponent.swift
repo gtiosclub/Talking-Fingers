@@ -27,7 +27,7 @@ struct SentenceBuilderView: View {
                 }
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color(.systemGray6))
+                        .fill(Color.tfSurface)
                         .frame(minHeight: 90)
                     
                     if vm.answer.isEmpty {

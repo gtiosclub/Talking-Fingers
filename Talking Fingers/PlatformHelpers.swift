@@ -41,9 +41,11 @@ extension View {
 #if canImport(UIKit)
 import UIKit
 typealias PlatformImage = UIImage
+typealias PlatformColor = UIColor
 #elseif canImport(AppKit)
 import AppKit
 typealias PlatformImage = NSImage
+typealias PlatformColor = NSColor
 #endif
 
 func loadImage(baseName: String, ext: String) -> PlatformImage? {
@@ -78,3 +80,15 @@ extension View {
             }
         }
     }
+
+extension Color {
+    static var tfSurface: Color {
+        #if canImport(UIKit)
+        return Color(PlatformColor.systemGray6)
+        #elseif canImport(AppKit)
+        return Color(PlatformColor.controlBackgroundColor)
+        #else
+        return Color.gray.opacity(0.12)
+        #endif
+    }
+}
