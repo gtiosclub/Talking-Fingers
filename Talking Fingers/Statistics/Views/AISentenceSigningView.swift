@@ -1,5 +1,5 @@
 //
-//  AISentenceView.swift
+//  AISentenceSigningView.swift
 //  Talking Fingers
 //
 //  Created by Aimee on 2/22/26.
@@ -8,101 +8,116 @@
 import SwiftUI
 
 struct AISentenceSigningView: View {
-    // Accepts the existing data model
     let sentenceModel: AISentenceModel
-    
-    // Mock state for the progress bar (can be dynamically calculated based on sentenceModel.score later)
+
     @State private var progress: Double = 0.3
-    
+    @State private var currentPage: Int = 1
+    @State private var showGloss: Bool = false
+
+    var subtitle: String {
+        switch currentPage {
+        case 1: return "New sentence!"
+        case 2: return "Sign each word!"
+        default: return ""
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            // 1. Top progress bar
             CustomProgressBar(progress: progress)
                 .padding(.top, 20)
-            
-            // 2. Subtitle
-            Text("New sentence!")
+
+            Text(subtitle)
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(.gray)
-            
-            Spacer()
-            // 3. Core sentence display & Gloss hint
-            VStack(alignment: .leading, spacing: 40) {
-                // The main sentence
-                Text(sentenceModel.sentence)
-                    .font(.system(size: 40, weight: .bold))
-                    .foregroundColor(.black)
-                    .multilineTextAlignment(.leading)
-                
-                // The reveal gloss hint
-                HStack(spacing: 6) {
-                    Image(systemName: "eye")
-                    Text("Tap to reveal gloss!")
-                }
-                .font(.subheadline)
-                .foregroundColor(.gray)
-                .frame(maxWidth: .infinity, alignment: .center)
+                .animation(.easeInOut, value: currentPage)
+
+            if currentPage == 1 {
+                PageOneContent(
+                    sentenceModel: sentenceModel,
+                    showGloss: $showGloss,
+                    onContinue: {
+                        withAnimation { currentPage = 2 }
+                    }
+                )
+            } else if currentPage == 2 {
+                LiveSigningView(
+                    sentenceModel: sentenceModel,
+                    onBack: {
+                        withAnimation { currentPage = 1 }
+                    }
+                )
             }
-            
-            Spacer()
-            
-            // 4. Bottom CONTINUE button
-            ContinueButton()
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 30)
     }
 }
 
-// MARK: - Subcomponents
-struct CustomProgressBar: View {
-    var progress: Double
-    
+struct PageOneContent: View {
+    let sentenceModel: AISentenceModel
+    @Binding var showGloss: Bool
+    var onContinue: () -> Void
+
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Rectangle()
-                    .frame(width: geometry.size.width, height: 16)
-                    .opacity(0.3)
-                    .foregroundColor(.gray)
-                
-                Rectangle()
-                    .frame(width: min(CGFloat(progress) * geometry.size.width, geometry.size.width), height: 16)
-                    .foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 40) {
+            Spacer()
+
+            Text(sentenceModel.sentence)
+                .font(.system(size: 40, weight: .bold))
+                .foregroundColor(.black)
+                .multilineTextAlignment(.leading)
+
+            Button(action: { withAnimation { showGloss.toggle() } }) {
+                HStack(spacing: 6) {
+                    Image(systemName: showGloss ? "eye.slash" : "eye")
+                    Text(showGloss ? "Hide gloss" : "Tap to reveal gloss!")
+                }
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            if showGloss {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(sentenceModel.gloss, id: \.self) { word in
+                            Text(word)
+                                .font(.headline)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.gray.opacity(0.15))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+
+            Spacer()
+
+            Button(action: onContinue) {
+                Text("Continue")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.gray)
+                    .cornerRadius(8)
             }
         }
-        .frame(height: 16)
     }
 }
 
-struct ContinueButton: View {
-    var body: some View {
-        Button(action: {
-            // Placeholder: Does not do anything for now
-            print("Continue tapped")
-        }) {
-            Text("Continue")
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.gray)
-                .cornerRadius(8)
-        }
-    }
-}
-
-// MARK: - Preview
 #Preview {
-    // Construct test data that fits the project logic, including gloss breakdown and dummy scores
     let sampleData = AISentenceModel(
-        sentence: "I didn’t go to the store yesterday.",
+        sentence: "I didn't go to the store yesterday.",
         score: [0, 0, 0, 0, 0, 0, 0],
         practiceType: .words,
         difficulty: .medium,
-        gloss: ["I", "NOT", "GO", "STORE", "YESTERDAY"]
+        gloss: ["YESTERDAY", "STORE", "I", "GO-NOT"]
     )
-    
+
     AISentenceSigningView(sentenceModel: sampleData)
 }
