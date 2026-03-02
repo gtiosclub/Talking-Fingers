@@ -37,3 +37,44 @@ extension View {
         #endif
     }
 }
+
+#if canImport(UIKit)
+import UIKit
+typealias PlatformImage = UIImage
+#elseif canImport(AppKit)
+import AppKit
+typealias PlatformImage = NSImage
+#endif
+
+func loadImage(baseName: String, ext: String) -> PlatformImage? {
+    guard let url = Bundle.main.url(forResource: baseName, withExtension: ext) else {
+        return nil
+    }
+
+    #if canImport(UIKit)
+    return UIImage(contentsOfFile: url.path)
+    #elseif canImport(AppKit)
+    return NSImage(contentsOf: url)
+    #else
+    return nil
+    #endif
+}
+
+extension View {
+    @ViewBuilder
+    func universalImage(baseName: String, ext: String, height: CGFloat = 250) -> some View {
+            if let img = loadImage(baseName: baseName, ext: ext) {
+                #if canImport(UIKit)
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: height)
+                #elseif canImport(AppKit)
+                Image(nsImage: img)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: height)
+                #endif
+            }
+        }
+    }
