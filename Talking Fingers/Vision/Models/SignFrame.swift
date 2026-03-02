@@ -64,3 +64,22 @@ struct SignFrame: Identifiable, Codable {
         self.joints = tempJoints
     }
 }
+// MARK: - JSON encode/decode helpers (SignFrame array)
+
+extension SignFrame {
+    static func encodeArray(_ frames: [SignFrame], pretty: Bool = true) throws -> Data {
+        let encoder = JSONEncoder()
+        if pretty {
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        }
+        return try encoder.encode(frames)
+    }
+
+    static func decodeArray(from data: Data) throws -> [SignFrame] {
+        try JSONDecoder().decode([SignFrame].self, from: data)
+    }
+
+    static func decodeArray(from url: URL) throws -> [SignFrame] {
+        try decodeArray(from: Data(contentsOf: url))
+    }
+}

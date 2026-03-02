@@ -27,6 +27,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var isRecording = false
     private(set) var recordedFrames: [SignFrame] = []
     var recordingStartTime: CMTime? = nil
+    /// Raw hand pose observations recorded while recording, used for references.json export
+    private var recordedHandPoses: [(CMTime, VNHumanHandPoseObservation)] = []
 
     // --- Callbacks ---
     // Keep main signature so merge works with main as-is
@@ -152,12 +154,39 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     func toggleRecording() {
         if isRecording {
+            // STOP
             isRecording = false
-            let filtered = filterFrames(recordedFrames)
-            recordedFrames = filtered
+
+            // 1) Filter frames using your current SignFrame-based filter (keeps your exact behavior)
+            recordedFrames = filterFrames(recordedFrames)
             print("Filtered and saved \(recordedFrames.count) frames")
+
+            // 2) Export references.json using the raw recorded hand poses
+            let refs: [(TimeInterval, VNHumanHandPoseObservation)] = recordedHandPoses.map { (cmTime, obs) in
+                (cmTime.seconds, obs)
+            }
+            let filteredRefs = filterReferences(for: refs)
+            appendReferencesToJSON(filtered: filteredRefs)
+
+            // 3) Save the filtered SignFrames to a local JSON recording file
+            do {
+                let url = try saveRecordingFramesToJSON(recordedFrames)
+                print("Saved recording JSON: \(url.path)")
+
+                // Optional sanity check: round-trip decode
+                let decoded = try loadRecordingFramesFromJSON(url: url)
+                print("Reloaded recording JSON: \(decoded.count) frames")
+            } catch {
+                print("Failed saving/loading recording JSON: \(error)")
+            }
+
+            // clear raw poses now that we've written references
+            recordedHandPoses.removeAll(keepingCapacity: true)
+
         } else {
+            // START
             recordedFrames.removeAll(keepingCapacity: true)
+            recordedHandPoses.removeAll(keepingCapacity: true)
             recordingStartTime = nil
             isRecording = true
         }
@@ -165,6 +194,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     func clearBuffer() {
         recordedFrames.removeAll(keepingCapacity: true)
+        recordedHandPoses.removeAll(keepingCapacity: true)
         recordingStartTime = nil
     }
 
@@ -205,15 +235,21 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     self.onBodyPoseDetected?(bodyObservations, pts)
 
                     // Recording uses SignFrame (matches your model pipeline)
+                    // Recording uses SignFrame (matches your model pipeline)
                     if self.isRecording {
                         if self.recordingStartTime == nil { self.recordingStartTime = pts }
-                        
+
+                        // Save raw hand poses so appendReferencesToJSON has real data
+                        for obs in handObservations {
+                            self.recordedHandPoses.append((pts, obs))
+                        }
+
                         let frame = SignFrame(
                             body: primaryBody,
                             hands: handObservations,
                             at: pts
                         )
-                        
+
                         self.recordedFrames.append(frame)
                     }
                 }
@@ -475,5 +511,46 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         }
 
         return modelsDir.appendingPathComponent("references.json")
+    }
+    // MARK: - Local recording storage (SignFrame JSON)
+
+    private func recordingsDirectoryURL() throws -> URL {
+        let fm = FileManager.default
+        let appSupport = try fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+
+        let dir = appSupport.appendingPathComponent("Recordings", isDirectory: true)
+        if !fm.fileExists(atPath: dir.path) {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        return dir
+    }
+
+    /// Saves the given frames to Application Support/Recordings/*.json and returns the file URL.
+    func saveRecordingFramesToJSON(_ frames: [SignFrame], filename: String? = nil) throws -> URL {
+        let dir = try recordingsDirectoryURL()
+
+        let finalName: String = {
+            if let filename, !filename.isEmpty {
+                return filename.hasSuffix(".json") ? filename : "\(filename).json"
+            }
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+            return "recording_\(df.string(from: Date())).json"
+        }()
+
+        let url = dir.appendingPathComponent(finalName)
+        let data = try SignFrame.encodeArray(frames, pretty: true)
+        try data.write(to: url, options: [.atomic])
+        return url
+    }
+
+    /// Loads SignFrames from a local recording JSON.
+    func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
+        try SignFrame.decodeArray(from: url)
     }
 }
