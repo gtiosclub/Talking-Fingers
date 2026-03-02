@@ -11,5 +11,67 @@ import Foundation
 
 @Observable
 class SwiftDataVM {
+    private var modelContext: ModelContext?
     
+    init(modelContext: ModelContext? = nil) {
+        self.modelContext = modelContext
+    }
+    
+    func generatePromptForLLM(from flashcards: [StatsFlashcard]) -> String {
+        return PromptGenerator.generatePromptForLLM(from: flashcards)
+    }
+    
+    func fetchFlashcards() -> [StatsFlashcard] {
+        guard let modelContext = modelContext else { return [] }
+        
+        do {
+            let descriptor = FetchDescriptor<StatsFlashcard>()
+            return try modelContext.fetch(descriptor)
+        } catch {
+            print("Error fetching flashcards: \(error)")
+            return []
+        }
+    }
+    
+    func generatePromptFromCurrentData() -> String {
+        let flashcards = fetchFlashcards()
+        if flashcards.isEmpty { 
+            return "Error: No flashcards available to generate prompt." 
+        }
+        return generatePromptForLLM(from: flashcards)
+    }
+    
+    
+    func updateFlashcardProgress(flashcards: [StatsFlashcard], scores: [Int]) {
+        guard flashcards.count == scores.count else { return }
+        
+        for index in 0..<scores.count {
+            if scores[index] == 1 {
+                flashcards[index].progress = flashcards[index].progress.increase()
+            } else if scores[index] == -1 {
+                flashcards[index].progress = flashcards[index].progress.decrease()
+            }
+        }
+    }
+    // MARK: - AI Sentence Comprehension Grading
+    func gradeSentenceComprehension(correctGloss: [String], userAnswers: [String]) -> [Int] {
+        var score: [Int] = []
+        
+        for i in 0..<correctGloss.count {
+            if i < userAnswers.count {
+                let correctWord = correctGloss[i].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let userWord = userAnswers[i].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                
+                if correctWord == userWord {
+                    score.append(1)
+                } else {
+                    score.append(-1)
+                }
+            } else {
+                score.append(-1)
+            }
+        }
+        
+        return score
+    }
 }
