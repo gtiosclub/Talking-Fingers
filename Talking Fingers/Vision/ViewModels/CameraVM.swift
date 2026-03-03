@@ -35,6 +35,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
+    
+    // MARK: - Sign recognition
+    var frameBuffer: SignReference = SignReference()
+    private let dtwEngine = DTWService()
+    var lastScore = 30.0
+    private var frameCounter = 0
+    private let stride = 12 // Run DTW every 4th frame
+    private let maxBufferSize = 75 // ~3 seconds of
+    private var currentSignReference: SignReference?
+    private var currentSignFrame: SignFrame?
 
     private let motionManager = CMMotionManager()
     var currentPitch: Double = 0.0
@@ -43,6 +53,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         super.init()
     }
 
+    
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -183,6 +194,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     self.onPoseDetected?(handObservations, pts)
                     self.onBodyPoseDetected?(bodyObservations, pts)
                     
+                    // Do something with score
+                    self.processFrame(body: primaryBody, hands: handObservations, pitch: self.currentPitch, timestamp: pts)
+                    
                     self.normalizedHands = handObservations.compactMap {
                         NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2))
                     }
@@ -203,6 +217,47 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 print("Vision error: \(error)")
             }
         }
+    }
+    
+    //
+    func createSignFrame (body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
+        
+        let current = SignFrame(
+            body: body,
+            hands: hands,
+            at: timestamp,
+        )
+        
+        currentSignFrame = current
+        return current
+    }
+    
+    // MARK: - Processing Frames
+    /// Called by the Camera Manager/Delegate whenever a new frame is processed
+    // 1. Add 'timestamp' to the function parameters
+    func processFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], pitch: Double, timestamp: CMTime) {
+        
+        let currentFrame = createSignFrame(body: body, hands: hands, at: timestamp)
+
+        // 3. Handle Live Sign Recognition
+        // A. Manage Buffer
+        self.frameBuffer.frames.append(currentFrame)
+        if self.frameBuffer.frames.count > maxBufferSize {
+            self.frameBuffer.frames.removeFirst()
+        }
+
+        // B. Throttled DTW Check
+        self.frameCounter += 1
+        guard self.frameCounter % stride == 0 else { return }
+
+
+        let score = dtwEngine.computeDTW(
+            buffer: frameBuffer,
+            template: currentSignReference ?? SignReference()
+        )
+        
+        lastScore = score
+        
     }
 
     // NOTE: Kept identical to main for merge safety.
