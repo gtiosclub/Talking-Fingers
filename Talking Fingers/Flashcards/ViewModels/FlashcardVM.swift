@@ -86,6 +86,18 @@ class FlashcardVM {
         return progressTotal / Float(flashcards.count)
     }
     
+    func updateStatusFull(flashcard: FlashcardModel, progress: ProgressType) -> FlashcardModel {
+        return FlashcardModel(
+            term: flashcard.term,
+            id: flashcard.id,
+            lastSucceeded: flashcard.lastSucceeded,
+            starred: flashcard.starred,
+            progress: progress,
+            category: flashcard.category,
+            gifFileName: flashcard.gifFileName
+        )
+    }
+
     func updateStatus(for card: FlashcardModel, to newProgress: ProgressType) -> FlashcardModel {
         card.progress = newProgress
         return card
