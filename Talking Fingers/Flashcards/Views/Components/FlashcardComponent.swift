@@ -8,11 +8,25 @@
 import SwiftUI
 
 struct FlashcardComponent: View {
+    var card: FlashcardModel
+
     var body: some View {
-        Text("this is a flashcard component")
+        VStack {
+            Text(card.term)
+
+            universalImage(baseName: card.id.uuidString, ext: "png", height: 250)
+
+            Text("this is a flashcard component")
+        }
     }
 }
 
 #Preview {
-    FlashcardComponent()
+    FlashcardComponent(
+        card: FlashcardModel(
+            term: "Apple",
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            category: "Test"
+        )
+    )
 }
