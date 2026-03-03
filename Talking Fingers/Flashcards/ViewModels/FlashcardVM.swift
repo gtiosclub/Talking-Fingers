@@ -11,7 +11,7 @@ class FlashcardVM {
     var flashcards: [FlashcardModel] = []
     
     init() {
-        let dummyID = UUID(uuidString: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a")!
+        let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID() // change to static diagram test to test static diagram
         let dummyCard = FlashcardModel(
             term: "Test",
             id: dummyID,
@@ -56,17 +56,5 @@ class FlashcardVM {
             }
         }
         return progressTotal / Float(flashcards.count)
-    }
-    
-    init() {
-        let dummyID = UUID(uuidString: "11111111-1111-1111-1111-111111111111") ?? UUID()
-        
-        flashcards = [
-            FlashcardModel(
-                term: "Apple",
-                id: dummyID,
-                category: "Test"
-            )
-        ]
     }
 }
