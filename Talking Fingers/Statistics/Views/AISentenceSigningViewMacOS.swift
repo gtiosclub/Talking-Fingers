@@ -28,16 +28,13 @@ struct AISentenceSigningViewMacOS: View {
             
             Spacer()
             
-            // 3. Core sentence display & Gloss hint
             VStack(alignment: .leading, spacing: 48) {
-                // The main sentence - larger for desktop
                 Text(sentenceModel.sentence)
                     .font(.system(size: 56, weight: .bold))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.leading)
                     .lineSpacing(8)
                 
-                // The reveal gloss hint - clickable on macOS
                 Button(action: {
                     showGloss.toggle()
                 }) {
