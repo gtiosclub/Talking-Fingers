@@ -4,7 +4,7 @@
 //
 //  Created by Krish Prasad on 3/2/26.
 //
-enum ASLCategory: String, CaseIterable {
+enum TermCategory: String, CaseIterable {
     case alphabet = "alphabet"
     case numbers = "numbers"
     case greetings = "greetings"
@@ -16,8 +16,7 @@ enum ASLCategory: String, CaseIterable {
     case locations = "locations"
 }
 
-enum ASLWord: String, CaseIterable {
-
+enum Term: String, CaseIterable {
     case a = "A"
     case b = "B"
     case c = "C"
@@ -160,7 +159,7 @@ enum ASLWord: String, CaseIterable {
     case park = "PARK"
 
     // MARK: - Category Mapping
-    var category: ASLCategory {
+    var category: TermCategory {
         switch self {
 
         case .a, .b, .c, .d, .e, .f, .g, .h, .i, .j,
