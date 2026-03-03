@@ -4,13 +4,13 @@
 //
 //  Created by Isha Jain on 2/9/26.
 //
-
 import Foundation
 import Combine
 
 @Observable
 class FlashcardVM {
     var flashcards: [FlashcardModel] = FlashcardVM.dummyFlashcards
+    var lastCardID: UUID?
 
     static let dummyFlashcards: [FlashcardModel] = {
         let calendar = Calendar.current
@@ -38,6 +38,17 @@ class FlashcardVM {
         ]
     }()
     
+    init() {
+        let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID() // change to static diagram test to test static diagram
+        let dummyCard = FlashcardModel(
+            term: "Test",
+            id: dummyID,
+            category: "Test",
+            gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
+        )
+        self.flashcards = [dummyCard]
+    }
+    
     func searchFlashCard(input: String) -> [String] {
         var results = [String]()
         for card in flashcards {
@@ -46,12 +57,12 @@ class FlashcardVM {
             }
         }
         return results
-    }    
-  
+    }
+    
     func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
         flashcards.filter { $0.category == category }
-    }    
-  
+    }
+    
     func filterStarred(from flashcards: [FlashcardModel]) -> [FlashcardModel] {
         flashcards.filter { $0.starred }
     }
@@ -128,8 +139,8 @@ class FlashcardVM {
         // if flashcards array is: [A (weight 4), B (weight 1), C (weight 2)]
         // -> returns flattened array repeating card weight # times: [A, A, A, A, B, C, C]
         let weightedCards = flashcards.flatMap { card -> [FlashcardModel] in
-           let weight = weight(for: card)
-           return Array(repeating: card, count: weight)
+            let weight = weight(for: card)
+            return Array(repeating: card, count: weight)
         }
         
         // to not repeat same card twice in a row, create new array that removes most recent card
@@ -137,6 +148,7 @@ class FlashcardVM {
         let chosenCard = (filtered.isEmpty ? weightedCards : filtered).randomElement()
         lastCardID = chosenCard?.id
         return chosenCard
+    }
         
         // possible additions: should it end, if so when;
         // maybe we can have a queue of recently missed cards and prioritize those first;
@@ -161,18 +173,5 @@ class FlashcardVM {
         case .polishing: return 2
         case .mastered:  return 3
         }
-    }
-
-    
-    init() {
-        let dummyID = UUID(uuidString: "11111111-1111-1111-1111-111111111111") ?? UUID()
-        
-        flashcards = [
-            FlashcardModel(
-                term: "Apple",
-                id: dummyID,
-                category: "Test"
-            )
-        ]
     }
 }
