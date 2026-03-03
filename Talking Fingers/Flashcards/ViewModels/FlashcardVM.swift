@@ -4,10 +4,8 @@
 //
 //  Created by Isha Jain on 2/9/26.
 //
-
 import Foundation
 import Combine
-
 @Observable
 class FlashcardVM {
     var flashcards: [FlashcardModel] = FlashcardVM.dummyFlashcards
@@ -38,6 +36,17 @@ class FlashcardVM {
         ]
     }()
     
+    init() {
+        let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID() // change to static diagram test to test static diagram
+        let dummyCard = FlashcardModel(
+            term: "Test",
+            id: dummyID,
+            category: "Test",
+            gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
+        )
+        self.flashcards = [dummyCard]
+    }
+    
     func searchFlashCard(input: String) -> [String] {
         var results = [String]()
         for card in flashcards {
@@ -46,12 +55,12 @@ class FlashcardVM {
             }
         }
         return results
-    }    
-  
+    }
+    
     func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
         flashcards.filter { $0.category == category }
-    }    
-  
+    }
+    
     func filterStarred(from flashcards: [FlashcardModel]) -> [FlashcardModel] {
         flashcards.filter { $0.starred }
     }
@@ -74,6 +83,8 @@ class FlashcardVM {
         }
         return progressTotal / Float(flashcards.count)
     }
+<<<<<<< 53-the-link-to-gifs
+=======
     
     func updateStatus(for card: FlashcardModel, to newProgress: ProgressType) -> FlashcardModel {
         card.progress = newProgress
@@ -175,4 +186,5 @@ class FlashcardVM {
             )
         ]
     }
+>>>>>>> main
 }
