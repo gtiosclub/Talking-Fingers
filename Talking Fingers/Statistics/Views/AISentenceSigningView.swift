@@ -113,10 +113,10 @@ struct PageOneContent: View {
 #Preview {
     let sampleData = AISentenceModel(
         sentence: "I didn't go to the store yesterday.",
-        score: [0, 0, 0, 0, 0, 0, 0],
+        score: nil,
         practiceType: .words,
-        difficulty: .medium,
-        gloss: ["YESTERDAY", "STORE", "I", "GO-NOT"]
+        gloss: ["YESTERDAY", "STORE", "I", "GO-NOT"],
+        completed: false
     )
 
     AISentenceSigningView(sentenceModel: sampleData)
