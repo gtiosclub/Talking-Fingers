@@ -8,7 +8,7 @@ import Foundation
 import SwiftData
 
 @Model
-class FlashcardModel : Codable {
+class FlashcardModel {
     @Attribute(.unique) var id: UUID
     var term: String
     var lastSucceeded: Date?

@@ -138,9 +138,11 @@ class FlashcardVM {
 
     func updateFlashcard(_ card: FlashcardModel, modelContext: ModelContext) async {
         try? modelContext.save()
-
+        
         Task {
             try? await firebaseService.uploadFlashcards([card])
+        }
+    }
     
     func updateStatusFull(flashcard: FlashcardModel, progress: ProgressType) -> FlashcardModel {
         return FlashcardModel(
