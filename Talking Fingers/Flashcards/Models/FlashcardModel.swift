@@ -5,9 +5,12 @@
 //  Created by Isha Jain on 1/29/26.
 //
 import Foundation
+import SwiftData
+
+@Model
 class FlashcardModel : Codable {
+    @Attribute(.unique) var id: UUID
     var term: String
-    var id: UUID = UUID()
     var lastSucceeded: Date?
     var starred: Bool
     var progress: ProgressType
@@ -17,13 +20,13 @@ class FlashcardModel : Codable {
     init(term: String, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType, category: String, gifFileName: String? = nil) {
         self.term = term
         self.id = id
+        self.term = term
         self.lastSucceeded = lastSucceeded
         self.starred = starred
         self.progress = progress
         self.category = category
         self.gifFileName = gifFileName
-    }
-    
+    }    
     init(term: String, id: UUID, category: String, gifFileName: String? = nil) {
         self.term = term
         self.id = id
