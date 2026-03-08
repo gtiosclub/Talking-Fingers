@@ -440,10 +440,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return try JSONDecoder().decode([SignReference].self, from: data)
     }
 
-    func recordingCount(forSign signName: String) -> Int {
-        (try? loadSignReferences(forSign: signName).count) ?? 0
-    }
-
     // MARK: - Local recording storage (SignFrame JSON)
 
     private func recordingsDirectoryURL() throws -> URL {

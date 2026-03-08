@@ -47,7 +47,7 @@ struct CameraView: View {
     @State private var bodySkeletonVisibility: Bool = true
 
     @State private var signName: String = ""
-    @State private var recordingCountForSign: Int = 0
+    @State private var signType: SignType = .static
 
     @State private var countdown: Int = 0
     @State private var countdownTask: Task<Void, Never>?
@@ -106,15 +106,12 @@ struct CameraView: View {
                         .padding(10)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                        if !signName.isEmpty {
-                            Text("\(recordingCountForSign) rec.")
-                                .font(.subheadline.weight(.medium))
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                                .onChange(of: signName) {
-                                    recordingCountForSign = cameraVM.recordingCount(forSign: signName.lowercased())
-                                }
+                        Picker("", selection: $signType) {
+                            Text("Static").tag(SignType.static)
+                            Text("Dynamic").tag(SignType.dynamic)
                         }
+                        .pickerStyle(.segmented)
+                        .frame(width: 160)
                     }
                     .padding(.horizontal)
 
@@ -389,10 +386,8 @@ struct CameraView: View {
             do {
                 let filteredFrames = cameraVM.recordedFrames
 
-                let signRef = SignReference(signName: normalizedName, frames: filteredFrames)
+                let signRef = SignReference(signName: normalizedName, signType: signType, frames: filteredFrames)
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
-
-                recordingCountForSign = cameraVM.recordingCount(forSign: normalizedName)
 
                 let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
