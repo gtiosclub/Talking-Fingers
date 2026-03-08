@@ -27,7 +27,7 @@ struct CameraView: View {
     @State private var jointVisibility: [VNHumanHandPoseObservation.JointName: Bool] = {
         var dict: [VNHumanHandPoseObservation.JointName: Bool] = [:]
         for joint in JointsSheetView.handJointLabels {
-            dict[joint.name] = false
+            dict[joint.name] = true
         }
         return dict
     }()
@@ -36,7 +36,7 @@ struct CameraView: View {
     @State private var bodyJointVisibility: [VNHumanBodyPoseObservation.JointName: Bool] = {
         var dict: [VNHumanBodyPoseObservation.JointName: Bool] = [:]
         for joint in JointsSheetView.bodyJointLabels {
-            dict[joint.name] = false
+            dict[joint.name] = true
         }
         return dict
     }()
