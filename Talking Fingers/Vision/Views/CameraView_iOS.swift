@@ -383,9 +383,15 @@ struct CameraView: View {
 
             let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
 
-            do {
-                let filteredFrames = cameraVM.recordedFrames
+            let filteredFrames = cameraVM.recordedFrames
 
+            guard !filteredFrames.isEmpty else {
+                print("Recording for '\(normalizedName)' produced 0 frames after filtering — not saved.")
+                cameraVM.clearBuffer()
+                return
+            }
+
+            do {
                 let signRef = SignReference(signName: normalizedName, signType: signType, frames: filteredFrames)
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
 
