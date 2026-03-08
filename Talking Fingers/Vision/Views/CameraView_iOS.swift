@@ -46,6 +46,9 @@ struct CameraView: View {
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
+    @State private var signName: String = ""
+    @State private var recordingCountForSign: Int = 0
+
     @State private var countdown: Int = 0
     @State private var countdownTask: Task<Void, Never>?
 
@@ -91,6 +94,30 @@ struct CameraView: View {
         ScrollView {
             VStack(spacing: 16) {
                 if cameraVM.isAuthorized {
+                    HStack(spacing: 12) {
+                        HStack {
+                            Image(systemName: "character.cursor.ibeam")
+                                .foregroundStyle(.secondary)
+                            TextField("Sign name", text: $signName)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .submitLabel(.done)
+                        }
+                        .padding(10)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                        if !signName.isEmpty {
+                            Text("\(recordingCountForSign) rec.")
+                                .font(.subheadline.weight(.medium))
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .onChange(of: signName) {
+                                    recordingCountForSign = cameraVM.recordingCount(forSign: signName.lowercased())
+                                }
+                        }
+                    }
+                    .padding(.horizontal)
+
                     ZStack {
                         CameraPreviewView(session: cameraVM.session)
                             .ignoresSafeArea()
@@ -186,7 +213,7 @@ struct CameraView: View {
                         .foregroundStyle(.red, .primary)
                         .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
-                .disabled(countdown > 0)
+                .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { showJointsSheet = true }) {
@@ -349,7 +376,6 @@ struct CameraView: View {
 
     private func toggleRecording() {
         if cameraVM.isRecording {
-            // Trim trailing frames recorded after hands left the view
             if let cutoff = handsLastSeenPTS {
                 cameraVM.trimFrames(after: cutoff)
             }
@@ -358,12 +384,21 @@ struct CameraView: View {
             handsLastSeenDate = nil
             handsLastSeenPTS = nil
 
+            let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
+
             do {
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(cameraVM.recordedFrames)
+                let filteredFrames = cameraVM.recordedFrames
+
+                let signRef = SignReference(signName: normalizedName, frames: filteredFrames)
+                try cameraVM.saveSignReference(signRef, forSign: normalizedName)
+
+                recordingCountForSign = cameraVM.recordingCount(forSign: normalizedName)
+
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)
-                print("Saved recording to: \(fileURL.path) (\(decodedFrames.count) frames)")
+                print("Saved '\(normalizedName)' recording: \(fileURL.path) (\(decodedFrames.count) frames)")
             } catch {
                 print("Recording save/load error: \(error)")
             }
