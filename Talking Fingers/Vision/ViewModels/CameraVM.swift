@@ -287,17 +287,22 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     // Filter frames (SignFrame-based)
+    // Relaxed thresholds (8 joints, 0.6 confidence) to support difficult hand shapes
+    // like "m" where fingers touching can reduce Vision's joint detection.
     func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
+        let requiredJoints = 8
+        let minConfidence: Float = 0.6
+
         return frames.filter { frame in
             let leftHandCount = frame.joints.keys.filter { $0.hasPrefix("left") && !$0.contains("Shoulder") && !$0.contains("Elbow") }.count
             let rightHandCount = frame.joints.keys.filter { $0.hasPrefix("right") && !$0.contains("Shoulder") && !$0.contains("Elbow") }.count
 
-            guard leftHandCount >= 12 || rightHandCount >= 12 else { return false }
+            guard leftHandCount >= requiredJoints || rightHandCount >= requiredJoints else { return false }
 
             let totalConfidence = frame.joints.values.reduce(0) { $0 + $1.confidence }
             let avgConfidence = totalConfidence / Float(frame.joints.count)
 
-            return avgConfidence >= 0.7
+            return avgConfidence >= minConfidence
         }
     }
     
