@@ -46,6 +46,15 @@ struct CameraView: View {
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
+    @State private var countdown: Int = 0
+    @State private var countdownTask: Task<Void, Never>?
+
+    /// Tracks when both hands were last visible during a recording.
+    /// `nil` means hands haven't appeared yet this recording session.
+    @State private var handsLastSeenDate: Date?
+    @State private var handsLastSeenPTS: CMTime?
+    private let autoStopGracePeriod: TimeInterval = 1.5
+
     // Store all hand joint connections for drawing lines
     let handConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
         // Thumb
@@ -93,6 +102,18 @@ struct CameraView: View {
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
                         }
+
+                        if countdown > 0 {
+                            Color.black.opacity(0.35)
+                                .allowsHitTesting(false)
+
+                            Text("\(countdown)")
+                                .font(.system(size: 120, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
+                                .contentTransition(.numericText())
+                                .animation(.easeInOut(duration: 0.3), value: countdown)
+                        }
                     }
                     .aspectRatio(9.0 / 16.0, contentMode: .fit)
                     .frame(maxWidth: .infinity)
@@ -126,8 +147,18 @@ struct CameraView: View {
             cameraVM.checkPermission()
             cameraVM.start()
 
-            cameraVM.onPoseDetected = { handObservations, _ in
+            cameraVM.onPoseDetected = { handObservations, pts in
                 hands = handObservations
+
+                guard cameraVM.isRecording else { return }
+
+                if !handObservations.isEmpty {
+                    handsLastSeenDate = Date()
+                    handsLastSeenPTS = pts
+                } else if let lastSeen = handsLastSeenDate,
+                          Date().timeIntervalSince(lastSeen) >= autoStopGracePeriod {
+                    toggleRecording()
+                }
             }
 
             cameraVM.onBodyPoseDetected = { bodyObservations, _ in
@@ -155,6 +186,7 @@ struct CameraView: View {
                         .foregroundStyle(.red, .primary)
                         .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
+                .disabled(countdown > 0)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { showJointsSheet = true }) {
@@ -317,14 +349,17 @@ struct CameraView: View {
 
     private func toggleRecording() {
         if cameraVM.isRecording {
-            // Stop recording (CameraVM handles filtering + references.json export)
+            // Trim trailing frames recorded after hands left the view
+            if let cutoff = handsLastSeenPTS {
+                cameraVM.trimFrames(after: cutoff)
+            }
+
             cameraVM.toggleRecording()
+            handsLastSeenDate = nil
+            handsLastSeenPTS = nil
 
             do {
-                // Save filtered SignFrames -> JSON
                 let fileURL = try cameraVM.saveRecordingFramesToJSON(cameraVM.recordedFrames)
-
-                // Load JSON -> SignFrames (round-trip proof)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)
@@ -335,7 +370,21 @@ struct CameraView: View {
 
             cameraVM.clearBuffer()
         } else {
-            // Start
+            startCountdownThenRecord()
+        }
+    }
+
+    private func startCountdownThenRecord() {
+        countdown = 3
+        handsLastSeenDate = nil
+        handsLastSeenPTS = nil
+        countdownTask = Task {
+            for tick in stride(from: 3, through: 1, by: -1) {
+                countdown = tick
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { countdown = 0; return }
+            }
+            countdown = 0
             cameraVM.toggleRecording()
         }
     }

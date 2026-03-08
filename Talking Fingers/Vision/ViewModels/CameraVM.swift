@@ -330,6 +330,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         })
     }
 
+    /// Removes all frames (and raw hand poses) that were recorded after `cutoff`.
+    /// Call this before `filterFrames` / `filterReferences` to discard the
+    /// trailing grace-period where hands were no longer visible.
+    func trimFrames(after cutoff: CMTime) {
+        recordedFrames.removeAll { $0.timestamp > cutoff }
+        recordedHandPoses.removeAll { $0.0 > cutoff }
+    }
+
     // Filter frames (SignFrame-based)
     func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
         let requiredBodyJoints = ["leftShoulder", "rightShoulder", "leftElbow", "rightElbow"]
