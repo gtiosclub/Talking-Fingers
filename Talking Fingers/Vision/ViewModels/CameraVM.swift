@@ -268,8 +268,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return CGPoint(x: x, y: y)
     }
     
-    // returns translated list that treats some anchor joint (e.x. wrist) as the origin (0,0)
-    // and the locations of every other joint relative to it
+    // Returns translated list that treats some anchor joint (e.g. wrist) as the origin (0,0)
+    // and the locations of every other joint relative to it.
     func convertAbsolutePointsToRelativePoints(
         _ hand: VNHumanHandPoseObservation,
         joints: [VNHumanHandPoseObservation.JointName],
@@ -290,6 +290,31 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                                y: p.location.y - a.location.y))
         }
         return rel
+    }
+
+    /// Returns body joints (shoulders + elbows) normalized relative to the body center,
+    /// defined as the midpoint of both shoulders (body center = 0,0).
+    func convertBodyPointsToRelativePoints(
+        _ body: VNHumanBodyPoseObservation,
+        joints: [VNHumanBodyPoseObservation.JointName] = [.leftShoulder, .rightShoulder, .leftElbow, .rightElbow],
+        minConf: Float = 0.3
+    ) -> [VNHumanBodyPoseObservation.JointName: CGPoint]? {
+        guard let ls = try? body.recognizedPoint(.leftShoulder),
+              let rs = try? body.recognizedPoint(.rightShoulder),
+              ls.confidence >= minConf,
+              rs.confidence >= minConf
+        else { return nil }
+
+        let centerX = (ls.location.x + rs.location.x) / 2
+        let centerY = (ls.location.y + rs.location.y) / 2
+
+        var rel: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+        for j in joints {
+            guard let p = try? body.recognizedPoint(j), p.confidence >= minConf else { continue }
+            rel[j] = CGPoint(x: p.location.x - centerX, y: p.location.y - centerY)
+        }
+
+        return rel.isEmpty ? nil : rel
     }
     
     // Filter frames (Vision-based) - left untouched
