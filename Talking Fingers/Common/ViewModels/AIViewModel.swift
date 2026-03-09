@@ -36,12 +36,12 @@ import FirebaseFirestore
         }
     }
 
-    func generateAISentences(from flashcards: [StatsFlashcard]) async throws -> [AISentenceModel] {
+    func generateAISentences(from flashcards: [StatsFlashcard], focusTerms: [String] = []) async throws -> [AISentenceModel] {
         guard let apiKey = openAIKey else {
             throw AIError.missingAPIKey
         }
         
-        let prompt = generatePrompt(from: flashcards)
+        let prompt = generatePrompt(from: flashcards, focusTerms: focusTerms)
         
         let requestBody: [String: Any] = [
             "model": "gpt-4o",
@@ -100,29 +100,15 @@ import FirebaseFirestore
                 .flatMap { $0.split(separator: " ") }
                 .map { String($0).trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
-            
-            let score = Array(repeating: 0, count: glossWords.count)
-            
-            let difficulty: Difficulty
-            switch sentenceData.difficulty.lowercased() {
-            case "easy":
-                difficulty = .easy
-            case "medium":
-                difficulty = .medium
-            case "hard":
-                difficulty = .hard
-            default:
-                difficulty = .medium
-            }
-            
-            let practiceType: PracticeType = (difficulty == .easy) ? .words : .signs
+                        
+            let practiceType: PracticeType = .words
             
             let aiSentence = AISentenceModel(
                 sentence: sentenceData.sentence,
-                score: score,
+                score: nil,
                 practiceType: practiceType,
-                difficulty: difficulty,
-                gloss: glossWords
+                gloss: glossWords,
+                completed: false
             )
             
             aiSentences.append(aiSentence)
@@ -131,8 +117,8 @@ import FirebaseFirestore
         return aiSentences
     }
 
-    private func generatePrompt(from flashcards: [StatsFlashcard]) -> String {
-        return PromptGenerator.generatePromptForLLM(from: flashcards)
+    private func generatePrompt(from flashcards: [StatsFlashcard], focusTerms: [String]) -> String {
+        return PromptGenerator.generatePromptForLLM(from: flashcards, focusTerms: focusTerms)
     }
 }
 
@@ -155,7 +141,6 @@ private struct SentencesWrapper: Codable {
 }
 
 private struct SentenceData: Codable {
-    let difficulty: String
     let sentence: String
 }
 

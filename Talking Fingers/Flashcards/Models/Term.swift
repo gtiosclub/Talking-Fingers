@@ -206,4 +206,8 @@ enum Term: String, CaseIterable {
             return .locations
         }
     }
+    
+    static func words(for category: TermCategory) -> [Term] {
+        return Self.allCases.filter { $0.category == category }
+    }
 }

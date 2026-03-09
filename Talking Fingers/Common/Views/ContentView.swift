@@ -54,9 +54,9 @@ struct MainNavigationView: View {
             NavigationStack {
                 FlashcardView(flashcard: FlashcardModel(
                     term: "Test",
-                    id: UUID(uuidString: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a")!,
+                    id: UUID(uuidString: "GifDiagramTest") ?? UUID(),
                     category: "Test",
-                    gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
+                    gifFileName: "GifDiagramTest.gif"
                 ))
             }
         case .stats:
