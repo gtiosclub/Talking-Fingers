@@ -21,11 +21,11 @@ struct FlashcardView: View {
     }
 }
 #Preview {
-    let dummyID = UUID(uuidString: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a")!
+    let dummyID = UUID(uuidString: "GifDiagramTest")!
     FlashcardView(flashcard: FlashcardModel(
         term: "Test",
         id: dummyID,
         category: "Test",
-        gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
+        gifFileName: "GifDiagramTest.gif"
     ))
 }
