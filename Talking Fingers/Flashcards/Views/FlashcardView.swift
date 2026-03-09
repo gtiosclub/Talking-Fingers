@@ -21,7 +21,7 @@ struct FlashcardView: View {
     }
 }
 #Preview {
-    let dummyID = UUID(uuidString: "GifDiagramTest")!
+    let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID()
     FlashcardView(flashcard: FlashcardModel(
         term: "Test",
         id: dummyID,
