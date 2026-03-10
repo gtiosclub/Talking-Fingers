@@ -144,10 +144,10 @@ struct ContinueButtonMacOS: View {
     // Construct test data that fits the project logic, including gloss breakdown and dummy scores
     let sampleData = AISentenceModel(
         sentence: "I didn't go to the store yesterday.",
-        score: [0, 0, 0, 0, 0, 0, 0],
+        score: nil,
         practiceType: .words,
-        difficulty: .medium,
-        gloss: ["I", "NOT", "GO", "STORE", "YESTERDAY"]
+        gloss: ["I", "NOT", "GO", "STORE", "YESTERDAY"],
+        completed: false
     )
     
     AISentenceSigningViewMacOS(sentenceModel: sampleData)
