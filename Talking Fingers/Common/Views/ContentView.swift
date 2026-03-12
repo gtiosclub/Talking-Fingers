@@ -27,12 +27,14 @@ struct MainNavigationView: View {
         NavigationSplitView {
             // Sidebar
             List(selection: $selectedSection) {
-                Label("Vision", systemImage: "eyeglasses")
+                Label("home", systemImage: "home")
                     .tag(NavigationSection.home)
                 Label("Flashcards", systemImage: "rectangle.stack.fill")
                     .tag(NavigationSection.flashcards)
                 Label("Stats", systemImage: "chart.bar.fill")
                     .tag(NavigationSection.stats)
+                Label("Vision", systemImage: "eyeglasses")
+                    .tag(NavigationSection.camera)
             }
             .navigationTitle("Talking Fingers")
         } detail: {
@@ -47,9 +49,9 @@ struct MainNavigationView: View {
         switch section {
         case .home:
             NavigationStack {
-                CameraView()
-                    .environment(authVM)
+                Text("home")
             }
+            
         case .flashcards:
             NavigationStack {
                 FlashcardView(flashcard: FlashcardModel(
@@ -63,11 +65,18 @@ struct MainNavigationView: View {
             NavigationStack {
                 StatsView()
             }
+            
+        case .camera:
+            NavigationStack {
+                CameraView()
+                    .environment(authVM)
+            }
         }
+        
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, stats
+        case home, flashcards, stats, camera
     }
 }
 struct StatsView: View {
