@@ -20,7 +20,6 @@ class FlashcardModel {
     init(term: String, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType, category: String, gifFileName: String? = nil) {
         self.term = term
         self.id = id
-        self.term = term
         self.lastSucceeded = lastSucceeded
         self.starred = starred
         self.progress = progress

@@ -15,17 +15,21 @@ enum PracticeType: String, Codable {
 struct AISentenceModel: Identifiable, Codable {
     var id = UUID()
     var sentence: String
-    var gloss: [String]
+    var gloss: [Term]
     var score: Int?
     var practiceType: PracticeType
     var completed: Bool
 
-    init(sentence: String, score: Int? = nil, practiceType: PracticeType, gloss: [String], completed: Bool = false) {
+    init(sentence: String, score: Int? = nil, practiceType: PracticeType, gloss: [Term], completed: Bool = false) {
         self.id = UUID()
         self.sentence = sentence
         self.score = score
         self.practiceType = practiceType
         self.gloss = gloss
         self.completed = completed
+    }
+    
+    var glossStrings: [String] {
+        return gloss.map { $0.rawValue }
     }
 }
