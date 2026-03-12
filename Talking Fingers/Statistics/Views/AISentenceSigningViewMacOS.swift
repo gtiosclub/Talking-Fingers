@@ -56,7 +56,7 @@ struct AISentenceSigningViewMacOS: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.secondary)
                         
-                        Text(sentenceModel.gloss.joined(separator: " → "))
+                        Text(sentenceModel.gloss.map { $0.rawValue }.joined(separator: " → "))
                             .font(.system(size: 20, weight: .medium))
                             .foregroundColor(.primary)
                     }
@@ -146,7 +146,7 @@ struct ContinueButtonMacOS: View {
         sentence: "I didn't go to the store yesterday.",
         score: nil,
         practiceType: .words,
-        gloss: ["I", "NOT", "GO", "STORE", "YESTERDAY"],
+        gloss: [.yesterday, .store, .me, .goNot],
         completed: false
     )
     

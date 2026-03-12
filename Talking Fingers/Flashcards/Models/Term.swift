@@ -4,6 +4,9 @@
 //
 //  Created by Krish Prasad on 3/2/26.
 //
+
+import Foundation
+
 enum TermCategory: String, CaseIterable {
     case alphabet = "alphabet"
     case numbers = "numbers"
@@ -16,7 +19,7 @@ enum TermCategory: String, CaseIterable {
     case locations = "locations"
 }
 
-enum Term: String, CaseIterable {
+enum Term: String, CaseIterable, Codable {
     case a = "A"
     case b = "B"
     case c = "C"
@@ -209,5 +212,31 @@ enum Term: String, CaseIterable {
     
     static func words(for category: TermCategory) -> [Term] {
         return Self.allCases.filter { $0.category == category }
+    }
+}
+
+// MARK: - Conversion Helpers
+extension Term {
+    /// Convert a String to Term, attempting case-insensitive and normalized matching
+    static func from(_ string: String) -> Term? {
+        let normalized = string.uppercased().trimmingCharacters(in: .whitespaces)
+        return Term(rawValue: normalized)
+    }
+    
+    /// Convert an array of Strings to Terms, filtering out unrecognized terms
+    static func fromStrings(_ strings: [String]) -> [Term] {
+        return strings.compactMap { Term.from($0) }
+    }
+    
+    var displayName: String {
+        return self.rawValue
+    }
+}
+
+// MARK: - FlashcardModel Extension
+extension FlashcardModel {
+    /// Try to convert this flashcard's term to a Term enum
+    var asTerm: Term? {
+        return Term.from(self.term)
     }
 }

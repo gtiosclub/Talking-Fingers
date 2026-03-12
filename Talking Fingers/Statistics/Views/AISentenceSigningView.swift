@@ -82,8 +82,8 @@ struct PageOneContent: View {
             if showGloss {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(sentenceModel.gloss, id: \.self) { word in
-                            Text(word)
+                        ForEach(sentenceModel.gloss, id: \.self) { term in
+                            Text(term.rawValue)
                                 .font(.headline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
@@ -115,7 +115,7 @@ struct PageOneContent: View {
         sentence: "I didn't go to the store yesterday.",
         score: nil,
         practiceType: .words,
-        gloss: ["YESTERDAY", "STORE", "I", "GO-NOT"],
+        gloss: [.yesterday, .store, .me, .goNot],
         completed: false
     )
 
