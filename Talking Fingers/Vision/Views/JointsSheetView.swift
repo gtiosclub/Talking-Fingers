@@ -4,7 +4,7 @@
 //
 //  Created by Nikola Cao on 2/6/26.
 //
-#if os(iOS)
+//#if os(iOS)
 import SwiftUI
 import Vision
 struct JointsSheetView: View {
@@ -96,9 +96,9 @@ struct JointsSheetView: View {
             }
             .navigationTitle("Joint Overlays")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
+                ToolbarItem(placement: .automatic) {
+                        Button("Done") { dismiss() }
+                    }
             }
         }
     }
@@ -142,4 +142,4 @@ struct JointsSheetView: View {
         )
     }
 }
-#endif  // os(iOS)66  os(iOS) 
+//#endif  // os(iOS)66  os(iOS) 
