@@ -192,38 +192,60 @@ class FlashcardVM {
     func nextCard() -> FlashcardModel? {
         guard !flashcards.isEmpty else { return nil }
         
-        // return a weight to help determine probability of card appearing
-        func weight(for card: FlashcardModel) -> Int {
+        let now = Date()
+        
+        func baseWeight(for card: FlashcardModel) -> Double {
             switch card.progress {
-            case .new:
-                return 5
-            case .learning:
-                return 4
-            case .polishing:
-                return 2
-            case .mastered:
-                return 1
+            case .new: return 5
+            case .learning: return 4
+            case .polishing: return 2
+            case .mastered: return 1
             }
         }
         
-        // if flashcards array is: [A (weight 4), B (weight 1), C (weight 2)]
-        // -> returns flattened array repeating card weight # times: [A, A, A, A, B, C, C]
-        let weightedCards = flashcards.flatMap { card -> [FlashcardModel] in
-            let weight = weight(for: card)
-            return Array(repeating: card, count: weight)
+        // ideal amount of time before seeing cards
+        func interval(for card: FlashcardModel) -> TimeInterval {
+            switch card.progress {
+            case .new: return 0
+            case .learning: return 60 * 60 * 24 // 1 day
+            case .polishing: return 60 * 60 * 24 * 3 // 3 days
+            case .mastered: return 60 * 60 * 24 * 7 // 7 days
+            }
         }
         
-        // to not repeat same card twice in a row, create new array that removes most recent card
-        let filtered = weightedCards.filter { $0.id != lastCardID }
-        let chosenCard = (filtered.isEmpty ? weightedCards : filtered).randomElement()
-        lastCardID = chosenCard?.id
-        return chosenCard
-    }
+        // decides how overdue a card is to increase or lower the chance of it appearing
+        func timeMultiplier(for card: FlashcardModel) -> Double {
+            guard let last = card.lastSucceeded else { return 2.0 }
+            let elapsed = now.timeIntervalSince(last)
+            let target = interval(for: card)
+            guard target > 0 else { return 1.5 }
+            let ratio = elapsed / target
+            if ratio >= 1 { return 2.0 }
+            if ratio >= 0.5 { return 1.2 }
+            return 0.6
+        }
         
-        // possible additions: should it end, if so when;
-        // maybe we can have a queue of recently missed cards and prioritize those first;
-        // implementing time-spaced spacing with lastSucceeded
-
+        let weightedPairs = flashcards.map { card -> (card: FlashcardModel, weight: Double) in
+            let weight = max(0.1, baseWeight(for: card) * timeMultiplier(for: card))
+            return (card, weight)
+        }
+        
+        // filter out the last card to prevent repeats
+        let filteredPairs = weightedPairs.filter { $0.card.id != lastCardID }
+        let finalPairs = filteredPairs.isEmpty ? weightedPairs : filteredPairs
+        
+        let totalWeight = finalPairs.reduce(0) { $0 + $1.weight }
+        var randomThreshold = Double.random(in: 0..<totalWeight)
+        for pair in finalPairs {
+            randomThreshold -= pair.weight
+            if randomThreshold <= 0 {
+                lastCardID = pair.card.id
+                return pair.card
+            }
+        }
+        return finalPairs.last?.card
+    }
+    
     func generateDailyReviewQueue(limit: Int = 5) -> DailyReviewQueue {
         let sorted = flashcards.sorted { a, b in
             if a.progress != b.progress {

@@ -4,6 +4,9 @@
 //
 //  Created by Krish Prasad on 3/2/26.
 //
+
+import Foundation
+
 enum TermCategory: String, CaseIterable {
     case alphabet = "alphabet"
     case numbers = "numbers"
@@ -16,7 +19,7 @@ enum TermCategory: String, CaseIterable {
     case locations = "locations"
 }
 
-enum Term: String, CaseIterable {
+enum Term: String, CaseIterable, Codable {
     case a = "A"
     case b = "B"
     case c = "C"
@@ -205,5 +208,22 @@ enum Term: String, CaseIterable {
              .library, .park:
             return .locations
         }
+    }
+    
+    static func words(for category: TermCategory) -> [Term] {
+        return Self.allCases.filter { $0.category == category }
+    }
+    
+    static func from(_ string: String) -> Term? {
+        let normalized = string.uppercased().trimmingCharacters(in: .whitespaces)
+        return Term(rawValue: normalized)
+    }
+    
+    static func fromStrings(_ strings: [String]) -> [Term] {
+        return strings.compactMap { Term.from($0) }
+    }
+    
+    var displayName: String {
+        return self.rawValue
     }
 }

@@ -13,7 +13,7 @@ struct PromptGenerator {
     ///   - flashcards: All user's flashcards with progress info
     ///   - focusTerms: Specific terms to prioritize in sentences (based on selected categories)
     /// - Returns: Formatted prompt string
-    static func generatePromptForLLM(from flashcards: [StatsFlashcard], focusTerms: [String] = []) -> String {
+    static func generatePromptForLLM(from flashcards: [FlashcardModel], focusTerms: [Term] = []) -> String {
         let learningAnalysis = analyzeLearningState(from: flashcards)
         
         var prompt = """
@@ -29,15 +29,16 @@ struct PromptGenerator {
         """
         
         for (index, flashcard) in flashcards.enumerated() {
-            prompt += "\(index+1). \(flashcard.term): \(flashcard.definition) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
+            prompt += "\(index+1). \(flashcard.term) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
         }
         
         if !focusTerms.isEmpty {
+            let focusTermStrings = focusTerms.map { $0.rawValue }.joined(separator: ", ")
             prompt += """
             
             【FOCUS TERMS】
             Prioritize including these terms in your sentences:
-            \(focusTerms.joined(separator: ", "))
+            \(focusTermStrings)
             
             """
         }
@@ -107,7 +108,7 @@ struct PromptGenerator {
         return prompt
     }
     
-    private static func analyzeLearningState(from flashcards: [StatsFlashcard]) -> String {
+    private static func analyzeLearningState(from flashcards: [FlashcardModel]) -> String {
         let total = flashcards.count
         guard total > 0 else { return "No flashcards." }
         

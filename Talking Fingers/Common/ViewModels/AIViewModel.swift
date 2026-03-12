@@ -36,7 +36,7 @@ import FirebaseFirestore
         }
     }
 
-    func generateAISentences(from flashcards: [StatsFlashcard], focusTerms: [String] = []) async throws -> [AISentenceModel] {
+    func generateAISentences(from flashcards: [FlashcardModel], focusTerms: [Term] = []) async throws -> [AISentenceModel] {
         guard let apiKey = openAIKey else {
             throw AIError.missingAPIKey
         }
@@ -95,19 +95,28 @@ import FirebaseFirestore
         var aiSentences: [AISentenceModel] = []
         
         for sentenceData in sentencesResponse {
-            let glossWords = sentenceData.sentence
+            let glossWordStrings = sentenceData.sentence
                 .split(separator: ",")
                 .flatMap { $0.split(separator: " ") }
                 .map { String($0).trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
-                        
+            
+            let glossTerms = Term.fromStrings(glossWordStrings)
+            
+            guard glossTerms.count == glossWordStrings.count else {
+                print("⚠️ Warning: Could not convert all words to Terms for sentence: \(sentenceData.sentence)")
+                print("Converted \(glossTerms.count)/\(glossWordStrings.count) words")
+                print("Unrecognized words: \(Set(glossWordStrings).subtracting(glossTerms.map { $0.rawValue }))")
+                continue
+            }
+            
             let practiceType: PracticeType = .words
             
             let aiSentence = AISentenceModel(
                 sentence: sentenceData.sentence,
                 score: nil,
                 practiceType: practiceType,
-                gloss: glossWords,
+                gloss: glossTerms,
                 completed: false
             )
             
@@ -117,7 +126,7 @@ import FirebaseFirestore
         return aiSentences
     }
 
-    private func generatePrompt(from flashcards: [StatsFlashcard], focusTerms: [String]) -> String {
+    private func generatePrompt(from flashcards: [FlashcardModel], focusTerms: [Term]) -> String {
         return PromptGenerator.generatePromptForLLM(from: flashcards, focusTerms: focusTerms)
     }
 }
