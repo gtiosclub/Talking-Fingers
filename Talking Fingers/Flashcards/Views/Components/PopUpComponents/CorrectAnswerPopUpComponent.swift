@@ -1,30 +1,31 @@
 //
-//  HintPopUpComponent.swift
+//  CorrectAnswerPopUpComponent.swift
 //  Talking Fingers
 //
 //  Created by Ria Sharma on 3/13/26.
 //
 
 import SwiftUI
- 
-struct HintPopUpComponent: View {
-    let hintText: String
-    var onDismiss: () -> Void
- 
+
+struct CorrectAnswerPopUpComponent: View {
+    
+    var onNext: () -> Void
+    
     var body: some View {
-        VStack(spacing: 23) {
-            Text("Hint")
-                .font(.system(size: 25, weight: .bold))
-                .padding(10)
-            Text(hintText)
-                .font(.system(size: 23, weight: .bold))
+        VStack(spacing: 25) {
+            
+            Spacer()
+                .frame(height: 5)
+            
+            Text("Great Job!")
+                .font(.system(size: 28, weight: .bold))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
- 
+            Spacer()
+                .frame(height: 2)
             Button {
-                onDismiss()
+                onNext()
             } label: {
-                Text("Got it!")
+                Text("Next Word")
                     .font(.system(size: 18, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -32,7 +33,9 @@ struct HintPopUpComponent: View {
                     .foregroundColor(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.top, 4)
+            
+            Spacer()
+                .frame(height: 5)
         }
         .padding(28)
         .background(Color.white)
@@ -42,8 +45,9 @@ struct HintPopUpComponent: View {
         .padding(.bottom, 32)
     }
 }
- 
+
 #Preview {
-    HintPopUpComponent(hintText: "This sign resembles a B shape") {}
+    CorrectAnswerPopUpComponent {
+        print("Next word tapped")
+    }
 }
- 
