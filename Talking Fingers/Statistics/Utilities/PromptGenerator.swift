@@ -2,12 +2,18 @@
 //  PromptGenerator.swift
 //  Talking Fingers
 //
+//  Created by Aimee on 2/16/26.
 
 import Foundation
 
 struct PromptGenerator {
-    
-    static func generatePromptForLLM(from flashcards: [StatsFlashcard]) -> String {
+
+    /// Generates prompt for LLM to create 5 ASL practice sentences
+    /// - Parameters:
+    ///   - flashcards: All user's flashcards with progress info
+    ///   - focusTerms: Specific terms to prioritize in sentences (based on selected categories)
+    /// - Returns: Formatted prompt string
+    static func generatePromptForLLM(from flashcards: [FlashcardModel], focusTerms: [Term] = []) -> String {
         let learningAnalysis = analyzeLearningState(from: flashcards)
         
         var prompt = """
@@ -23,7 +29,18 @@ struct PromptGenerator {
         """
         
         for (index, flashcard) in flashcards.enumerated() {
-            prompt += "\(index+1). \(flashcard.term): \(flashcard.definition) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
+            prompt += "\(index+1). \(flashcard.term) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
+        }
+        
+        if !focusTerms.isEmpty {
+            let focusTermStrings = focusTerms.map { $0.rawValue }.joined(separator: ", ")
+            prompt += """
+            
+            【FOCUS TERMS】
+            Prioritize including these terms in your sentences:
+            \(focusTermStrings)
+            
+            """
         }
         
         prompt += """
@@ -37,17 +54,18 @@ struct PromptGenerator {
             Right: "APPLE RED"
 
         【TARGET WORD GOALS】
-         EASY: 1 Target Word (Status: new/learning) + 2-3 Mastered.
-         MEDIUM: 2 Target Words (Status: new/learning) + 3-5 Mastered.
-         HARD: 3+ Target Words (Status: new/learning) + 5-8 Mastered.
+         Create sentences that balance new/learning words with mastered words
+         Prioritize focus terms when provided
+         Vary sentence length: some short (3-4 words), some medium (5-6 words), some longer (7-9 words)
+         Each sentence should have at least 1-2 words the user is still learning
 
         【FEW-SHOT EXAMPLES (Follow this style)】
         Input: [APPLE:new, STORE:learning, GO:mastered, ME:mastered]
         Output:
         [
-          {"sentence": "APPLE, ME WANT", "difficulty": "easy"},
-          {"sentence": "STORE, ME GO, BUY APPLE", "difficulty": "medium"},
-          {"sentence": "YESTERDAY, ME GO STORE, BUY APPLE, ME HAPPY", "difficulty": "hard"}
+          {"sentence": "APPLE, ME WANT"},
+          {"sentence": "STORE, ME GO, BUY APPLE"},
+          {"sentence": "YESTERDAY, ME GO STORE, BUY APPLE, ME HAPPY"}
         ]
         
         【CRITICAL RULES】
@@ -77,18 +95,20 @@ struct PromptGenerator {
 
         【GENERATION STRATEGY】
         Step 1: Pick a realistic scenario (greeting, eating, working, etc.)
-        Step 2: Choose vocabulary that fits the scenario naturally
-        Step 3: Arrange in ASL word order (TIME + TOPIC + COMMENT)
-        Step 4: Verify every word has a purpose in the sentence
+        Step 2: If focus terms provided, build sentences around them
+        Step 3: Choose vocabulary that fits the scenario naturally
+        Step 4: Arrange in ASL word order (TIME + TOPIC + COMMENT)
+        Step 5: Verify every word has a purpose in the sentence
 
+        Generate exactly 5 sentences with varied complexity.
         Output format (no markdown, raw JSON only):
-        [{"sentence": "...", "difficulty": "easy"}, {"sentence": "...", "difficulty": "medium"}, {"sentence": "...", "difficulty": "hard"}]
+        [{"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}]
         """
     
         return prompt
     }
     
-    private static func analyzeLearningState(from flashcards: [StatsFlashcard]) -> String {
+    private static func analyzeLearningState(from flashcards: [FlashcardModel]) -> String {
         let total = flashcards.count
         guard total > 0 else { return "No flashcards." }
         
@@ -121,5 +141,4 @@ struct PromptGenerator {
         
         return "total:\(total) \(dist) recent_success:\(recentSuccesses) profile:\(profile)"
     }
-    //Expect output：total:20 new:3 learning:8 polishing:5 mastered:4 recent_success:2 profile:BUILDING
 }

@@ -17,15 +17,15 @@ class SwiftDataVM {
         self.modelContext = modelContext
     }
     
-    func generatePromptForLLM(from flashcards: [StatsFlashcard]) -> String {
-        return PromptGenerator.generatePromptForLLM(from: flashcards)
+    func generatePromptForLLM(from flashcards: [FlashcardModel], focusTerms: [Term] = []) -> String {
+        return PromptGenerator.generatePromptForLLM(from: flashcards, focusTerms: focusTerms)
     }
     
-    func fetchFlashcards() -> [StatsFlashcard] {
+    func fetchFlashcards() -> [FlashcardModel] {
         guard let modelContext = modelContext else { return [] }
         
         do {
-            let descriptor = FetchDescriptor<StatsFlashcard>()
+            let descriptor = FetchDescriptor<FlashcardModel>()
             return try modelContext.fetch(descriptor)
         } catch {
             print("Error fetching flashcards: \(error)")
@@ -33,16 +33,16 @@ class SwiftDataVM {
         }
     }
     
-    func generatePromptFromCurrentData() -> String {
+    func generatePromptFromCurrentData(focusTerms: [Term] = []) -> String {
         let flashcards = fetchFlashcards()
         if flashcards.isEmpty { 
             return "Error: No flashcards available to generate prompt." 
         }
-        return generatePromptForLLM(from: flashcards)
+        return generatePromptForLLM(from: flashcards, focusTerms: focusTerms)
     }
     
     
-    func updateFlashcardProgress(flashcards: [StatsFlashcard], scores: [Int]) {
+    func updateFlashcardProgress(flashcards: [FlashcardModel], scores: [Int]) {
         guard flashcards.count == scores.count else { return }
         
         for index in 0..<scores.count {
@@ -53,4 +53,34 @@ class SwiftDataVM {
             }
         }
     }
+    // MARK: - AI Sentence Comprehension Grading
+    func gradeSentenceComprehension(correctGloss: [Term], userAnswers: [String]) -> [Int] {
+        var score: [Int] = []
+        
+        for i in 0..<correctGloss.count {
+            if i < userAnswers.count {
+                let correctWord = correctGloss[i].rawValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                let userWord = userAnswers[i].trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                
+                if correctWord == userWord {
+                    score.append(1)
+                } else {
+                    score.append(-1)
+                }
+            } else {
+                score.append(-1)
+            }
+        }
+        
+        return score
+    }
+    
+    func getFlashcardsForGloss(_ gloss: [Term]) -> [FlashcardModel] {
+            let allFlashcards = fetchFlashcards()
+            let glossTermStrings = gloss.map { $0.rawValue }
+            
+            return glossTermStrings.compactMap { termString in
+                allFlashcards.first { $0.term == termString }
+            }
+        }
 }
