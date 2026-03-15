@@ -89,16 +89,31 @@ import FirebaseFirestore
             throw AIError.decodingError
         }
         
-        let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
-        let sentencesResponse = wrapper.sentences
-        
+        let sentencesResponse: [SentenceData]
+        do {
+            let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
+            sentencesResponse = wrapper.sentences
+        } catch {
+            print("❌ DECODING ERROR:")
+            print("Raw content from OpenAI:")
+            print(content)
+            print("Decoding error: \(error)")
+            throw AIError.decodingError
+        }
+
         var aiSentences: [AISentenceModel] = []
         
         for sentenceData in sentencesResponse {
             let glossWordStrings = sentenceData.sentence
                 .split(separator: ",")
                 .flatMap { $0.split(separator: " ") }
-                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .map { word in
+                    // Remove punctuation and convert to uppercase
+                    String(word)
+                        .trimmingCharacters(in: .whitespaces)
+                        .trimmingCharacters(in: .punctuationCharacters)
+                        .uppercased()
+                }
                 .filter { !$0.isEmpty }
             
             let glossTerms = Term.fromStrings(glossWordStrings)

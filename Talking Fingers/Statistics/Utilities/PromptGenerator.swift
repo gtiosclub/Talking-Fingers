@@ -75,6 +75,14 @@ struct PromptGenerator {
         4. Create realistic scenarios users would actually sign
         5. Avoid: articles (a/an/the), "is/am/are", "do/does/did", "-ing" endings
         
+        【CRITICAL CONSTRAINT - ENFORCE STRICTLY】
+        You MUST ONLY use words that appear in the FLASHCARDS list above.
+        EVERY SINGLE WORD in your generated sentences must be from that list.
+        Count the flashcards - if there are 50 flashcards, you have exactly 50 words to work with.
+        Do NOT use ANY other words, even common ones like "THE", "A", "IS".
+        If you cannot make a sentence with only these words, use simpler grammar.
+
+        BEFORE generating each sentence, verify EVERY word exists in the flashcards list.
 
         【SENTENCE QUALITY CHECKLIST】
         Before generating, ask yourself:
@@ -102,7 +110,7 @@ struct PromptGenerator {
 
         Generate exactly 5 sentences with varied complexity.
         Output format (no markdown, raw JSON only):
-        [{"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}]
+        {"sentences": [{"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}]}
         """
     
         return prompt
