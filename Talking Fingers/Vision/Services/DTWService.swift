@@ -18,6 +18,10 @@ struct DTWService {
         let n = buffer.frames.count
         let m = template.frames.count
         
+        if (n == 0 || m == 0) { // no frames to references, should not indicate a low score
+            return .infinity
+        }
+        
         guard n > 0, m > 0 else { return .infinity }
         
         var dtw = Array(repeating: Array(repeating: Double.infinity, count: n + 1), count: m + 1)
