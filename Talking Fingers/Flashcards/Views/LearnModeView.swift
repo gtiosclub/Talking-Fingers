@@ -11,6 +11,9 @@ struct LearnModeView: View {
     @StateObject var vm: LearnModeVM
     var progress: Double
 
+    // Add this closure so the presenter can control dismissal.
+    var onClose: () -> Void = {}
+
     @State private var showHint = false
 
     var body: some View {
@@ -48,6 +51,7 @@ extension LearnModeView {
         HStack {
             Button {
                 // exit view
+                onClose()
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2)

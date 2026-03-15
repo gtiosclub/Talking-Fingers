@@ -16,6 +16,12 @@ struct StartCardComponent: View {
     let secondaryAction: () -> Void
     let closeAction: () -> Void
 
+    let learnFlashcard: FlashcardModel
+    let learnProgress: Double
+
+    @State private var showDashboard = false
+    @State private var showLearn = false
+
     var progress: CGFloat {
         CGFloat(Double(completed) / Double(max(total, 1)))
     }
@@ -72,24 +78,48 @@ struct StartCardComponent: View {
                 ActionButton(
                     title: "Let's Go!",
                     style: .primary,
-                    action: primaryAction
+                    action: {
+                        showLearn = true
+                    }
                 )
 
                 ActionButton(
                     title: "Go Home",
                     style: .secondary,
-                    action: secondaryAction
+                    action: {
+                        showDashboard = true
+                    }
                 )
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
         .padding(.horizontal, 16)
+        .fullScreenCover(isPresented: $showDashboard) {
+            DashboardView()
+        }
+        .fullScreenCover(isPresented: $showLearn) {
+            LearnModeView(
+                vm: LearnModeVM(flashcard: learnFlashcard),
+                progress: learnProgress,
+                onClose: {
+                    // Dismiss LearnModeView and return to StartCardComponent
+                    showLearn = false
+                }
+            )
+        }
     }
 }
 
 #Preview {
-    StartCardComponent(
+    // Dummy flashcard for preview
+    let dummyCard = FlashcardModel(
+        term: "Hello",
+        id: UUID(),
+        category: "Greetings"
+    )
+
+    return StartCardComponent(
         modeTitle: "Exercise",
         topic: "Greetings",
         completed: 0,
@@ -97,6 +127,8 @@ struct StartCardComponent: View {
         imageName: "greetingsIllustration",
         primaryAction: {},
         secondaryAction: {},
-        closeAction: {}
+        closeAction: {},
+        learnFlashcard: dummyCard,
+        learnProgress: 0.25
     )
 }
