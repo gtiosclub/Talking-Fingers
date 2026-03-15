@@ -1,289 +1,385 @@
-//
-//  SavedPracticeView.swift
-//  Talking Fingers
-//
-//  Created by Aimee on 3/9/26.
-//
-
-import SwiftData
 import SwiftUI
 
 struct SavedPracticeView: View {
-    @Environment(\.modelContext) private var modelContext
-    @State private var vm = SwiftDataVM()
-    @State private var showTestButton = true
-    @State private var isLoading = true
-    
+    @State private var selectedFilter = "All"
+    @State private var expandedCardID: UUID?
+    @State private var showCreatePracticeView = false
+
+    private let filters = ["All", "Sign", "Comprehend", "Category"]
+
+    private let trainings: [TrainingItem] = [
+        TrainingItem(
+            title: "Greetings Comprehension",
+            subtitle: "Started 2 days ago",
+            score: nil,
+            kind: .comprehension
+        ),
+        TrainingItem(
+            title: "Sports",
+            subtitle: "Completed 4 days ago",
+            score: 75,
+            kind: .completed
+        ),
+        TrainingItem(
+            title: "Greetings + goodbyes",
+            subtitle: "Completed 6 days ago",
+            score: 75,
+            kind: .completed
+        ),
+        TrainingItem(
+            title: "Untitled Practice",
+            subtitle: "Completed 6 days ago",
+            score: 75,
+            kind: .completed
+        ),
+        TrainingItem(
+            title: "Greetings + goodbyes",
+            subtitle: "Completed 6 days ago",
+            score: 75,
+            kind: .completed
+        )
+    ]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            headerSection
-            contentSection
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding()
-        .onAppear {
-            vm.modelContext = modelContext
-            loadSavedPractices()
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                Color(red: 0.96, green: 0.96, blue: 0.96)
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        headerSection
+                        filterSection
+                        progressCard
+                        trainingCardsSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 80)
+                }
+
+                floatingPlusButton
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showCreatePracticeView) {
+                PlaceholderCreatePracticeView()
+            }
         }
     }
-    
-    
-    
-    @ViewBuilder
+
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Saved Practices")
-                    .font(.largeTitle)
-                    .bold()
-                Spacer()
-                if showTestButton {
-                    Button(action: addTestData) {
-                        Text("test data")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.blue)
-                            .cornerRadius(6)
-                    }
-                }
-            }
-            
-            Text("Your practice history")
-                .font(.title2)
-                .foregroundColor(.secondary)
-                .fontWeight(.semibold)
-        }
-    }
-    
-    private func addTestData() {
-        let practices: [(sentences: [AISentenceModel], categories: [String])] = [
-            (
-                sentences: [
-                    AISentenceModel(sentence: "Hello, how are you?", score: 85, practiceType: .signs, gloss: ["HELLO", "HOW", "YOU"], completed: true),
-                    AISentenceModel(sentence: "Thank you very much", score: 90, practiceType: .words, gloss: ["THANK", "YOU"], completed: true),
-                    AISentenceModel(sentence: "Good morning", score: 75, practiceType: .signs, gloss: ["GOOD", "MORNING"], completed: true)
-                ],
-                categories: ["Greetings", "Daily"]
-            ),
-            (
-                sentences: [
-                    AISentenceModel(sentence: "I love learning sign language", score: 95, practiceType: .signs, gloss: ["I", "LOVE", "LEARNING"], completed: true),
-                    AISentenceModel(sentence: "Nice to meet you", score: 80, practiceType: .words, gloss: ["NICE", "MEET", "YOU"], completed: true)
-                ],
-                categories: ["Introduction"]
-            ),
-            (
-                sentences: [
-                    AISentenceModel(sentence: "What time is it?", score: 70, practiceType: .signs, gloss: ["WHAT", "TIME", "IT"], completed: true),
-                    AISentenceModel(sentence: "I need help please", score: 88, practiceType: .words, gloss: ["I", "NEED", "HELP"], completed: true),
-                    AISentenceModel(sentence: "Where is the bathroom?", score: 65, practiceType: .signs, gloss: ["WHERE", "BATHROOM"], completed: true),
-                    AISentenceModel(sentence: "My name is John", score: 92, practiceType: .words, gloss: ["MY", "NAME", "JOHN"], completed: true)
-                ],
-                categories: ["Questions", "Basic"]
-            ),
-            (
-                sentences: [
-                    AISentenceModel(sentence: "I am happy today", score: 78, practiceType: .signs, gloss: ["I", "HAPPY", "TODAY"], completed: true),
-                    AISentenceModel(sentence: "See you tomorrow", score: 85, practiceType: .words, gloss: ["SEE", "YOU", "TOMORROW"], completed: true)
-                ],
-                categories: ["Daily", "Farewell"]
-            ),
-            (
-                sentences: [
-                    AISentenceModel(sentence: "The weather is nice", score: 91, practiceType: .signs, gloss: ["WEATHER", "NICE"], completed: true),
-                    AISentenceModel(sentence: "I like coffee", score: 87, practiceType: .words, gloss: ["I", "LIKE", "COFFEE"], completed: true),
-                    AISentenceModel(sentence: "Have a great day", score: 93, practiceType: .signs, gloss: ["HAVE", "GREAT", "DAY"], completed: true)
-                ],
-                categories: ["Casual", "Greetings"]
-            )
-        ]
-        
-        for practice in practices {
-            vm.savePracticeSession(sentences: practice.sentences, categories: practice.categories)
-        }
-        
-        showTestButton = false
-        loadSavedPractices()
-    }
-    
-
-    @ViewBuilder
-    private var contentSection: some View {
-        if isLoading {
-            loadingView
-        } else if vm.savedPractices.isEmpty {
-            emptyView
-        } else {
-            populatedView
-        }
-    }
-    
-    @ViewBuilder
-    private var loadingView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Loading practices...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-    
-    
-    @ViewBuilder
-    private var emptyView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "bookmark.slash")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            Text("No Saved Practices")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("Complete a practice session to see it here.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-    }
-    
-    @ViewBuilder
-    private var populatedView: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(vm.savedPractices, id: \.id) { practice in
-                    SavedPracticeCard(practice: practice)
-                }
-            }
+        Text("My Trainings")
+            .font(.system(size: 31, weight: .bold))
+            .foregroundColor(.black)
             .padding(.top, 8)
-            .padding(.bottom, 20)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
-    private func loadSavedPractices() {
-        vm.savedPractices = vm.fetchSavedPracticeSessions()
-        isLoading = false
-    }
-}
 
-struct SavedPracticeCard: View {
-    let practice: SavedPracticeModel
-    @State private var isHovering = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(practice.date.formatted(date: .abbreviated, time: .shortened))
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    
-                    if !practice.categories.isEmpty {
-                        Text(practice.categories.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+    private var filterSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 14) {
+                ForEach(filters, id: \.self) { filter in
+                    Button {
+                        selectedFilter = filter
+                    } label: {
+                        Text(filter)
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.clear)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 13)
+                                    .stroke(Color.black.opacity(0.7), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var progressCard: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Text("You’re almost done with your Greetings Comprehension practice!")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(.black.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 14) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.gray.opacity(0.22))
+                            .frame(height: 12)
+
+                        Capsule()
+                            .fill(Color.gray.opacity(0.42))
+                            .frame(width: geometry.size.width * 0.8, height: 12)
                     }
                 }
-                Spacer()
-                Text("\(practice.sentences.count) sentences")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                .frame(height: 12)
+
+                Text("80%")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.gray)
             }
-            
-            if !practice.sentences.isEmpty {
-                Divider()
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(practice.sentences.prefix(3)) { sentence in
-                        HStack {
-                            Text(sentence.sentence)
-                                .font(.subheadline)
-                                .lineLimit(1)
-                            Spacer()
-                            if let score = sentence.score {
-                                ScoreBadge(score: score)
-                            }
+
+            HStack {
+                Spacer()
+
+                Button {
+                    // continue action later
+                } label: {
+                    Text("Continue")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.gray.opacity(0.12))
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 26)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.gray.opacity(0.10))
+        )
+    }
+
+    private var trainingCardsSection: some View {
+        VStack(spacing: 16) {
+            ForEach(trainings) { item in
+                TrainingCard(
+                    item: item,
+                    isExpanded: expandedCardID == item.id,
+                    onTapChevron: {
+                        if expandedCardID == item.id {
+                            expandedCardID = nil
+                        } else {
+                            expandedCardID = item.id
                         }
                     }
-                    
-                    if practice.sentences.count > 3 {
-                        Text("+ \(practice.sentences.count - 3) more")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+                )
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.clear)
-                .background(
-                    .ultraThinMaterial,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(.quaternary, lineWidth: 1)
-                )
-        )
-        .shadow(color: Color.black.opacity(isHovering ? 0.08 : 0.06), radius: isHovering ? 6 : 4, x: 0, y: isHovering ? 3 : 2)
-        .scaleEffect(isHovering ? 1.01 : 1)
-        .animation(.easeInOut(duration: 0.15), value: isHovering)
-        .onHover { hovering in
-            isHovering = hovering
+    }
+
+    private var floatingPlusButton: some View {
+        VStack {
+            Spacer()
+
+            HStack {
+                Spacer()
+
+                Button {
+                    showCreatePracticeView = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 21, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(width: 66, height: 66)
+                        .background(
+                            Circle()
+                                .fill(Color.gray.opacity(0.95))
+                        )
+                        .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 4)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 18)
+            }
         }
     }
 }
 
-struct ScoreBadge: View {
-    let score: Int
-    
+struct TrainingCard: View {
+    let item: TrainingItem
+    let isExpanded: Bool
+    let onTapChevron: () -> Void
+
     var body: some View {
-        Text("\(score)%")
-            .font(.caption)
-            .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(backgroundColor)
-            .foregroundColor(foregroundColor)
-            .cornerRadius(6)
+        VStack(alignment: .leading, spacing: isExpanded ? 18 : 0) {
+            HStack(alignment: .center, spacing: 14) {
+                leftIcon
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.title)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.black)
+
+                    Text(item.subtitle)
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+
+                Spacer()
+
+                rightStatusView
+
+                Button(action: onTapChevron) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.gray)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if isExpanded {
+                HStack(spacing: 16) {
+                    Spacer()
+
+                    Button {
+                        // review action later
+                    } label: {
+                        Text("Review")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.7), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        // retry action later
+                    } label: {
+                        Text("Retry")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.gray.opacity(0.12))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.gray.opacity(0.55), lineWidth: 1)
+        )
     }
-    
-    private var backgroundColor: Color {
-        switch score {
-        case 80...100:
-            return Color.green.opacity(0.2)
-        case 50..<80:
-            return Color.orange.opacity(0.2)
-        default:
-            return Color.red.opacity(0.2)
+
+    @ViewBuilder
+    private var leftIcon: some View {
+        if item.kind == .comprehension {
+            Image(systemName: "eye")
+                .font(.system(size: 22, weight: .regular))
+                .foregroundColor(.gray)
+                .frame(width: 30)
+        } else {
+            Image(systemName: "hands.clap")
+                .font(.system(size: 22, weight: .regular))
+                .foregroundColor(.gray)
+                .frame(width: 30)
         }
     }
-    
-    private var foregroundColor: Color {
-        switch score {
-        case 80...100:
-            return .green
-        case 50..<80:
-            return .orange
-        default:
-            return .red
+
+    @ViewBuilder
+    private var rightStatusView: some View {
+        if let score = item.score {
+            ZStack {
+                Circle()
+                    .stroke(Color.gray.opacity(0.75), lineWidth: 1.5)
+                    .frame(width: 58, height: 58)
+
+                Text("\(score)")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.gray)
+            }
+        } else {
+            InProgressCircleView()
         }
     }
+}
+
+struct InProgressCircleView: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .trim(from: 0, to: 0.85)
+                .stroke(
+                    Color.gray,
+                    style: StrokeStyle(lineWidth: 11, lineCap: .butt)
+                )
+                .frame(width: 48, height: 48)
+                .rotationEffect(.degrees(-90))
+        }
+    }
+}
+
+struct PlaceholderCreatePracticeView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                #if os(iOS)
+                Color(uiColor: .systemBackground)
+                    .ignoresSafeArea()
+                #elseif os(macOS)
+                Color(nsColor: .windowBackgroundColor)
+                    .ignoresSafeArea()
+                #endif
+
+                VStack(spacing: 16) {
+                    Image(systemName: "hammer")
+                        .font(.system(size: 42))
+                        .foregroundColor(.gray)
+
+                    Text("Create Practice View")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("This screen hasn’t been developed yet.")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("New Practice")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct TrainingItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let score: Int?
+    let kind: TrainingKind
+}
+
+enum TrainingKind {
+    case comprehension
+    case completed
 }
 
 #Preview {
     SavedPracticeView()
-        .modelContainer(for: SavedPracticeModel.self, inMemory: true)
 }
