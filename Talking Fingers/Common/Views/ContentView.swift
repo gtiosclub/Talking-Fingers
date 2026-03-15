@@ -31,6 +31,8 @@ struct MainNavigationView: View {
                     .tag(NavigationSection.home)
                 Label("Flashcards", systemImage: "rectangle.stack.fill")
                     .tag(NavigationSection.flashcards)
+                Label("Sentences", systemImage: "text.bubble")
+                    .tag(NavigationSection.sentences)
                 Label("Stats", systemImage: "chart.bar.fill")
                     .tag(NavigationSection.stats)
                 Label("Vision", systemImage: "eyeglasses")
@@ -61,6 +63,10 @@ struct MainNavigationView: View {
                     gifFileName: "GifDiagramTest.gif"
                 ))
             }
+        case .sentences:
+            NavigationStack {
+                SavedPracticeView()
+            }
         case .stats:
             NavigationStack {
                 StatsView()
@@ -76,7 +82,7 @@ struct MainNavigationView: View {
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, stats, camera
+        case home, flashcards, sentences, stats, camera
     }
 }
 struct StatsView: View {

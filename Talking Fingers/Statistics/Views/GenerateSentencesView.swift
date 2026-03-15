@@ -14,7 +14,9 @@ struct GenerateSentencesView: View {
     @State private var isGenerating: Bool = false
     @State private var errorMessage: String?
     
-    var onSentencesGenerated: ([AISentenceModel]) -> Void
+    /// Called with generated sentences and the categories used (so Extend can generate more).
+    /// Parent should dismiss the sheet and start the session.
+    var onSentencesGenerated: ([AISentenceModel], Set<TermCategory>) -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -131,8 +133,7 @@ struct GenerateSentencesView: View {
                 let sentences = try await generateSentencesForCategories(selectedCategories)
                 
                 await MainActor.run {
-                    onSentencesGenerated(sentences)
-                    dismiss()
+                    onSentencesGenerated(sentences, selectedCategories)
                 }
             } catch {
                 await MainActor.run {
@@ -141,6 +142,11 @@ struct GenerateSentencesView: View {
                 }
             }
         }
+    }
+
+    /// Generate 5 sentences for the given categories (e.g. for Extend in a session).
+    static func generateSentences(categories: Set<TermCategory>) async throws -> [AISentenceModel] {
+        try await generateSentencesForCategories(categories)
     }
 }
 
@@ -238,9 +244,9 @@ struct TestGenerateSentencesView: View {
             }
         }
         .sheet(isPresented: $showSheet) {
-            GenerateSentencesView { sentences in
+            GenerateSentencesView { sentences, _ in
                 generatedSentences = sentences
-                showSheet = false  // Dismiss the sheet
+                showSheet = false
             }
         }
     }

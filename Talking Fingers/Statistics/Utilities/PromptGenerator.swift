@@ -59,58 +59,46 @@ struct PromptGenerator {
          Vary sentence length: some short (3-4 words), some medium (5-6 words), some longer (7-9 words)
          Each sentence should have at least 1-2 words the user is still learning
 
-        【FEW-SHOT EXAMPLES (Follow this style)】
-        Input: [APPLE:new, STORE:learning, GO:mastered, ME:mastered]
+        【TWO-PART OUTPUT】
+        Each item must have:
+        1. "english": A natural, coherent English sentence the learner reads first (plain English, normal grammar).
+        2. "sentence": The ASL gloss for signing — ONLY words from the FLASHCARDS list, in ASL word order (TIME + TOPIC + COMMENT). No articles, no "is/am/are". Use commas for pauses.
+
+        The English sentence and the gloss must express the SAME meaning. Think of a clear, realistic scenario, write it in normal English, then convert to gloss using only allowed words.
+
+        【FEW-SHOT EXAMPLES】
+        Input: [APPLE, STORE, GO, ME, WANT, BUY, YESTERDAY, HAPPY]
         Output:
         [
-          {"sentence": "APPLE, ME WANT"},
-          {"sentence": "STORE, ME GO, BUY APPLE"},
-          {"sentence": "YESTERDAY, ME GO STORE, BUY APPLE, ME HAPPY"}
+          {"english": "I want an apple.", "sentence": "APPLE, ME WANT"},
+          {"english": "I went to the store to buy an apple.", "sentence": "YESTERDAY, ME GO STORE, BUY APPLE"},
+          {"english": "My friend is happy and I am happy too.", "sentence": "FRIEND HAPPY, ME HAPPY"}
         ]
-        
+
         【CRITICAL RULES】
-        1. No repetition: A word can only appear once per sentence.
-        2. Use natural ASL word order: TIME + TOPIC + COMMENT + DETAILS
-        3. Only use commas for natural pauses (not grammatical clauses)
-        4. Create realistic scenarios users would actually sign
-        5. Avoid: articles (a/an/the), "is/am/are", "do/does/did", "-ing" endings
-        
-        【CRITICAL CONSTRAINT - ENFORCE STRICTLY】
-        You MUST ONLY use words that appear in the FLASHCARDS list above.
-        EVERY SINGLE WORD in your generated sentences must be from that list.
-        Count the flashcards - if there are 50 flashcards, you have exactly 50 words to work with.
-        Do NOT use ANY other words, even common ones like "THE", "A", "IS".
-        If you cannot make a sentence with only these words, use simpler grammar.
+        1. English MUST be a normal, grammatical sentence that makes sense. No random words.
+        2. Gloss ("sentence") MUST use only words from the FLASHCARDS list. ASL word order: TIME + TOPIC + COMMENT + DETAILS.
+        3. No repetition: a word appears at most once per sentence.
+        4. One clear idea per sentence (request, event, description, etc.).
 
-        BEFORE generating each sentence, verify EVERY word exists in the flashcards list.
+        【CRITICAL CONSTRAINT】
+        Every word in "sentence" (the gloss) MUST appear in the FLASHCARDS list above. Do NOT use any other words in the gloss. If you cannot say something with the list, use a simpler idea.
 
-        【SENTENCE QUALITY CHECKLIST】
-        Before generating, ask yourself:
-        ✓ Would a real ASL user sign this sentence in daily life?
-        ✓ Does the sentence tell a complete story or express a clear idea?
-        ✓ Can you visualize the scenario happening?
-        ✗ Is it just random words strung together?
-
-        Bad examples to AVOID:
-        ✗ "HELLO WATER BOOK FRIEND" (no meaning)
-        ✗ "YESTERDAY HOUSE FOOD HAPPY" (no clear action)
-        ✗ "THANK-YOU STUDY WORK LOVE" (incoherent)
-
-        Good examples to FOLLOW:
-        ✓ "I WANT WATER" (clear request)
-        ✓ "YESTERDAY I GO WORK" (complete event)
-        ✓ "FRIEND HAPPY, I HAPPY" (cause and effect)
+        【QUALITY】
+        ✓ English: Would a native speaker say this? Clear scenario?
+        ✓ Gloss: Same meaning as the English, using only list words in ASL order?
+        ✗ Bad: "HELLO WATER BOOK FRIEND" (no meaning)
+        ✗ Bad: English that doesn’t match the gloss
 
         【GENERATION STRATEGY】
-        Step 1: Pick a realistic scenario (greeting, eating, working, etc.)
-        Step 2: If focus terms provided, build sentences around them
-        Step 3: Choose vocabulary that fits the scenario naturally
-        Step 4: Arrange in ASL word order (TIME + TOPIC + COMMENT)
-        Step 5: Verify every word has a purpose in the sentence
+        Step 1: Choose a realistic scenario (greeting, shopping, daily action, feeling).
+        Step 2: Write one natural English sentence for that scenario.
+        Step 3: Convert to ASL gloss using ONLY words from the flashcard list, in correct ASL order.
+        Step 4: Verify every gloss word is in the list and the two parts match in meaning.
 
-        Generate exactly 5 sentences with varied complexity.
+        Generate exactly 5 sentences. Vary length and scenarios.
         Output format (no markdown, raw JSON only):
-        {"sentences": [{"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}, {"sentence": "..."}]}
+        {"sentences": [{"english": "Natural English sentence here.", "sentence": "GLOSS WORD ORDER"}, ...]}
         """
     
         return prompt

@@ -9,6 +9,7 @@ import SwiftUI
 struct LiveSigningView: View {
     let sentenceModel: AISentenceModel
     var onBack: () -> Void
+    var onComplete: (() -> Void)? = nil
 
     // Index of the word currently being signed (highlighted in black)
     @State private var currentWordIndex: Int = 0
@@ -64,7 +65,13 @@ struct LiveSigningView: View {
                 }
 
                 // "Complete Sign" simulation button
-                Button(action: advanceWord) {
+                Button(action: {
+                    if isFinished {
+                        onComplete?()
+                    } else {
+                        advanceWord()
+                    }
+                }) {
                     Text(isFinished ? "Done ✓" : "Next Word →")
                         .font(.headline)
                         .foregroundColor(.white)
@@ -73,7 +80,6 @@ struct LiveSigningView: View {
                         .background(isFinished ? Color.green : Color.black)
                         .cornerRadius(8)
                 }
-                .disabled(isFinished)
             }
         }
     }

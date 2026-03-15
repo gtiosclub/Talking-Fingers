@@ -48,7 +48,7 @@ import FirebaseFirestore
             "messages": [
                 [
                     "role": "system",
-                    "content": "You are an ASL education assistant. Generate practice sentences with both English text and ASL gloss. Return ONLY valid JSON, no markdown formatting."
+                    "content": "You are an ASL education assistant. For each sentence return two parts: \"english\" (a natural, readable English sentence) and \"sentence\" (the ASL gloss using only allowed vocabulary). Return ONLY valid JSON, no markdown."
                 ],
                 ["role": "user", "content": prompt]
             ],
@@ -127,8 +127,9 @@ import FirebaseFirestore
             
             let practiceType: PracticeType = .words
             
+            let displaySentence = sentenceData.english ?? sentenceData.sentence
             let aiSentence = AISentenceModel(
-                sentence: sentenceData.sentence,
+                sentence: displaySentence,
                 score: nil,
                 practiceType: practiceType,
                 gloss: glossTerms,
@@ -165,6 +166,9 @@ private struct SentencesWrapper: Codable {
 }
 
 private struct SentenceData: Codable {
+    /// Plain English sentence (for display). If missing, fall back to gloss string.
+    let english: String?
+    /// ASL gloss word order (for signing); only words from vocabulary list.
     let sentence: String
 }
 

@@ -4,6 +4,9 @@ struct SavedPracticeView: View {
     @State private var selectedFilter = "All"
     @State private var expandedCardID: UUID?
     @State private var showCreatePracticeView = false
+    @State private var showSessionView = false
+    @State private var sessionSentences: [AISentenceModel] = []
+    @State private var lastCategories: Set<TermCategory>?
 
     private let filters = ["All", "Sign", "Comprehend", "Category"]
 
@@ -62,7 +65,29 @@ struct SavedPracticeView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showCreatePracticeView) {
-                PlaceholderCreatePracticeView()
+                GenerateSentencesView { sentences, categories in
+                    lastCategories = categories
+                    sessionSentences = sentences
+                    showCreatePracticeView = false
+                    showSessionView = true
+                }
+            }
+            .fullScreenCover(isPresented: $showSessionView) {
+                PracticeSessionView(
+                    sentences: $sessionSentences,
+                    onFinish: { showSessionView = false },
+                    onExtend: {
+                        guard let categories = lastCategories else { return }
+                        do {
+                            let more = try await GenerateSentencesView.generateSentences(categories: categories)
+                            await MainActor.run {
+                                sessionSentences.append(contentsOf: more)
+                            }
+                        } catch {
+                            // Could set an error message state and show in session
+                        }
+                    }
+                )
             }
         }
     }
@@ -323,46 +348,6 @@ struct InProgressCircleView: View {
                 )
                 .frame(width: 48, height: 48)
                 .rotationEffect(.degrees(-90))
-        }
-    }
-}
-
-struct PlaceholderCreatePracticeView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                #if os(iOS)
-                Color(uiColor: .systemBackground)
-                    .ignoresSafeArea()
-                #elseif os(macOS)
-                Color(nsColor: .windowBackgroundColor)
-                    .ignoresSafeArea()
-                #endif
-
-                VStack(spacing: 16) {
-                    Image(systemName: "hammer")
-                        .font(.system(size: 42))
-                        .foregroundColor(.gray)
-
-                    Text("Create Practice View")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    Text("This screen hasn’t been developed yet.")
-                        .foregroundColor(.secondary)
-                }
-            }
-            .navigationTitle("New Practice")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
         }
     }
 }
