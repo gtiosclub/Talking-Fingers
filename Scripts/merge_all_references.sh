@@ -11,7 +11,7 @@ REFERENCES="Talking Fingers/Vision/References"
 for dir in "$RECORDED"/*/; do
   name=$(basename "$dir")
   echo "Merging $name..."
-  python3 Scripts/merge_sign_references.py "$RECORDED/$name" -o "$RECORDED/$name/merged.json"
+  python3 Scripts/merge_sign_references.py "$RECORDED/$name" -o "$RECORDED/$name/merged_${name}.json"
 done
 
 echo ""
@@ -20,7 +20,7 @@ echo "Creating golden references..."
 # Step 2: Create golden references from merged files → References/<name>.json
 for dir in "$RECORDED"/*/; do
   name=$(basename "$dir")
-  merged="$RECORDED/$name/merged.json"
+  merged="$RECORDED/$name/merged_${name}.json"
   if [ -f "$merged" ]; then
     python3 Scripts/create_golden_reference.py "$merged" -o "$REFERENCES/$name.json"
   fi
