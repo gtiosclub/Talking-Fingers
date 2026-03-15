@@ -10,11 +10,10 @@ import SwiftUI
 struct GenerateSentencesView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategories: Set<TermCategory> = []
-    @State private var trainingName: String = "Generating..."
+    @State private var trainingName: String = ""
     @State private var isGenerating: Bool = false
     @State private var errorMessage: String?
     
-    // Callback to return generated sentences
     var onSentencesGenerated: ([AISentenceModel]) -> Void
     
     var body: some View {
@@ -24,7 +23,6 @@ struct GenerateSentencesView: View {
                 .fontWeight(.bold)
                 .padding(.top, 20)
             
-            // Instructions
             VStack(alignment: .leading, spacing: 12) {
                 Text("Select categories or specific words you want to practice!")
                     .font(.body)
@@ -34,16 +32,11 @@ struct GenerateSentencesView: View {
                     .cornerRadius(12)
             }
             
-            // Categories Section
             VStack(alignment: .leading, spacing: 16) {
                 Text("Categories")
                     .font(.headline)
                 
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 12) {
+                FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
                     ForEach(TermCategory.allCases, id: \.self) { category in
                         CategoryButton(
                             category: category,
@@ -61,18 +54,17 @@ struct GenerateSentencesView: View {
                 Text("Training Name")
                     .font(.headline)
                 
-                HStack {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.gray)
-                    Text(trainingName)
-                        .foregroundColor(.gray)
-                    Spacer()
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.gray)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                TextField("Enter training name", text: $trainingName)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.black, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             
             if let error = errorMessage {
@@ -91,10 +83,9 @@ struct GenerateSentencesView: View {
                 }) {
                     Text("Cancel")
                         .font(.headline)
-                        .foregroundColor(.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color(.systemGray5))
+                        .background(Color(.white))
                         .cornerRadius(12)
                 }
                 
@@ -165,12 +156,17 @@ struct CategoryButton: View {
             Text(category.rawValue.capitalized)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
-                .background(isSelected ? Color.black : Color(.systemGray6))
-                .cornerRadius(20)
+                .foregroundColor(Color(hex: "#737373") ?? Color.gray)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(isSelected ? (Color(hex: "#EBEBEB") ?? Color(white: 0.92)) : Color.white)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.black, lineWidth: 1)
+                )
         }
     }
 }
