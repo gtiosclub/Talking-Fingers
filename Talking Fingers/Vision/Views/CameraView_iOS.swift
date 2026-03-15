@@ -169,7 +169,6 @@ struct CameraView: View {
         }
         .onAppear {
             cameraVM.checkPermission()
-            cameraVM.start()
 
             cameraVM.onPoseDetected = { handObservations, pts in
                 hands = handObservations
@@ -188,6 +187,10 @@ struct CameraView: View {
             cameraVM.onBodyPoseDetected = { bodyObservations, _ in
                 bodies = bodyObservations
             }
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            cameraVM.start()
         }
         .onDisappear {
             cameraVM.stop()
