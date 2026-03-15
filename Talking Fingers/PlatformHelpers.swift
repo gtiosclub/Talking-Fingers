@@ -82,6 +82,16 @@ extension View {
     }
 
 extension Color {
+    static var categoryComponentColor: Color {
+        #if canImport(UIKit)
+        Color(UIColor.systemGroupedBackground)
+        #elseif canImport(AppKit)
+        Color(NSColor.windowBackgroundColor)
+        #endif
+    }
+}
+
+extension Color {
     static var tfSurface: Color {
         #if canImport(UIKit)
         return Color(PlatformColor.systemGray6)

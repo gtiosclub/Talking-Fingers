@@ -103,7 +103,7 @@ struct DashboardView: View {
             }
             .padding(.top, 8)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.categoryComponentColor)
     }
 }
 

@@ -27,7 +27,7 @@ struct CategoryComponent: View {
 
 #Preview {
     ZStack {
-        Color(.systemGroupedBackground).ignoresSafeArea()
+        Color.categoryComponentColor.ignoresSafeArea()
         HStack(spacing: 12) {
             CategoryComponent(title: "Alphabet")
             CategoryComponent(title: "Numbers")
@@ -35,3 +35,4 @@ struct CategoryComponent: View {
         .padding()
     }
 }
+
