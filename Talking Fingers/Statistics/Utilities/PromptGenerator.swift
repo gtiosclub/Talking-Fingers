@@ -7,8 +7,13 @@
 import Foundation
 
 struct PromptGenerator {
-    
-    static func generatePromptForLLM(from flashcards: [StatsFlashcard]) -> String {
+
+    /// Generates prompt for LLM to create 5 ASL practice sentences
+    /// - Parameters:
+    ///   - flashcards: All user's flashcards with progress info
+    ///   - focusTerms: Specific terms to prioritize in sentences (based on selected categories)
+    /// - Returns: Formatted prompt string
+    static func generatePromptForLLM(from flashcards: [FlashcardModel], focusTerms: [Term] = []) -> String {
         let learningAnalysis = analyzeLearningState(from: flashcards)
         
         var prompt = """
@@ -24,7 +29,18 @@ struct PromptGenerator {
         """
         
         for (index, flashcard) in flashcards.enumerated() {
-            prompt += "\(index+1). \(flashcard.term): \(flashcard.definition) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
+            prompt += "\(index+1). \(flashcard.term) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
+        }
+        
+        if !focusTerms.isEmpty {
+            let focusTermStrings = focusTerms.map { $0.rawValue }.joined(separator: ", ")
+            prompt += """
+            
+            【FOCUS TERMS】
+            Prioritize including these terms in your sentences:
+            \(focusTermStrings)
+            
+            """
         }
         
         prompt += """
@@ -38,58 +54,57 @@ struct PromptGenerator {
             Right: "APPLE RED"
 
         【TARGET WORD GOALS】
-         EASY: 1 Target Word (Status: new/learning) + 2-3 Mastered.
-         MEDIUM: 2 Target Words (Status: new/learning) + 3-5 Mastered.
-         HARD: 3+ Target Words (Status: new/learning) + 5-8 Mastered.
+         Create sentences that balance new/learning words with mastered words
+         Prioritize focus terms when provided
+         Vary sentence length: some short (3-4 words), some medium (5-6 words), some longer (7-9 words)
+         Each sentence should have at least 1-2 words the user is still learning
 
-        【FEW-SHOT EXAMPLES (Follow this style)】
-        Input: [APPLE:new, STORE:learning, GO:mastered, ME:mastered]
+        【TWO-PART OUTPUT】
+        Each item must have:
+        1. "english": A natural, coherent English sentence the learner reads first (plain English, normal grammar).
+        2. "sentence": The ASL gloss for signing — ONLY words from the FLASHCARDS list, in ASL word order (TIME + TOPIC + COMMENT). No articles, no "is/am/are". Use commas for pauses.
+
+        The English sentence and the gloss must express the SAME meaning. Think of a clear, realistic scenario, write it in normal English, then convert to gloss using only allowed words.
+
+        【FEW-SHOT EXAMPLES】
+        Input: [APPLE, STORE, GO, ME, WANT, BUY, YESTERDAY, HAPPY]
         Output:
         [
-          {"sentence": "APPLE, ME WANT", "difficulty": "easy"},
-          {"sentence": "STORE, ME GO, BUY APPLE", "difficulty": "medium"},
-          {"sentence": "YESTERDAY, ME GO STORE, BUY APPLE, ME HAPPY", "difficulty": "hard"}
+          {"english": "I want an apple.", "sentence": "APPLE, ME WANT"},
+          {"english": "I went to the store to buy an apple.", "sentence": "YESTERDAY, ME GO STORE, BUY APPLE"},
+          {"english": "My friend is happy and I am happy too.", "sentence": "FRIEND HAPPY, ME HAPPY"}
         ]
-        
+
         【CRITICAL RULES】
-        1. No repetition: A word can only appear once per sentence.
-        2. Use natural ASL word order: TIME + TOPIC + COMMENT + DETAILS
-        3. Only use commas for natural pauses (not grammatical clauses)
-        4. Create realistic scenarios users would actually sign
-        5. Avoid: articles (a/an/the), "is/am/are", "do/does/did", "-ing" endings
-        
+        1. English MUST be a normal, grammatical sentence that makes sense. No random words.
+        2. Gloss ("sentence") MUST use only words from the FLASHCARDS list. ASL word order: TIME + TOPIC + COMMENT + DETAILS.
+        3. No repetition: a word appears at most once per sentence.
+        4. One clear idea per sentence (request, event, description, etc.).
 
-        【SENTENCE QUALITY CHECKLIST】
-        Before generating, ask yourself:
-        ✓ Would a real ASL user sign this sentence in daily life?
-        ✓ Does the sentence tell a complete story or express a clear idea?
-        ✓ Can you visualize the scenario happening?
-        ✗ Is it just random words strung together?
+        【CRITICAL CONSTRAINT】
+        Every word in "sentence" (the gloss) MUST appear in the FLASHCARDS list above. Do NOT use any other words in the gloss. If you cannot say something with the list, use a simpler idea.
 
-        Bad examples to AVOID:
-        ✗ "HELLO WATER BOOK FRIEND" (no meaning)
-        ✗ "YESTERDAY HOUSE FOOD HAPPY" (no clear action)
-        ✗ "THANK-YOU STUDY WORK LOVE" (incoherent)
-
-        Good examples to FOLLOW:
-        ✓ "I WANT WATER" (clear request)
-        ✓ "YESTERDAY I GO WORK" (complete event)
-        ✓ "FRIEND HAPPY, I HAPPY" (cause and effect)
+        【QUALITY】
+        ✓ English: Would a native speaker say this? Clear scenario?
+        ✓ Gloss: Same meaning as the English, using only list words in ASL order?
+        ✗ Bad: "HELLO WATER BOOK FRIEND" (no meaning)
+        ✗ Bad: English that doesn’t match the gloss
 
         【GENERATION STRATEGY】
-        Step 1: Pick a realistic scenario (greeting, eating, working, etc.)
-        Step 2: Choose vocabulary that fits the scenario naturally
-        Step 3: Arrange in ASL word order (TIME + TOPIC + COMMENT)
-        Step 4: Verify every word has a purpose in the sentence
+        Step 1: Choose a realistic scenario (greeting, shopping, daily action, feeling).
+        Step 2: Write one natural English sentence for that scenario.
+        Step 3: Convert to ASL gloss using ONLY words from the flashcard list, in correct ASL order.
+        Step 4: Verify every gloss word is in the list and the two parts match in meaning.
 
+        Generate exactly 5 sentences. Vary length and scenarios.
         Output format (no markdown, raw JSON only):
-        [{"sentence": "...", "difficulty": "easy"}, {"sentence": "...", "difficulty": "medium"}, {"sentence": "...", "difficulty": "hard"}]
+        {"sentences": [{"english": "Natural English sentence here.", "sentence": "GLOSS WORD ORDER"}, ...]}
         """
     
         return prompt
     }
     
-    private static func analyzeLearningState(from flashcards: [StatsFlashcard]) -> String {
+    private static func analyzeLearningState(from flashcards: [FlashcardModel]) -> String {
         let total = flashcards.count
         guard total > 0 else { return "No flashcards." }
         
@@ -122,5 +137,4 @@ struct PromptGenerator {
         
         return "total:\(total) \(dist) recent_success:\(recentSuccesses) profile:\(profile)"
     }
-    //Expect output：total:20 new:3 learning:8 polishing:5 mastered:4 recent_success:2 profile:BUILDING
 }

@@ -9,8 +9,10 @@ import SwiftUI
 
 struct AISentenceSigningView: View {
     let sentenceModel: AISentenceModel
+    /// Session progress 0.0...1.0 (e.g. currentSentenceIndex / totalSentences). Shown in the single progress bar.
+    var sessionProgress: Double = 0
+    var onSentenceComplete: (() -> Void)? = nil
 
-    @State private var progress: Double = 0.3
     @State private var currentPage: Int = 1
     @State private var showGloss: Bool = false
 
@@ -24,7 +26,7 @@ struct AISentenceSigningView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            CustomProgressBar(progress: progress)
+            CustomProgressBar(progress: sessionProgress)
                 .padding(.top, 20)
 
             Text(subtitle)
@@ -46,7 +48,8 @@ struct AISentenceSigningView: View {
                     sentenceModel: sentenceModel,
                     onBack: {
                         withAnimation { currentPage = 1 }
-                    }
+                    },
+                    onComplete: onSentenceComplete
                 )
             }
         }
@@ -82,8 +85,8 @@ struct PageOneContent: View {
             if showGloss {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(sentenceModel.gloss, id: \.self) { word in
-                            Text(word)
+                        ForEach(sentenceModel.gloss, id: \.self) { term in
+                            Text(term.rawValue)
                                 .font(.headline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
@@ -113,10 +116,10 @@ struct PageOneContent: View {
 #Preview {
     let sampleData = AISentenceModel(
         sentence: "I didn't go to the store yesterday.",
-        score: [0, 0, 0, 0, 0, 0, 0],
+        score: nil,
         practiceType: .words,
-        difficulty: .medium,
-        gloss: ["YESTERDAY", "STORE", "I", "GO-NOT"]
+        gloss: [.yesterday, .store, .me, .goNot],
+        completed: false
     )
 
     AISentenceSigningView(sentenceModel: sampleData)

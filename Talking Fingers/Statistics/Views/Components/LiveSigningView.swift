@@ -9,13 +9,14 @@ import SwiftUI
 struct LiveSigningView: View {
     let sentenceModel: AISentenceModel
     var onBack: () -> Void
+    var onComplete: (() -> Void)? = nil
 
     // Index of the word currently being signed (highlighted in black)
     @State private var currentWordIndex: Int = 0
     // Tracks which words have been completed
     @State private var completedWords: Set<Int> = []
 
-    var glossWords: [String] { sentenceModel.gloss }
+    var glossWords: [Term] { sentenceModel.gloss }
     var isFinished: Bool { completedWords.count >= glossWords.count }
 
     var body: some View {
@@ -64,7 +65,13 @@ struct LiveSigningView: View {
                 }
 
                 // "Complete Sign" simulation button
-                Button(action: advanceWord) {
+                Button(action: {
+                    if isFinished {
+                        onComplete?()
+                    } else {
+                        advanceWord()
+                    }
+                }) {
                     Text(isFinished ? "Done ✓" : "Next Word →")
                         .font(.headline)
                         .foregroundColor(.white)
@@ -73,7 +80,6 @@ struct LiveSigningView: View {
                         .background(isFinished ? Color.green : Color.black)
                         .cornerRadius(8)
                 }
-                .disabled(isFinished)
             }
         }
     }
@@ -82,8 +88,8 @@ struct LiveSigningView: View {
     private var glossRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(Array(glossWords.enumerated()), id: \.offset) { index, word in
-                    Text(word)
+                ForEach(Array(glossWords.enumerated()), id: \.offset) { index, term in
+                    Text(term.rawValue)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(colorForWord(at: index))
                         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)

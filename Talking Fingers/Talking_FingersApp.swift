@@ -47,6 +47,7 @@ struct Talking_FingersApp: App {
         let schema = Schema([
             Item.self,
             StatsWidget.self,
+            FlashcardModel.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
