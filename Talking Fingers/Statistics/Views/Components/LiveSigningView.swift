@@ -15,7 +15,7 @@ struct LiveSigningView: View {
     // Tracks which words have been completed
     @State private var completedWords: Set<Int> = []
 
-    var glossWords: [String] { sentenceModel.gloss }
+    var glossWords: [Term] { sentenceModel.gloss }
     var isFinished: Bool { completedWords.count >= glossWords.count }
 
     var body: some View {
@@ -82,8 +82,8 @@ struct LiveSigningView: View {
     private var glossRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(Array(glossWords.enumerated()), id: \.offset) { index, word in
-                    Text(word)
+                ForEach(Array(glossWords.enumerated()), id: \.offset) { index, term in
+                    Text(term.rawValue)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(colorForWord(at: index))
                         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
