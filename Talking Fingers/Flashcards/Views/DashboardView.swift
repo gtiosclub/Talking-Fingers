@@ -9,6 +9,10 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var flashcardVM = FlashcardVM()
+    @State private var selectedCategory: String? = nil
+    @State private var showModePopup = false
+    @State private var showExercise = false
+    @State private var showLearn = false
 
     // Compute categories that are in progress (have at least one non-new and non-mastered card)
     private var inProgressCategories: [(category: String, progress: Float, mode: String)] {
@@ -35,7 +39,45 @@ struct DashboardView: View {
         flashcardVM.generateDailyReviewQueue(limit: 5)
     }
 
+    /// Cards in the selected category, falling back to all fakeFlashcards when none match.
+    private var deckForSelectedCategory: [FlashcardModel] {
+        guard let category = selectedCategory else { return flashcardVM.fakeFlashcards }
+        let filtered = flashcardVM.fakeFlashcards.filter {
+            $0.category.lowercased() == category.lowercased()
+        }
+        return filtered.isEmpty ? flashcardVM.fakeFlashcards : filtered
+    }
+
     var body: some View {
+        ZStack {
+            mainContent
+            if showModePopup {
+                ModePopupView(
+                    isPresented: $showModePopup,
+                    onLearn: { showLearn = true },
+                    onExercise: { showExercise = true }
+                )
+                .zIndex(10)
+            }
+        }
+        .fullScreenCover(isPresented: $showExercise) {
+            MultipleChoiceView(
+                deck: deckForSelectedCategory,
+                allFlashcards: flashcardVM.fakeFlashcards,
+                flashcardVM: flashcardVM,
+                onDismiss: { showExercise = false }
+            )
+        }
+        .fullScreenCover(isPresented: $showLearn) {
+            let card = deckForSelectedCategory.first ?? flashcardVM.fakeFlashcards[0]
+            LearnModeView(
+                vm: LearnModeVM(flashcard: card),
+                progress: Double(flashcardVM.returnProgress(flashcards: deckForSelectedCategory)) / 100
+            )
+        }
+    }
+
+    private var mainContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
 
@@ -94,7 +136,13 @@ struct DashboardView: View {
                 ]
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(allCategories, id: \.self) { category in
-                        CategoryComponent(title: category)
+                        Button {
+                            selectedCategory = category
+                            showModePopup = true
+                        } label: {
+                            CategoryComponent(title: category)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
