@@ -11,23 +11,35 @@ struct LearnModeView: View {
     @StateObject var vm: LearnModeVM
     var progress: Double
 
+    @State private var showHint = false
+
     var body: some View {
-        VStack(spacing: 20) {
+        ZStack {
+            // Main content
+            VStack(spacing: 20) {
 
-            header
+                header
 
-            Text(vm.word)
-                .font(.system(size: 45, weight: .bold))
+                Text(vm.word)
+                    .font(.system(size: 45, weight: .bold))
 
-            imageArea
-                .frame(maxHeight: .infinity)
+                imageArea
+                    .frame(maxHeight: .infinity)
 
-            Spacer()
+                Spacer()
 
-            mainButton
+                mainButton
+            }
+            .padding(.top)
+            .padding(.horizontal)
         }
-        .padding(.top)
-        .padding(.horizontal)
+        .popupHost(isPresented: $showHint) {
+            HintPopUpComponent(
+                hintText: /* vm.hintText ?? */ "This sign resembles a B shape"
+            ) {
+                showHint = false
+            }
+        }
     }
 }
 
@@ -56,7 +68,8 @@ extension LearnModeView {
             displayedImage
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if vm.showHintButton {
+            // Show hint icon ONLY when camera is showing
+            if vm.showingCamera {
                 hintButton
             }
         }
@@ -87,7 +100,7 @@ extension LearnModeView {
 
     var hintButton: some View {
         Button {
-            vm.tapHint()
+            showHint = true
         } label: {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 30))
