@@ -4,9 +4,7 @@
 //
 //  Created by Nikola Cao on 1/24/26.
 //
-
 import SwiftUI
-
 struct ContentView: View {
     @Environment(AuthenticationViewModel.self) var authVM
     
@@ -21,7 +19,6 @@ struct ContentView: View {
         .environment(authVM)
     }
 }
-
 struct MainNavigationView: View {
     @Environment(AuthenticationViewModel.self) var authVM
     @State private var selectedSection: NavigationSection? = .home
@@ -30,12 +27,16 @@ struct MainNavigationView: View {
         NavigationSplitView {
             // Sidebar
             List(selection: $selectedSection) {
-                Label("Vision", systemImage: "eyeglasses")
+                Label("home", systemImage: "home")
                     .tag(NavigationSection.home)
                 Label("Flashcards", systemImage: "rectangle.stack.fill")
                     .tag(NavigationSection.flashcards)
+                Label("Sentences", systemImage: "text.bubble")
+                    .tag(NavigationSection.sentences)
                 Label("Stats", systemImage: "chart.bar.fill")
                     .tag(NavigationSection.stats)
+                Label("Vision", systemImage: "eyeglasses")
+                    .tag(NavigationSection.camera)
             }
             .navigationTitle("Talking Fingers")
         } detail: {
@@ -50,25 +51,40 @@ struct MainNavigationView: View {
         switch section {
         case .home:
             NavigationStack {
-                CameraView()
-                    .environment(authVM)
+                Text("home")
             }
+            
         case .flashcards:
             NavigationStack {
-                FlashcardView()
+                FlashcardView(flashcard: FlashcardModel(
+                    term: "Test",
+                    id: UUID(uuidString: "GifDiagramTest") ?? UUID(),
+                    category: "Test",
+                    gifFileName: "GifDiagramTest.gif"
+                ))
+            }
+        case .sentences:
+            NavigationStack {
+                SavedPracticeView()
             }
         case .stats:
             NavigationStack {
                 StatsView()
             }
+            
+        case .camera:
+            NavigationStack {
+                CameraView()
+                    .environment(authVM)
+            }
         }
+        
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, stats
+        case home, flashcards, sentences, stats, camera
     }
 }
-
 struct StatsView: View {
     var body: some View {
         VStack {
@@ -78,7 +94,6 @@ struct StatsView: View {
         .navigationTitle("Stats")
     }
 }
-
 #Preview {
     ContentView()
 }

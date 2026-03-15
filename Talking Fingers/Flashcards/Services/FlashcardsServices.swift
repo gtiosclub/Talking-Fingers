@@ -9,6 +9,7 @@ import FirebaseFirestore
 
 enum FlashcardsServiceError: Error {
     case collectionNotFound
+    case decodingError
 }
 
 final class FlashcardsServices {
@@ -29,6 +30,84 @@ final class FlashcardsServices {
                 "lastSucceeded": card.lastSucceeded as Any
             ])
         }
+    }
+    
+    func fetchFlashcards() async throws -> [FlashcardModel] {
+        let collectionRef = db.collection(collectionName)
+
+        let collection = try await collectionRef.getDocuments()
+
+        guard !collection.documents.isEmpty else {
+            throw FlashcardsServiceError.collectionNotFound
+        }
+        var flashcards: [FlashcardModel] = []
+
+        for document in collection.documents {
+            let data = document.data()
+
+            guard
+                let idString = data["id"] as? String,
+                let id = UUID(uuidString: idString),
+                let term = data["term"] as? String,
+                let category = data["category"] as? String,
+                let starred = data["starred"] as? Bool,
+                let progress = data["progress"] as? ProgressType
+            else {
+                throw FlashcardsServiceError.decodingError
+            }
+
+            let lastSucceeded = data["lastSucceeded"] as? Timestamp
+            let date = lastSucceeded?.dateValue()
+            
+            let card = FlashcardModel(
+                term: term,
+                id: id,
+                lastSucceeded: date,
+                starred: starred,
+                progress: progress,
+                category: category
+            )
+            flashcards.append(card)
+        }
+        return flashcards
+    }
+
+    func downloadFlashcards() async throws -> [FlashcardModel] {
+        let snapshot = try await db.collection(collectionName).getDocuments()
+
+        var flashcards: [FlashcardModel] = []
+        for doc in snapshot.documents {
+            let data = doc.data()
+            guard let id = UUID(uuidString: data["id"] as? String ?? ""),
+                  let term = data["term"] as? String,
+                  let category = data["category"] as? String,
+                  let starred = data["starred"] as? Bool,
+                  let progressStr = data["progress"] as? String else {
+                continue
+            }
+
+            let progress: ProgressType
+            switch progressStr.lowercased() {
+            case "new": progress = .new
+            case "learning": progress = .learning
+            case "polishing": progress = .polishing
+            case "mastered": progress = .mastered
+            default: progress = .new
+            }
+
+            let lastSucceeded = (data["lastSucceeded"] as? Timestamp)?.dateValue()
+
+            let card = FlashcardModel(
+                term: term,
+                id: id,
+                lastSucceeded: lastSucceeded,
+                starred: starred,
+                progress: progress,
+                category: category
+            )
+            flashcards.append(card)
+        }
+        return flashcards
     }
 }
 
