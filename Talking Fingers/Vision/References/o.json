@@ -2,7 +2,7 @@
   {
     "frames": [
       {
-        "id": "E8AAE6E3-07B2-4B89-A401-733D8072A16E",
+        "id": "8B68F203-FAD6-4C70-8D44-3F654CD46BB2",
         "joints": {
           "head_joint": {
             "confidence": 0.8274526448015874,
@@ -205,7 +205,7 @@
         "timescale": 24
       }
     ],
-    "id": "5A010F89-4AD5-457D-BC9E-EC8CA297654D",
+    "id": "B54B03BE-B913-4EEA-BE94-E857EA33BFBC",
     "signName": "o",
     "signType": "static"
   }
