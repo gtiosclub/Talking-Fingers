@@ -35,7 +35,7 @@ struct GenerateSentencesView: View {
             }
             
             VStack(alignment: .leading, spacing: 16) {
-                Text("Categories")
+                Text("Filter Categories")
                     .font(.headline)
                 
                 FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
@@ -107,9 +107,9 @@ struct GenerateSentencesView: View {
                             .padding(.vertical, 16)
                     }
                 }
-                .background(selectedCategories.isEmpty ? Color.gray : Color.black)
+                .background(isGenerating ? Color.gray : Color.black)
                 .cornerRadius(12)
-                .disabled(selectedCategories.isEmpty || isGenerating)
+                .disabled(isGenerating)
             }
             .padding(.bottom, 20)
         }
@@ -117,7 +117,8 @@ struct GenerateSentencesView: View {
     }
     
     private var selectedGlossTerms: [Term] {
-        let terms = selectedCategories.flatMap { Term.words(for: $0) }
+        let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
+        let terms = effectiveCategories.flatMap { Term.words(for: $0) }
         let unique = Array(Set(terms))
         return unique.sorted { $0.rawValue < $1.rawValue }
     }
@@ -136,10 +137,11 @@ struct GenerateSentencesView: View {
             errorMessage = nil
             
             do {
-                let sentences = try await generateSentencesForCategories(selectedCategories)
+                let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
+                let sentences = try await generateSentencesForCategories(effectiveCategories)
                 
                 await MainActor.run {
-                    onSentencesGenerated(sentences, selectedCategories)
+                    onSentencesGenerated(sentences, effectiveCategories)
                 }
             } catch {
                 await MainActor.run {
@@ -152,7 +154,8 @@ struct GenerateSentencesView: View {
 
     /// Generate 5 sentences for the given categories (e.g. for Extend in a session).
     static func generateSentences(categories: Set<TermCategory>) async throws -> [AISentenceModel] {
-        try await generateSentencesForCategories(categories)
+        let effectiveCategories = categories.isEmpty ? Set(TermCategory.allCases) : categories
+        return try await generateSentencesForCategories(effectiveCategories)
     }
 }
 
