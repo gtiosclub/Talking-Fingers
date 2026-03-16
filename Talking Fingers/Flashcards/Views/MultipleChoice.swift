@@ -37,6 +37,8 @@ struct MultipleChoice: View {
     // MARK: - Body
     var body: some View {
         ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+
             VStack(spacing: 0) {
 
                 // ── Top bar ────────────────────────────────────────────────
@@ -50,15 +52,35 @@ struct MultipleChoice: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
+                    // Ensure content can scroll above the bottom button area
+                    .padding(.bottom, 120)
                 }
 
-                // ── Submit ─────────────────────────────────────────────────
-                submitButton
+                // ── Submit (bottom area) + private tiny level badge ───────
+                VStack(spacing: 6) {
+                    submitButton
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+
+                    // Tiny, muted badge bottom-left so only you notice it
+                    HStack {
+                        tinyProgressBadge
+                        Spacer()
+                    }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 32)
-                    .padding(.top, 12)
+                    .padding(.bottom, 10)
+                }
+                .background(
+                    Color(.systemBackground)
+                        .overlay(
+                            Rectangle()
+                                .fill(Color.black.opacity(0.05))
+                                .frame(height: 0.5)
+                                .frame(maxHeight: .infinity, alignment: .top)
+                        )
+                )
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color(.systemBackground))
             .navigationBarHidden(true)
         }
         // Hint popup like LearnModeView
@@ -193,15 +215,15 @@ struct MultipleChoice: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            // ProgressType info box
-            progressBadge
-
             // Answer options
             VStack(spacing: 10) {
                 ForEach(options, id: \.self) { option in
                     optionRow(option)
                 }
             }
+
+            // Add a little spacing at the end of the card
+            Spacer(minLength: 8)
         }
         .padding(16)
         .background(
@@ -215,21 +237,29 @@ struct MultipleChoice: View {
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
 
-    private var progressBadge: some View {
-        HStack(spacing: 8) {
+    // Tiny, subtle badge for internal use only (bottom-left under submit)
+    private var tinyProgressBadge: some View {
+        HStack(spacing: 6) {
             Circle()
                 .fill(color(for: currentCard.progress))
-                .frame(width: 10, height: 10)
+                .frame(width: 6, height: 6)
             Text("Level: \(title(for: currentCard.progress))")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
+                .font(.caption2) // very small
+                .foregroundColor(Color.secondary.opacity(0.7)) // muted
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
         }
-        .padding(10)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.systemGray6))
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.systemGray6).opacity(0.6)) // faint
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
+        )
+        .accessibilityHidden(true) // hide from VoiceOver so it's truly "just for you"
     }
 
     private func title(for progress: ProgressType) -> String {
@@ -289,14 +319,25 @@ struct MultipleChoice: View {
         } label: {
             Text("Submit")
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(selectedAnswer == nil ? .secondary : .white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .padding(.vertical, 16)
                 .background(
-                    Capsule()
-                        .fill(selectedAnswer == nil
-                              ? Color.green.opacity(0.6)
-                              : Color.green)
+                    Group {
+                        if selectedAnswer == nil {
+                            // Blends into white background with a faint outline
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color(.systemBackground))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                                )
+                        } else {
+                            // Active state
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.green)
+                        }
+                    }
                 )
         }
         .disabled(selectedAnswer == nil)
@@ -570,3 +611,4 @@ struct MultipleChoiceSRTester: View {
 #Preview("Spaced Repetition Tester") {
     MultipleChoiceSRTester()
 }
+
