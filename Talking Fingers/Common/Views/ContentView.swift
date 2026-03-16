@@ -56,12 +56,24 @@ struct MainNavigationView: View {
             
         case .flashcards:
             NavigationStack {
-                FlashcardView(flashcard: FlashcardModel(
+                let dummyCard = FlashcardModel(
                     term: .hello,
-                    id: UUID(uuidString: "GifDiagramTest") ?? UUID(),
-                    category: .commonObjects,
-                    gifFileName: "GifDiagramTest.gif"
-                ))
+                    id: UUID(),
+                    category: .greetings
+                )
+
+                return StartCardComponent(
+                    modeTitle: "Exercise",
+                    topic: "Greetings",
+                    completed: 0,
+                    total: 12,
+                    imageName: "greetingsIllustration",
+                    primaryAction: {},
+                    secondaryAction: {},
+                    closeAction: {},
+                    learnFlashcard: dummyCard,
+                    learnProgress: 0.25
+                )
             }
         case .sentences:
             NavigationStack {

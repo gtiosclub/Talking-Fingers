@@ -460,57 +460,57 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
     var cards: [FlashcardModel] = []
 
     cards += [
-        FlashcardModel(term: "Hello", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Greetings"),
-        FlashcardModel(term: "Goodbye", id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: "Greetings"),
-        FlashcardModel(term: "Thank You", id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: "Greetings"),
-        FlashcardModel(term: "Please", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Greetings"),
-        FlashcardModel(term: "Nice To Meet You", id: UUID(), lastSucceeded: daysAgo(20), starred: false, progress: .learning, category: "Greetings"),
-        FlashcardModel(term: "Good Morning", id: UUID(), lastSucceeded: daysAgo(5), starred: false, progress: .polishing, category: "Greetings"),
-        FlashcardModel(term: "Good Night", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Greetings"),
-        FlashcardModel(term: "See You", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Greetings"),
+        FlashcardModel(term: .hello, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .greetings),
+        FlashcardModel(term: .bye, id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: .greetings),
+        FlashcardModel(term: .hi, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: .greetings),
+        FlashcardModel(term: .whatUp, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .greetings),
+        FlashcardModel(term: .niceMeetYou, id: UUID(), lastSucceeded: daysAgo(20), starred: false, progress: .learning, category: .greetings),
+        FlashcardModel(term: .goodMorning, id: UUID(), lastSucceeded: daysAgo(5), starred: false, progress: .polishing, category: .greetings),
+        FlashcardModel(term: .goodNight, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .greetings),
+        FlashcardModel(term: .seeYouLater, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .greetings),
     ]
 
     cards += [
-        FlashcardModel(term: "One", id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: "Numbers"),
-        FlashcardModel(term: "Two", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Numbers"),
-        FlashcardModel(term: "Three", id: UUID(), lastSucceeded: daysAgo(5), starred: true, progress: .polishing, category: "Numbers"),
-        FlashcardModel(term: "Four", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Numbers"),
-        FlashcardModel(term: "Five", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Numbers"),
-        FlashcardModel(term: "Six", id: UUID(), lastSucceeded: daysAgo(15), starred: false, progress: .learning, category: "Numbers"),
-        FlashcardModel(term: "Seven", id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: "Numbers"),
-        FlashcardModel(term: "Eight", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Numbers"),
-        FlashcardModel(term: "Nine", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Numbers"),
-        FlashcardModel(term: "Ten", id: UUID(), lastSucceeded: daysAgo(30), starred: false, progress: .learning, category: "Numbers"),
+        FlashcardModel(term: .one, id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: .numbers),
+        FlashcardModel(term: .two, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: .numbers),
+        FlashcardModel(term: .three, id: UUID(), lastSucceeded: daysAgo(5), starred: true, progress: .polishing, category: .numbers),
+        FlashcardModel(term: .four, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .numbers),
+        FlashcardModel(term: .five, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .numbers),
+        FlashcardModel(term: .six, id: UUID(), lastSucceeded: daysAgo(15), starred: false, progress: .learning, category: .numbers),
+        FlashcardModel(term: .seven, id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: .numbers),
+        FlashcardModel(term: .eight, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .numbers),
+        FlashcardModel(term: .nine, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .numbers),
+        FlashcardModel(term: .ten, id: UUID(), lastSucceeded: daysAgo(30), starred: false, progress: .learning, category: .numbers),
     ]
 
     cards += [
-        FlashcardModel(term: "Red", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Colors"),
-        FlashcardModel(term: "Blue", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: "Colors"),
-        FlashcardModel(term: "Green", id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: "Colors"),
-        FlashcardModel(term: "Yellow", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Colors"),
-        FlashcardModel(term: "Orange", id: UUID(), lastSucceeded: daysAgo(12), starred: false, progress: .learning, category: "Colors"),
-        FlashcardModel(term: "Purple", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Colors"),
-        FlashcardModel(term: "Black", id: UUID(), lastSucceeded: daysAgo(6), starred: false, progress: .polishing, category: "Colors"),
-        FlashcardModel(term: "White", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Colors"),
+        FlashcardModel(term: .happy, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .feelingsEmotions),
+        FlashcardModel(term: .sad, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: .feelingsEmotions),
+        FlashcardModel(term: .angry, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: .feelingsEmotions),
+        FlashcardModel(term: .excited, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .feelingsEmotions),
+        FlashcardModel(term: .tired, id: UUID(), lastSucceeded: daysAgo(12), starred: false, progress: .learning, category: .feelingsEmotions),
+        FlashcardModel(term: .bored, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .feelingsEmotions),
+        FlashcardModel(term: .scared, id: UUID(), lastSucceeded: daysAgo(6), starred: false, progress: .polishing, category: .feelingsEmotions),
+        FlashcardModel(term: .surprised, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .feelingsEmotions),
     ]
 
     cards += [
-        FlashcardModel(term: "Mother", id: UUID(), lastSucceeded: daysAgo(9), starred: false, progress: .learning, category: "Family"),
-        FlashcardModel(term: "Father", id: UUID(), lastSucceeded: daysAgo(4), starred: false, progress: .polishing, category: "Family"),
-        FlashcardModel(term: "Brother", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Family"),
-        FlashcardModel(term: "Sister", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Family"),
-        FlashcardModel(term: "Grandmother", id: UUID(), lastSucceeded: daysAgo(20), starred: false, progress: .learning, category: "Family"),
-        FlashcardModel(term: "Grandfather", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Family"),
+        FlashcardModel(term: .mother, id: UUID(), lastSucceeded: daysAgo(9), starred: false, progress: .learning, category: .family),
+        FlashcardModel(term: .father, id: UUID(), lastSucceeded: daysAgo(4), starred: false, progress: .polishing, category: .family),
+        FlashcardModel(term: .brother, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .family),
+        FlashcardModel(term: .sister, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .family),
+        FlashcardModel(term: .grandmother, id: UUID(), lastSucceeded: daysAgo(20), starred: false, progress: .learning, category: .family),
+        FlashcardModel(term: .grandfather, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: .family),
     ]
 
     cards += [
-        FlashcardModel(term: "Eat", id: UUID(), lastSucceeded: daysAgo(7), starred: false, progress: .learning, category: "Verbs"),
-        FlashcardModel(term: "Drink", id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: "Verbs"),
-        FlashcardModel(term: "Go", id: UUID(), lastSucceeded: daysAgo(14), starred: false, progress: .learning, category: "Verbs"),
-        FlashcardModel(term: "Come", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Verbs"),
-        FlashcardModel(term: "Want", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Verbs"),
-        FlashcardModel(term: "Need", id: UUID(), lastSucceeded: daysAgo(5), starred: false, progress: .polishing, category: "Verbs"),
-        FlashcardModel(term: "Like", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Verbs"),
+        FlashcardModel(term: .eat, id: UUID(), lastSucceeded: daysAgo(7), starred: false, progress: .learning, category: .verbs),
+        FlashcardModel(term: .drink, id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: .verbs),
+        FlashcardModel(term: .go, id: UUID(), lastSucceeded: daysAgo(14), starred: false, progress: .learning, category: .verbs),
+        FlashcardModel(term: .come, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .verbs),
+        FlashcardModel(term: .want, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .verbs),
+        FlashcardModel(term: .get, id: UUID(), lastSucceeded: daysAgo(5), starred: false, progress: .polishing, category: .verbs),
+        FlashcardModel(term: .like, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .verbs),
     ]
 
     return cards
@@ -519,12 +519,12 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
 private func optionsFor(card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
     var distractors = pool
         .filter { $0.id != card.id }
-        .map { $0.term }
+        .map { $0.term.rawValue }
         .shuffled()
         .prefix(max(0, count - 1))
 
     var opts = Array(distractors)
-    opts.append(card.term)
+    opts.append(card.term.rawValue)
     // Ensure unique and random order
     return Array(Set(opts)).shuffled()
 }
@@ -543,7 +543,7 @@ struct MultipleChoiceSRTester: View {
                     question: "What sign is being shown?",
                     imageName: "greetingsIllustration",
                     options: currentOptions,
-                    correctAnswer: current.term,
+                    correctAnswer: current.term.rawValue,
                     explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
                     currentCard: current,
                     onNext: { next in
@@ -578,9 +578,9 @@ struct MultipleChoiceSRTester: View {
 #Preview("Single Card (original)") {
     let vm = FlashcardVM()
     let card = FlashcardModel(
-        term: "Hello",
+        term: .hello,
         id: UUID(),
-        category: "Greetings"
+        category: .greetings
     )
     return MultipleChoice(
         question: "What sign is being shown?",
