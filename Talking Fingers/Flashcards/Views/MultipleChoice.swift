@@ -197,7 +197,7 @@ struct MultipleChoice: View {
                     .frame(height: 180)
                     .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
 
-                if imageName.isEmpty {
+                /*if imageName.isEmpty {
                     // Fallback sketch-style placeholder
                     Image(systemName: "hand.wave.fill")
                         .resizable()
@@ -210,9 +210,18 @@ struct MultipleChoice: View {
                         .scaledToFit()
                         .frame(height: 160)
                         .padding(12)
+                }*/
+                let gifFileName: String? = "helloGIF.gif"
+
+                if let gifFileName = gifFileName {
+                    GIFView(gifFileName: gifFileName)
+                        .frame(width: 200, height: 150)
+                } else {
+                    Text("No GIF available")
                 }
             }
-
+            
+            
             // Question text (if desired)
             if !question.isEmpty {
                 Text(question)
