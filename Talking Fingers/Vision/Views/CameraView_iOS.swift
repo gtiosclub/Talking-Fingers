@@ -9,6 +9,12 @@ import SwiftUI
 import AVFoundation
 import Vision
 
+enum CameraMode: String, CaseIterable {
+    case `static`
+    case dynamic
+    case compare
+}
+
 struct CameraView: View {
 
     /// Called when a recording is stopped.
@@ -47,7 +53,11 @@ struct CameraView: View {
     @State private var bodySkeletonVisibility: Bool = true
 
     @State private var signName: String = ""
-    @State private var signType: SignType = .static
+    @State private var cameraMode: CameraMode = .static
+
+    private var signType: SignType {
+        cameraMode == .dynamic ? .dynamic : .static
+    }
 
     @State private var countdown: Int = 0
     @State private var countdownTask: Task<Void, Never>?
@@ -106,12 +116,13 @@ struct CameraView: View {
                         .padding(10)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                        Picker("", selection: $signType) {
-                            Text("Static").tag(SignType.static)
-                            Text("Dynamic").tag(SignType.dynamic)
+                        Picker("", selection: $cameraMode) {
+                            Text("Static").tag(CameraMode.static)
+                            Text("Dynamic").tag(CameraMode.dynamic)
+                            Text("Compare").tag(CameraMode.compare)
                         }
                         .pickerStyle(.segmented)
-                        .frame(width: 160)
+                        .frame(width: 240)
                     }
                     .padding(.horizontal)
 
@@ -137,6 +148,22 @@ struct CameraView: View {
                                 .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
                                 .contentTransition(.numericText())
                                 .animation(.easeInOut(duration: 0.3), value: countdown)
+                        }
+
+                        if cameraMode == .compare && cameraVM.isComparing {
+                            VStack {
+                                Spacer()
+                                Text("\(Int(cameraVM.confidenceScore))%")
+                                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                                    .foregroundStyle(confidenceColor)
+                                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                                    .contentTransition(.numericText())
+                                    .animation(.easeInOut(duration: 0.15), value: Int(cameraVM.confidenceScore))
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .padding(.bottom, 20)
+                            }
                         }
                     }
                     .aspectRatio(9.0 / 16.0, contentMode: .fit)
@@ -195,6 +222,18 @@ struct CameraView: View {
         .onDisappear {
             cameraVM.stop()
         }
+        .onChange(of: cameraMode) { _, newValue in
+            if newValue == .compare {
+                cameraVM.startComparing(forSign: signName)
+            } else {
+                cameraVM.stopComparing()
+            }
+        }
+        .onChange(of: signName) { _, newValue in
+            if cameraMode == .compare {
+                cameraVM.startComparing(forSign: newValue)
+            }
+        }
         .sheet(isPresented: $showJointsSheet) {
             JointsSheetView(
                 jointVisibility: $jointVisibility,
@@ -210,10 +249,10 @@ struct CameraView: View {
                 Button(action: { toggleRecording() }) {
                     Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(.red, .primary)
+                        .foregroundStyle(cameraMode == .compare ? .gray : .red, .primary)
                         .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
-                .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty || cameraMode == .compare)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { showJointsSheet = true }) {
@@ -410,6 +449,14 @@ struct CameraView: View {
             cameraVM.clearBuffer()
         } else {
             startCountdownThenRecord()
+        }
+    }
+
+    private var confidenceColor: Color {
+        switch cameraVM.confidenceScore {
+        case 75...100: return .green
+        case 40..<75: return .yellow
+        default: return .red
         }
     }
 
