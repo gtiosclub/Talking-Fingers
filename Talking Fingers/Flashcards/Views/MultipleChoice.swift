@@ -20,6 +20,9 @@ struct MultipleChoice: View {
     let currentCard: FlashcardModel
     var onNext: (FlashcardModel) -> Void = { _ in }
 
+    // Progress (0.0 – 1.0) — passed in by the caller to reflect real progress
+    var progress: Double
+
     // MARK: - Environment (Observation framework)
     @Environment(FlashcardVM.self) private var flashcardVM
     @Environment(\.dismiss) private var dismiss
@@ -31,8 +34,9 @@ struct MultipleChoice: View {
     @State private var showCorrectPopup: Bool = false
     @State private var showIncorrectPopup: Bool = false
 
-    // Progress (0.0 – 1.0) — in a real app this would come from a parent view model
-    var progress: Double = 0.15
+    // MARK: - Brand Colors
+    private let tfGreen = Color(red: 159/255, green: 192/255, blue: 122/255)
+    private let tfGreenText = Color(red: 82/255, green: 106/255, blue: 54/255)
 
     // MARK: - Body
     var body: some View {
@@ -91,7 +95,7 @@ struct MultipleChoice: View {
                 showHintPopup = false
             }
         }
-        // Correct answer popup (redesigned to match screenshot)
+        // Correct answer popup
         .popupHost(isPresented: $showCorrectPopup) {
             CorrectResultPopUpComponent(
                 message: explanationText,
@@ -100,7 +104,7 @@ struct MultipleChoice: View {
                 }
             )
         }
-        // Incorrect answer popup (new)
+        // Incorrect answer popup
         .popupHost(isPresented: $showIncorrectPopup) {
             IncorrectResultPopUpComponent(
                 message: explanationText,
@@ -124,6 +128,7 @@ struct MultipleChoice: View {
                 }
                 Spacer()
             }
+            
             .padding(.horizontal, 20)
             .padding(.top, 12)
 
@@ -158,12 +163,12 @@ struct MultipleChoice: View {
                     Label(isSaved ? "Saved" : "Save",
                           systemImage: isSaved ? "bookmark.fill" : "bookmark")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(isSaved ? .white : Color(.label))
+                        .foregroundColor(tfGreenText)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(
                             Capsule()
-                                .fill(isSaved ? Color.green : Color(.systemGray5))
+                                .fill(tfGreen)
                         )
                 }
 
@@ -174,9 +179,9 @@ struct MultipleChoice: View {
                         showHintPopup = true
                     }
                 } label: {
-                    Image(systemName: "lightbulb.fill")
+                    Image(systemName: "lightbulb")
                         .font(.title3)
-                        .foregroundColor(.orange)
+                        .foregroundColor(Color(red: 239/255, green: 190/255, blue: 85/255))
                         .padding(10)
                         .background(
                             Circle()
@@ -244,8 +249,8 @@ struct MultipleChoice: View {
                 .fill(color(for: currentCard.progress))
                 .frame(width: 6, height: 6)
             Text("Level: \(title(for: currentCard.progress))")
-                .font(.caption2) // very small
-                .foregroundColor(Color.secondary.opacity(0.7)) // muted
+                .font(.caption2)
+                .foregroundColor(Color.secondary.opacity(0.7))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
@@ -253,13 +258,13 @@ struct MultipleChoice: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray6).opacity(0.6)) // faint
+                .fill(Color(.systemGray6).opacity(0.6))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
         )
-        .accessibilityHidden(true) // hide from VoiceOver so it's truly "just for you"
+        .accessibilityHidden(true)
     }
 
     private func title(for progress: ProgressType) -> String {
@@ -278,8 +283,7 @@ struct MultipleChoice: View {
         case .polishing: return .blue
         case .mastered: return .green
         }
-    }
-
+        }
     // MARK: - Option Row
     @ViewBuilder
     private func optionRow(_ option: String) -> some View {
@@ -292,7 +296,6 @@ struct MultipleChoice: View {
             }
         } label: {
             HStack {
-                // Append an asterisk to the correct answer for testing clarity
                 Text(isCorrectOption ? "\(option) *" : option)
                     .font(.body.weight(isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : Color(.label))
@@ -319,25 +322,12 @@ struct MultipleChoice: View {
         } label: {
             Text("Submit")
                 .font(.headline)
-                .foregroundColor(selectedAnswer == nil ? .secondary : .white)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    Group {
-                        if selectedAnswer == nil {
-                            // Blends into white background with a faint outline
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color(.systemBackground))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                                )
-                        } else {
-                            // Active state
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.green)
-                        }
-                    }
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(tfGreen)
                 )
         }
         .disabled(selectedAnswer == nil)
@@ -390,7 +380,7 @@ private struct CorrectResultPopUpComponent: View {
     var body: some View {
         ResultCard(
             title: "Great Job!",
-            titleColor: Color.orange,
+            titleColor: Color(red: 239/255, green: 190/255, blue: 85/255),
             message: message,
             buttonTitle: "Next Question",
             onNext: onNext
@@ -405,7 +395,7 @@ private struct IncorrectResultPopUpComponent: View {
     var body: some View {
         ResultCard(
             title: "Not Quite...",
-            titleColor: Color.orange,
+            titleColor: Color(red: 239/255, green: 190/255, blue: 85/255),
             message: message,
             buttonTitle: "Next Question",
             onNext: onNext
@@ -440,8 +430,8 @@ private struct ResultCard: View {
                     .font(.system(size: 18, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.white)
-                    .foregroundColor(.gray)
+                    .background(Color(red: 159/255, green: 192/255, blue: 122/255))
+                    .foregroundColor(.white)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
@@ -460,7 +450,7 @@ private struct ResultCard: View {
     }
 }
 
-// MARK: - Dummy data + SR test harness (integrated in this file)
+// MARK: - Dummy data + SR helpers (unchanged)
 
 private func daysAgo(_ days: Int) -> Date {
     Calendar.current.date(byAdding: .day, value: -days, to: Date())!
@@ -469,7 +459,6 @@ private func daysAgo(_ days: Int) -> Date {
 private func makeDummyFlashcards() -> [FlashcardModel] {
     var cards: [FlashcardModel] = []
 
-    // Greetings (mixed progress)
     cards += [
         FlashcardModel(term: "Hello", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Greetings"),
         FlashcardModel(term: "Goodbye", id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: "Greetings"),
@@ -481,7 +470,6 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
         FlashcardModel(term: "See You", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Greetings"),
     ]
 
-    // Numbers
     cards += [
         FlashcardModel(term: "One", id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: "Numbers"),
         FlashcardModel(term: "Two", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Numbers"),
@@ -495,7 +483,6 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
         FlashcardModel(term: "Ten", id: UUID(), lastSucceeded: daysAgo(30), starred: false, progress: .learning, category: "Numbers"),
     ]
 
-    // Colors
     cards += [
         FlashcardModel(term: "Red", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Colors"),
         FlashcardModel(term: "Blue", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: "Colors"),
@@ -507,7 +494,6 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
         FlashcardModel(term: "White", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Colors"),
     ]
 
-    // Family
     cards += [
         FlashcardModel(term: "Mother", id: UUID(), lastSucceeded: daysAgo(9), starred: false, progress: .learning, category: "Family"),
         FlashcardModel(term: "Father", id: UUID(), lastSucceeded: daysAgo(4), starred: false, progress: .polishing, category: "Family"),
@@ -517,7 +503,6 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
         FlashcardModel(term: "Grandfather", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Family"),
     ]
 
-    // Common verbs
     cards += [
         FlashcardModel(term: "Eat", id: UUID(), lastSucceeded: daysAgo(7), starred: false, progress: .learning, category: "Verbs"),
         FlashcardModel(term: "Drink", id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: "Verbs"),
@@ -548,6 +533,8 @@ struct MultipleChoiceSRTester: View {
     @State private var vm = FlashcardVM()
     @State private var current: FlashcardModel?
     @State private var currentOptions: [String] = []
+    @State private var completed: Int = 0
+    let target = 7
 
     var body: some View {
         Group {
@@ -558,12 +545,14 @@ struct MultipleChoiceSRTester: View {
                     options: currentOptions,
                     correctAnswer: current.term,
                     explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
-                    currentCard: current
-                ) { next in
-                    // Rebuild for next
-                    self.current = next
-                    self.currentOptions = optionsFor(card: next, from: vm.flashcards)
-                }
+                    currentCard: current,
+                    onNext: { next in
+                        completed += 1
+                        self.current = next
+                        self.currentOptions = optionsFor(card: next, from: vm.flashcards)
+                    },
+                    progress: Double(completed) / Double(target)
+                )
                 .environment(vm)
             } else {
                 ProgressView("Loading cards...")
@@ -576,9 +565,7 @@ struct MultipleChoiceSRTester: View {
     }
 
     private func seedAndStart() {
-        // Load large dummy set
         vm.flashcards = makeDummyFlashcards()
-        // Start with a nextCard selection
         if let first = vm.nextCard() {
             current = first
             currentOptions = optionsFor(card: first, from: vm.flashcards)
@@ -589,7 +576,6 @@ struct MultipleChoiceSRTester: View {
 // MARK: - Previews
 
 #Preview("Single Card (original)") {
-    // NOTE: Preview uses a dummy VM injected here.
     let vm = FlashcardVM()
     let card = FlashcardModel(
         term: "Hello",
@@ -598,12 +584,13 @@ struct MultipleChoiceSRTester: View {
     )
     return MultipleChoice(
         question: "What sign is being shown?",
-        imageName: "greetingsIllustration",           // replace with your asset name
+        imageName: "greetingsIllustration",
         options: ["Hello", "Goodbye", "Wassup", "See you"],
         correctAnswer: "Hello",
         explanationText: "People often confuse this sign with 'Goodbye' because the hand motion looks similar at a glance.",
         currentCard: card,
-        onNext: { _ in }
+        onNext: { _ in },
+        progress: 0.0
     )
     .environment(vm)
 }
@@ -611,4 +598,3 @@ struct MultipleChoiceSRTester: View {
 #Preview("Spaced Repetition Tester") {
     MultipleChoiceSRTester()
 }
-
