@@ -16,13 +16,20 @@ struct MultipleChoice: View {
     let correctAnswer: String
     var explanationText: String = "People often confuse this sign with Goodbye because..."
 
+    // Spaced repetition integration
+    let currentCard: FlashcardModel
+    var onNext: (FlashcardModel) -> Void = { _ in }
+
+    // MARK: - Environment (Observation framework)
+    @Environment(FlashcardVM.self) private var flashcardVM
+    @Environment(\.dismiss) private var dismiss
+
     // MARK: - State
     @State private var selectedAnswer: String? = nil
     @State private var isSaved: Bool = false
     @State private var showHintPopup: Bool = false
     @State private var showCorrectPopup: Bool = false
     @State private var showIncorrectPopup: Bool = false
-    @Environment(\.dismiss) private var dismiss
 
     // Progress (0.0 – 1.0) — in a real app this would come from a parent view model
     var progress: Double = 0.15
@@ -67,7 +74,7 @@ struct MultipleChoice: View {
             CorrectResultPopUpComponent(
                 message: explanationText,
                 onNext: {
-                    showCorrectPopup = false
+                    advanceToNextCard()
                 }
             )
         }
@@ -76,7 +83,7 @@ struct MultipleChoice: View {
             IncorrectResultPopUpComponent(
                 message: explanationText,
                 onNext: {
-                    showIncorrectPopup = false
+                    advanceToNextCard()
                 }
             )
         }
@@ -186,6 +193,9 @@ struct MultipleChoice: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            // ProgressType info box
+            progressBadge
+
             // Answer options
             VStack(spacing: 10) {
                 ForEach(options, id: \.self) { option in
@@ -205,10 +215,46 @@ struct MultipleChoice: View {
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
     }
 
+    private var progressBadge: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(color(for: currentCard.progress))
+                .frame(width: 10, height: 10)
+            Text("Level: \(title(for: currentCard.progress))")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.systemGray6))
+        )
+    }
+
+    private func title(for progress: ProgressType) -> String {
+        switch progress {
+        case .new: return "New"
+        case .learning: return "Learning"
+        case .polishing: return "Polishing"
+        case .mastered: return "Mastered"
+        }
+    }
+
+    private func color(for progress: ProgressType) -> Color {
+        switch progress {
+        case .new: return .gray
+        case .learning: return .orange
+        case .polishing: return .blue
+        case .mastered: return .green
+        }
+    }
+
     // MARK: - Option Row
     @ViewBuilder
     private func optionRow(_ option: String) -> some View {
         let isSelected = selectedAnswer == option
+        let isCorrectOption = option == correctAnswer
 
         Button {
             withAnimation(.easeInOut(duration: 0.15)) {
@@ -216,7 +262,8 @@ struct MultipleChoice: View {
             }
         } label: {
             HStack {
-                Text(option)
+                // Append an asterisk to the correct answer for testing clarity
+                Text(isCorrectOption ? "\(option) *" : option)
                     .font(.body.weight(isSelected ? .semibold : .regular))
                     .foregroundColor(isSelected ? .black : Color(.label))
                 Spacer()
@@ -258,7 +305,12 @@ struct MultipleChoice: View {
 
     private func handleSubmission() {
         guard let selected = selectedAnswer else { return }
-        if selected == correctAnswer {
+        let isCorrect = (selected == correctAnswer)
+
+        // Update spaced repetition progress
+        flashcardVM.handleAnswer(for: currentCard, correct: isCorrect)
+
+        if isCorrect {
             withAnimation(.easeInOut(duration: 0.25)) {
                 showCorrectPopup = true
             }
@@ -266,6 +318,24 @@ struct MultipleChoice: View {
             withAnimation(.easeInOut(duration: 0.25)) {
                 showIncorrectPopup = true
             }
+        }
+    }
+
+    private func advanceToNextCard() {
+        // Close popups
+        showCorrectPopup = false
+        showIncorrectPopup = false
+
+        // Ask VM for next card
+        if let next = flashcardVM.nextCard() {
+            // Reset selection state
+            selectedAnswer = nil
+            isSaved = false
+            // Delegate navigation/presentation to parent
+            onNext(next)
+        } else {
+            // No more cards — dismiss or keep current view
+            dismiss()
         }
     }
 }
@@ -349,13 +419,154 @@ private struct ResultCard: View {
     }
 }
 
-// MARK: - Preview
-#Preview {
-    MultipleChoice(
+// MARK: - Dummy data + SR test harness (integrated in this file)
+
+private func daysAgo(_ days: Int) -> Date {
+    Calendar.current.date(byAdding: .day, value: -days, to: Date())!
+}
+
+private func makeDummyFlashcards() -> [FlashcardModel] {
+    var cards: [FlashcardModel] = []
+
+    // Greetings (mixed progress)
+    cards += [
+        FlashcardModel(term: "Hello", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Greetings"),
+        FlashcardModel(term: "Goodbye", id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: "Greetings"),
+        FlashcardModel(term: "Thank You", id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: "Greetings"),
+        FlashcardModel(term: "Please", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Greetings"),
+        FlashcardModel(term: "Nice To Meet You", id: UUID(), lastSucceeded: daysAgo(20), starred: false, progress: .learning, category: "Greetings"),
+        FlashcardModel(term: "Good Morning", id: UUID(), lastSucceeded: daysAgo(5), starred: false, progress: .polishing, category: "Greetings"),
+        FlashcardModel(term: "Good Night", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Greetings"),
+        FlashcardModel(term: "See You", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Greetings"),
+    ]
+
+    // Numbers
+    cards += [
+        FlashcardModel(term: "One", id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: "Numbers"),
+        FlashcardModel(term: "Two", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Numbers"),
+        FlashcardModel(term: "Three", id: UUID(), lastSucceeded: daysAgo(5), starred: true, progress: .polishing, category: "Numbers"),
+        FlashcardModel(term: "Four", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Numbers"),
+        FlashcardModel(term: "Five", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Numbers"),
+        FlashcardModel(term: "Six", id: UUID(), lastSucceeded: daysAgo(15), starred: false, progress: .learning, category: "Numbers"),
+        FlashcardModel(term: "Seven", id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: "Numbers"),
+        FlashcardModel(term: "Eight", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Numbers"),
+        FlashcardModel(term: "Nine", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Numbers"),
+        FlashcardModel(term: "Ten", id: UUID(), lastSucceeded: daysAgo(30), starred: false, progress: .learning, category: "Numbers"),
+    ]
+
+    // Colors
+    cards += [
+        FlashcardModel(term: "Red", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Colors"),
+        FlashcardModel(term: "Blue", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: "Colors"),
+        FlashcardModel(term: "Green", id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: "Colors"),
+        FlashcardModel(term: "Yellow", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Colors"),
+        FlashcardModel(term: "Orange", id: UUID(), lastSucceeded: daysAgo(12), starred: false, progress: .learning, category: "Colors"),
+        FlashcardModel(term: "Purple", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Colors"),
+        FlashcardModel(term: "Black", id: UUID(), lastSucceeded: daysAgo(6), starred: false, progress: .polishing, category: "Colors"),
+        FlashcardModel(term: "White", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Colors"),
+    ]
+
+    // Family
+    cards += [
+        FlashcardModel(term: "Mother", id: UUID(), lastSucceeded: daysAgo(9), starred: false, progress: .learning, category: "Family"),
+        FlashcardModel(term: "Father", id: UUID(), lastSucceeded: daysAgo(4), starred: false, progress: .polishing, category: "Family"),
+        FlashcardModel(term: "Brother", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Family"),
+        FlashcardModel(term: "Sister", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Family"),
+        FlashcardModel(term: "Grandmother", id: UUID(), lastSucceeded: daysAgo(20), starred: false, progress: .learning, category: "Family"),
+        FlashcardModel(term: "Grandfather", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Family"),
+    ]
+
+    // Common verbs
+    cards += [
+        FlashcardModel(term: "Eat", id: UUID(), lastSucceeded: daysAgo(7), starred: false, progress: .learning, category: "Verbs"),
+        FlashcardModel(term: "Drink", id: UUID(), lastSucceeded: daysAgo(3), starred: false, progress: .polishing, category: "Verbs"),
+        FlashcardModel(term: "Go", id: UUID(), lastSucceeded: daysAgo(14), starred: false, progress: .learning, category: "Verbs"),
+        FlashcardModel(term: "Come", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Verbs"),
+        FlashcardModel(term: "Want", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: "Verbs"),
+        FlashcardModel(term: "Need", id: UUID(), lastSucceeded: daysAgo(5), starred: false, progress: .polishing, category: "Verbs"),
+        FlashcardModel(term: "Like", id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: "Verbs"),
+    ]
+
+    return cards
+}
+
+private func optionsFor(card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
+    var distractors = pool
+        .filter { $0.id != card.id }
+        .map { $0.term }
+        .shuffled()
+        .prefix(max(0, count - 1))
+
+    var opts = Array(distractors)
+    opts.append(card.term)
+    // Ensure unique and random order
+    return Array(Set(opts)).shuffled()
+}
+
+struct MultipleChoiceSRTester: View {
+    @State private var vm = FlashcardVM()
+    @State private var current: FlashcardModel?
+    @State private var currentOptions: [String] = []
+
+    var body: some View {
+        Group {
+            if let current {
+                MultipleChoice(
+                    question: "What sign is being shown?",
+                    imageName: "greetingsIllustration",
+                    options: currentOptions,
+                    correctAnswer: current.term,
+                    explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
+                    currentCard: current
+                ) { next in
+                    // Rebuild for next
+                    self.current = next
+                    self.currentOptions = optionsFor(card: next, from: vm.flashcards)
+                }
+                .environment(vm)
+            } else {
+                ProgressView("Loading cards...")
+                    .onAppear {
+                        seedAndStart()
+                    }
+            }
+        }
+        .padding()
+    }
+
+    private func seedAndStart() {
+        // Load large dummy set
+        vm.flashcards = makeDummyFlashcards()
+        // Start with a nextCard selection
+        if let first = vm.nextCard() {
+            current = first
+            currentOptions = optionsFor(card: first, from: vm.flashcards)
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Single Card (original)") {
+    // NOTE: Preview uses a dummy VM injected here.
+    let vm = FlashcardVM()
+    let card = FlashcardModel(
+        term: "Hello",
+        id: UUID(),
+        category: "Greetings"
+    )
+    return MultipleChoice(
         question: "What sign is being shown?",
         imageName: "greetingsIllustration",           // replace with your asset name
         options: ["Hello", "Goodbye", "Wassup", "See you"],
         correctAnswer: "Hello",
-        explanationText: "People often confuse this sign with Goodbye because the hand motion looks similar at a glance."
+        explanationText: "People often confuse this sign with 'Goodbye' because the hand motion looks similar at a glance.",
+        currentCard: card,
+        onNext: { _ in }
     )
+    .environment(vm)
+}
+
+#Preview("Spaced Repetition Tester") {
+    MultipleChoiceSRTester()
 }
