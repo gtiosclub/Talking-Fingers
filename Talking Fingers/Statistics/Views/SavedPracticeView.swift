@@ -44,7 +44,6 @@ struct SavedPracticeView: View {
     ]
 
     var body: some View {
-        NavigationStack {
             ZStack(alignment: .bottom) {
                 Color(red: 0.96, green: 0.96, blue: 0.96)
                     .ignoresSafeArea()
@@ -63,7 +62,6 @@ struct SavedPracticeView: View {
 
                 floatingPlusButton
             }
-            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showCreatePracticeView) {
                 GenerateSentencesView { sentences, categories in
                     lastCategories = categories
@@ -89,7 +87,6 @@ struct SavedPracticeView: View {
                     }
                 )
             }
-        }
     }
 
     private var headerSection: some View {

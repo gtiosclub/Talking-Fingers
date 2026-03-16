@@ -15,6 +15,13 @@ struct PromptGenerator {
     /// - Returns: Formatted prompt string
     static func generatePromptForLLM(from flashcards: [FlashcardModel], focusTerms: [Term] = []) -> String {
         let learningAnalysis = analyzeLearningState(from: flashcards)
+        // Full app vocabulary – gloss is allowed to use ANY of these terms,
+        // but should prioritize the focusTerms (selected categories).
+        let allowedTerms = Term.allCases
+        let allowedCategories = Set(focusTerms.map { $0.category })
+        let focusCategories = allowedCategories
+        let isAlphabetOnly = !focusCategories.isEmpty && focusCategories == [.alphabet]
+        let isNumbersOnly = !focusCategories.isEmpty && focusCategories == [.numbers]
         
         var prompt = """
         You are a sign language practice sentence generator for ASL learners.
@@ -41,6 +48,45 @@ struct PromptGenerator {
             \(focusTermStrings)
             
             """
+            
+            if focusCategories.count == 1, let singleCategory = focusCategories.first {
+                prompt += """
+                
+                IMPORTANT: The learner selected exactly ONE category (\(singleCategory.rawValue)).
+                At least one focus-term from this category MUST appear in EVERY SINGLE sentence you generate.
+                Do not generate any sentence that omits this category entirely.
+                """
+            }
+        }
+        
+        // Make category intent explicit to the model (based on selected focus terms).
+        if !focusCategories.isEmpty {
+            let cats = focusCategories.map { $0.rawValue }.sorted().joined(separator: ", ")
+            prompt += """
+            
+            【SELECTED CATEGORIES (IMPORTANT)】
+            The learner selected these categories: \(cats)
+            You MUST generate scenarios that naturally fit these categories.
+            """
+            
+            if isAlphabetOnly {
+                prompt += """
+                
+                【ALPHABET-FOCUSED MODE】
+                Strongly prioritize ALPHABET terms in both English scenarios and gloss.
+                - English should usually be about finger-spelling a name or word (e.g. \"My name is John.\", \"Your name is Amy.\").
+                - Gloss (\"sentence\") should contain sequences of letters separated by spaces (e.g. \"J O H N\"), and MAY also include other allowed vocabulary from the app if it helps the scenario.
+                - Repeating letters is allowed in this mode (e.g. \"A L L Y\").
+                """
+            } else if isNumbersOnly {
+                prompt += """
+                
+                【NUMBERS-FOCUSED MODE】
+                Strongly prioritize NUMBER terms from the vocabulary.
+                - English should describe simple number scenarios (age, quantity, time, etc.).
+                - Gloss (\"sentence\") should prominently feature the relevant number tokens and MAY also use other allowed vocabulary from the app as needed.
+                """
+            }
         }
         
         prompt += """
@@ -62,7 +108,7 @@ struct PromptGenerator {
         【TWO-PART OUTPUT】
         Each item must have:
         1. "english": A natural, coherent English sentence the learner reads first (plain English, normal grammar).
-        2. "sentence": The ASL gloss for signing — ONLY words from the FLASHCARDS list, in ASL word order (TIME + TOPIC + COMMENT). No articles, no "is/am/are". Use commas for pauses.
+        2. "sentence": The ASL gloss for signing — ONLY words from the app's taught vocabulary list below (ALLOWED GLOSS VOCAB), in ASL word order (TIME + TOPIC + COMMENT). No articles, no "is/am/are". Use commas for pauses.
 
         The English sentence and the gloss must express the SAME meaning. Think of a clear, realistic scenario, write it in normal English, then convert to gloss using only allowed words.
 
@@ -75,14 +121,16 @@ struct PromptGenerator {
           {"english": "My friend is happy and I am happy too.", "sentence": "FRIEND HAPPY, ME HAPPY"}
         ]
 
+        【ALLOWED GLOSS VOCAB】
+        You may ONLY use these tokens in the gloss (\"sentence\"):
+        \(allowedTerms.map { $0.rawValue }.sorted().joined(separator: ", "))
+        The focus terms listed above MUST appear frequently across the 5 sentences, but you can also use other tokens from this list.
+
         【CRITICAL RULES】
         1. English MUST be a normal, grammatical sentence that makes sense. No random words.
-        2. Gloss ("sentence") MUST use only words from the FLASHCARDS list. ASL word order: TIME + TOPIC + COMMENT + DETAILS.
-        3. No repetition: a word appears at most once per sentence.
+        2. Gloss ("sentence") MUST use only words from the ALLOWED GLOSS VOCAB list above. ASL word order: TIME + TOPIC + COMMENT + DETAILS.
+        3. No repetition: a word appears at most once per sentence (EXCEPT in Alphabet-only mode, where repeating letters is allowed).
         4. One clear idea per sentence (request, event, description, etc.).
-
-        【CRITICAL CONSTRAINT】
-        Every word in "sentence" (the gloss) MUST appear in the FLASHCARDS list above. Do NOT use any other words in the gloss. If you cannot say something with the list, use a simpler idea.
 
         【QUALITY】
         ✓ English: Would a native speaker say this? Clear scenario?

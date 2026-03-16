@@ -116,6 +116,12 @@ struct GenerateSentencesView: View {
         .padding(.horizontal, 24)
     }
     
+    private var selectedGlossTerms: [Term] {
+        let terms = selectedCategories.flatMap { Term.words(for: $0) }
+        let unique = Array(Set(terms))
+        return unique.sorted { $0.rawValue < $1.rawValue }
+    }
+    
     private func toggleCategory(_ category: TermCategory) {
         if selectedCategories.contains(category) {
             selectedCategories.remove(category)
@@ -186,10 +192,14 @@ private func generateSentencesForCategories(_ categories: Set<TermCategory>) asy
         throw AIError.invalidRequest
     }
     
-    // 2. Filter focus terms - exclude alphabet and numbers for sentence building
-    let sentenceTerms = focusTerms.filter { term in
+    // 2. Determine which terms should drive sentence generation.
+    // If there are any non-alphabet/number terms, prioritize those for sentences.
+    // If the user ONLY picked alphabet and/or numbers, still allow those terms
+    // so we can generate spelling/number-focused practice.
+    let nonAlphaNumericTerms = focusTerms.filter { term in
         term.category != .alphabet && term.category != .numbers
     }
+    let sentenceTerms = nonAlphaNumericTerms.isEmpty ? focusTerms : nonAlphaNumericTerms
     
     // Create flashcards only for sentence-appropriate terms
     let flashcards = sentenceTerms.map { term in
