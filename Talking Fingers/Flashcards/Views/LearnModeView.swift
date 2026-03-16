@@ -11,38 +11,23 @@ struct LearnModeView: View {
     @StateObject var vm: LearnModeVM
     var progress: Double
 
-    // Add this closure so the presenter can control dismissal.
-    var onClose: () -> Void = {}
-
-    @State private var showHint = false
-
     var body: some View {
-        ZStack {
-            // Main content
-            VStack(spacing: 20) {
+        VStack(spacing: 20) {
 
-                header
+            header
 
-                Text(vm.word)
-                    .font(.system(size: 45, weight: .bold))
+            Text(vm.word)
+                .font(.system(size: 45, weight: .bold))
 
-                imageArea
-                    .frame(maxHeight: .infinity)
+            imageArea
+                .frame(maxHeight: .infinity)
 
-                Spacer()
+            Spacer()
 
-                mainButton
-            }
-            .padding(.top)
-            .padding(.horizontal)
+            mainButton
         }
-        .popupHost(isPresented: $showHint) {
-            HintPopUpComponent(
-                hintText: /* vm.hintText ?? */ "This sign resembles a B shape"
-            ) {
-                showHint = false
-            }
-        }
+        .padding(.top)
+        .padding(.horizontal)
     }
 }
 
@@ -51,7 +36,6 @@ extension LearnModeView {
         HStack {
             Button {
                 // exit view
-                onClose()
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2)
@@ -72,8 +56,7 @@ extension LearnModeView {
             displayedImage
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Show hint icon ONLY when camera is showing
-            if vm.showingCamera {
+            if vm.showHintButton {
                 hintButton
             }
         }
@@ -104,7 +87,7 @@ extension LearnModeView {
 
     var hintButton: some View {
         Button {
-            showHint = true
+            vm.tapHint()
         } label: {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 30))
