@@ -337,7 +337,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         if isComparing, let ref = comparisonReference {
             if ref.signType == .static, let refFrame = ref.frames.first {
                 let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
-                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + rawScore * smoothingFactor
+                let displayed = min(100, rawScore * 1.3)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
                 confidenceScore = smoothedConfidence
                 return
             }
@@ -353,7 +354,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 let dtwScore = dtwEngine.computeDTW(buffer: frameBuffer, template: ref)
                 let rawScore = dtwScore.isFinite ? max(0, min(100, 100.0 * exp(-3.0 * dtwScore))) : 0
-                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + rawScore * smoothingFactor
+                let displayed = min(100, rawScore * 1.5)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
                 confidenceScore = smoothedConfidence
                 return
             }
