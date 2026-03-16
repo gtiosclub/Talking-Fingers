@@ -15,7 +15,7 @@ struct FlashcardView: View {
             } else {
                 Text("No GIF available")
             }
-            Text(flashcard.term)
+            Text(flashcard.term.rawValue)
                 .font(.title)
         }
     }
@@ -23,9 +23,9 @@ struct FlashcardView: View {
 #Preview {
     let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID()
     FlashcardView(flashcard: FlashcardModel(
-        term: "Test",
+        term: .hello,
         id: dummyID,
-        category: "Test",
+        category: .commonObjects,
         gifFileName: "GifDiagramTest.gif"
     ))
 }

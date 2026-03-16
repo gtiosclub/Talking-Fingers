@@ -12,15 +12,15 @@ struct DailyReviewQueue {
     let cards: [FlashcardModel]
     let generatedAt: Date
     let totalCardCount: Int
-    let categoryBreakdown: [String: Int]
+    let categoryBreakdown: [TermCategory: Int]
     let requestedLimit: Int
 
     var wasTruncated: Bool {
         totalCardCount > requestedLimit
     }
 
-    var categories: [String] {
-        Array(categoryBreakdown.keys).sorted()
+    var categories: [TermCategory] {
+        Array(categoryBreakdown.keys).sorted { $0.rawValue < $1.rawValue }
     }
 
     init(cards: [FlashcardModel], requestedLimit: Int, totalCardCount: Int) {
@@ -29,7 +29,7 @@ struct DailyReviewQueue {
         self.totalCardCount = totalCardCount
         self.generatedAt = Date()
 
-        var breakdown: [String: Int] = [:]
+        var breakdown: [TermCategory: Int] = [:]
         for card in cards {
             breakdown[card.category, default: 0] += 1
         }

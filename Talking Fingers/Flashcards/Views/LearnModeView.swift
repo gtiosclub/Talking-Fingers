@@ -116,9 +116,9 @@ extension LearnModeView {
 
 #Preview {
     let dummyCard = FlashcardModel(
-        term: "Hello",
+        term: .hello,
         id: UUID(),
-        category: "Greeting"
+        category: .greetings
     )
     LearnModeView(
         vm: LearnModeVM(flashcard: dummyCard),

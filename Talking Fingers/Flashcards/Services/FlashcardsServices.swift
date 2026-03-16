@@ -23,8 +23,8 @@ final class FlashcardsServices {
         for card in flashcards {
             try await collectionRef.document(card.id.uuidString).setData([
                 "id": card.id.uuidString,
-                "term": card.term,
-                "category": card.category,
+                "term": card.term.rawValue,
+                "category": card.category.rawValue,
                 "starred": card.starred,
                 "progress": String(describing: card.progress),
                 "lastSucceeded": card.lastSucceeded as Any
@@ -48,8 +48,10 @@ final class FlashcardsServices {
             guard
                 let idString = data["id"] as? String,
                 let id = UUID(uuidString: idString),
-                let term = data["term"] as? String,
-                let category = data["category"] as? String,
+                let termString = data["term"] as? String,
+                let term = Term(rawValue: termString),
+                let categoryString = data["category"] as? String,
+                let category = TermCategory(rawValue: categoryString),
                 let starred = data["starred"] as? Bool,
                 let progress = data["progress"] as? ProgressType
             else {
@@ -79,8 +81,10 @@ final class FlashcardsServices {
         for doc in snapshot.documents {
             let data = doc.data()
             guard let id = UUID(uuidString: data["id"] as? String ?? ""),
-                  let term = data["term"] as? String,
-                  let category = data["category"] as? String,
+                  let termString = data["term"] as? String,
+                  let term = Term(rawValue: termString),
+                  let categoryString = data["category"] as? String,
+                  let category = TermCategory(rawValue: categoryString),
                   let starred = data["starred"] as? Bool,
                   let progressStr = data["progress"] as? String else {
                 continue

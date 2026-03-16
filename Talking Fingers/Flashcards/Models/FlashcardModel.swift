@@ -10,14 +10,14 @@ import SwiftData
 @Model
 class FlashcardModel {
     @Attribute(.unique) var id: UUID
-    var term: String
+    var term: Term
     var lastSucceeded: Date?
     var starred: Bool
     var progress: ProgressType
-    var category: String
+    var category: TermCategory
     var gifFileName: String?
     
-    init(term: String, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType, category: String, gifFileName: String? = nil) {
+    init(term: Term, id: UUID, lastSucceeded: Date?, starred: Bool, progress: ProgressType, category: TermCategory, gifFileName: String? = nil) {
         self.term = term
         self.id = id
         self.lastSucceeded = lastSucceeded
@@ -26,7 +26,7 @@ class FlashcardModel {
         self.category = category
         self.gifFileName = gifFileName
     }    
-    init(term: String, id: UUID, category: String, gifFileName: String? = nil) {
+    init(term: Term, id: UUID, category: TermCategory, gifFileName: String? = nil) {
         self.term = term
         self.id = id
         self.lastSucceeded = nil

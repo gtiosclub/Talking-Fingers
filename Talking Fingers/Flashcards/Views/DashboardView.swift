@@ -11,7 +11,7 @@ struct DashboardView: View {
     @State private var flashcardVM = FlashcardVM()
 
     // Compute categories that are in progress (have at least one non-new and non-mastered card)
-    private var inProgressCategories: [(category: String, progress: Float, mode: String)] {
+    private var inProgressCategories: [(category: TermCategory, progress: Float, mode: String)] {
         let grouped = Dictionary(grouping: flashcardVM.fakeFlashcards) { $0.category }
         return grouped.compactMap { (category, cards) in
             let progress = flashcardVM.returnProgress(flashcards: cards)
@@ -110,7 +110,7 @@ struct DashboardView: View {
 // MARK: - In Progress Card
 
 private struct InProgressCard: View {
-    let category: String
+    let category: TermCategory
     let mode: String
     let progress: Float
     let backgroundColor: Color
@@ -118,7 +118,7 @@ private struct InProgressCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Illustration placeholder using the asset if available, else SF Symbol
-            Image(category == "Greetings" ? "greetingsIllustration" : "dummySign")
+            Image(category == .greetings ? "greetingsIllustration" : "dummySign")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 100)
@@ -130,7 +130,7 @@ private struct InProgressCard: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
 
-                Text(category)
+                Text(category.rawValue)
                     .font(.system(size: 18, weight: .bold))
             }
             .frame(maxWidth: .infinity)
