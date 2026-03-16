@@ -45,19 +45,80 @@ struct DTWService {
         return minFinalCost / Double(m)
     }
 
-    /// Temporary function to calcaulate the distance between two frames based on overlapping joint data.
-    // TODO: Replace this function with #73 Frame by Frame Comparison
+    /// Per-frame distance combining two components:
+    /// 1. Handshape: centroid + scale normalized hand joints (finger configuration)
+    /// 2. Trajectory: wrist/elbow positions relative to shoulder midpoint,
+    ///    normalized by shoulder width (where the hand is in signing space)
     private func frameDistance(_ f1: SignFrame, _ f2: SignFrame) -> Double {
-        var totalDist: Double = 0
-        var matchCount = 0
-        
-        for (jointType, p1) in f1.joints {
-            if let p2 = f2.joints[jointType] {
-                totalDist += hypot(p1.x - p2.x, p1.y - p2.y)
-                matchCount += 1
-            }
+        // --- Handshape: centroid+scale normalized hand joints ---
+        var matched1: [(x: Double, y: Double)] = []
+        var matched2: [(x: Double, y: Double)] = []
+
+        for (key, j1) in f1.joints {
+            guard key.contains("VNHLK") else { continue }
+            guard let j2 = f2.joints[key] else { continue }
+            guard j1.confidence > 0.3, j2.confidence > 0.3 else { continue }
+            matched1.append((x: j1.x, y: j1.y))
+            matched2.append((x: j2.x, y: j2.y))
         }
 
-        return matchCount > 0 ? (totalDist / Double(matchCount)) : .infinity
+        guard matched1.count >= 5 else { return .infinity }
+
+        let n = Double(matched1.count)
+
+        let cx1 = matched1.reduce(0.0) { $0 + $1.x } / n
+        let cy1 = matched1.reduce(0.0) { $0 + $1.y } / n
+        let cx2 = matched2.reduce(0.0) { $0 + $1.x } / n
+        let cy2 = matched2.reduce(0.0) { $0 + $1.y } / n
+
+        let s1 = max(matched1.reduce(0.0) { max($0, hypot($1.x - cx1, $1.y - cy1)) }, 1e-6)
+        let s2 = max(matched2.reduce(0.0) { max($0, hypot($1.x - cx2, $1.y - cy2)) }, 1e-6)
+
+        var handshapeDist: Double = 0
+        for i in 0..<matched1.count {
+            let x1 = (matched1[i].x - cx1) / s1
+            let y1 = (matched1[i].y - cy1) / s1
+            let x2 = (matched2[i].x - cx2) / s2
+            let y2 = (matched2[i].y - cy2) / s2
+            handshapeDist += hypot(x1 - x2, y1 - y2)
+        }
+        handshapeDist /= n
+
+        // --- Trajectory: wrist/elbow positions relative to shoulder midpoint ---
+        guard let ls1 = f1.joints["left_shoulder_1_joint"],
+              let rs1 = f1.joints["right_shoulder_1_joint"],
+              let ls2 = f2.joints["left_shoulder_1_joint"],
+              let rs2 = f2.joints["right_shoulder_1_joint"],
+              ls1.confidence > 0.3, rs1.confidence > 0.3,
+              ls2.confidence > 0.3, rs2.confidence > 0.3 else {
+            return handshapeDist
+        }
+
+        let bodyCx1 = (ls1.x + rs1.x) / 2, bodyCy1 = (ls1.y + rs1.y) / 2
+        let bodyCx2 = (ls2.x + rs2.x) / 2, bodyCy2 = (ls2.y + rs2.y) / 2
+
+        let shoulderW1 = max(hypot(ls1.x - rs1.x, ls1.y - rs1.y), 1e-6)
+        let shoulderW2 = max(hypot(ls2.x - rs2.x, ls2.y - rs2.y), 1e-6)
+
+        let trajectoryJoints = ["leftVNHLKWRI", "rightVNHLKWRI",
+                                "left_forearm_joint", "right_forearm_joint"]
+        var trajectoryDist: Double = 0
+        var trajectoryCount = 0
+
+        for key in trajectoryJoints {
+            guard let j1 = f1.joints[key], let j2 = f2.joints[key],
+                  j1.confidence > 0.3, j2.confidence > 0.3 else { continue }
+            let tx1 = (j1.x - bodyCx1) / shoulderW1
+            let ty1 = (j1.y - bodyCy1) / shoulderW1
+            let tx2 = (j2.x - bodyCx2) / shoulderW2
+            let ty2 = (j2.y - bodyCy2) / shoulderW2
+            trajectoryDist += hypot(tx1 - tx2, ty1 - ty2)
+            trajectoryCount += 1
+        }
+
+        guard trajectoryCount > 0 else { return handshapeDist }
+        trajectoryDist /= Double(trajectoryCount)
+
+        return 0.5 * handshapeDist + 0.5 * trajectoryDist
     }
 }

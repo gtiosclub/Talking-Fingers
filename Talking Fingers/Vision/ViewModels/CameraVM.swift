@@ -197,6 +197,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             isComparing = comparisonReference != nil
             if !isComparing { confidenceScore = 0 }
             smoothedConfidence = 0
+            frameBuffer.frames.removeAll()
+            frameCounter = 0
         } catch {
             print("Failed to load reference for '\(normalizedName)': \(error)")
             stopComparing()
@@ -208,6 +210,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         comparisonReference = nil
         confidenceScore = 0
         smoothedConfidence = 0
+        frameBuffer.frames.removeAll()
+        frameCounter = 0
     }
 
     /// Compares hand joints between a live frame and a reference frame using
@@ -330,14 +334,31 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
         let currentFrame = createSignFrame(body: body, hands: hands, at: timestamp)
 
-        if isComparing,
-           let ref = comparisonReference,
-           let refFrame = ref.frames.first,
-           ref.signType == .static {
-            let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
-            smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + rawScore * smoothingFactor
-            confidenceScore = smoothedConfidence
-            return
+        if isComparing, let ref = comparisonReference {
+            if ref.signType == .static, let refFrame = ref.frames.first {
+                let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
+                let displayed = min(100, rawScore * 1.3)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                confidenceScore = smoothedConfidence
+                return
+            }
+
+            if ref.signType == .dynamic {
+                frameBuffer.frames.append(currentFrame)
+                if frameBuffer.frames.count > maxBufferSize {
+                    frameBuffer.frames.removeFirst()
+                }
+
+                frameCounter += 1
+                guard frameCounter % stride == 0 else { return }
+
+                let dtwScore = dtwEngine.computeDTW(buffer: frameBuffer, template: ref)
+                let rawScore = dtwScore.isFinite ? max(0, min(100, 100.0 * exp(-3.0 * dtwScore))) : 0
+                let displayed = min(100, rawScore * 1.5)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                confidenceScore = smoothedConfidence
+                return
+            }
         }
 
         self.frameBuffer.frames.append(currentFrame)
