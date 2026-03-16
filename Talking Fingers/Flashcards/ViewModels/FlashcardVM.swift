@@ -26,29 +26,29 @@ class FlashcardVM {
         }
 
         return [
-            FlashcardModel(term: "Hello", id: UUID(), lastSucceeded: nil,starred: false, progress: .new, category: "Greetings"),
-            FlashcardModel(term: "Goodbye", id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning,  category: "Greetings"),
-            FlashcardModel(term: "Thank You", id: UUID(), lastSucceeded: daysAgo(3),starred: true,  progress: .learning, category: "Greetings"),
-            FlashcardModel(term: "Please", id: UUID(), lastSucceeded: daysAgo(1),starred: false, progress: .polishing, category: "Greetings"),
+            FlashcardModel(term: .hello, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .greetings),
+            FlashcardModel(term: .bye, id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: .greetings),
+            FlashcardModel(term: .niceMeetYou, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .learning, category: .greetings),
+            FlashcardModel(term: .howYou, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .polishing, category: .greetings),
 
-            FlashcardModel(term: "One", id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning,  category: "Numbers"),
-            FlashcardModel(term: "Two", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Numbers"),
-            FlashcardModel(term: "Three", id: UUID(), lastSucceeded: daysAgo(5),starred: true,  progress: .polishing, category: "Numbers"),
-            FlashcardModel(term: "Four", id: UUID(), lastSucceeded: daysAgo(1),starred: false, progress: .mastered,  category: "Numbers"),
+            FlashcardModel(term: .one, id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: .numbers),
+            FlashcardModel(term: .two, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: .numbers),
+            FlashcardModel(term: .three, id: UUID(), lastSucceeded: daysAgo(5), starred: true, progress: .polishing, category: .numbers),
+            FlashcardModel(term: .four, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .numbers),
 
-            FlashcardModel(term: "Red", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered,  category: "Colors"),
-            FlashcardModel(term: "Blue", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: "Colors"),
-            FlashcardModel(term: "Green", id: UUID(), lastSucceeded: daysAgo(3),starred: true,  progress: .polishing, category: "Colors"),
-            FlashcardModel(term: "Yellow", id: UUID(), lastSucceeded: daysAgo(1),starred: false, progress: .mastered,  category: "Colors"),
+            FlashcardModel(term: .good, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .commonDescriptors),
+            FlashcardModel(term: .happy, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: .feelingsEmotions),
+            FlashcardModel(term: .sad, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: .feelingsEmotions),
+            FlashcardModel(term: .excited, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .feelingsEmotions),
         ]
     }()
     
     init() {
         let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID() // change to static diagram test to test static diagram
         let dummyCard = FlashcardModel(
-            term: "Test",
+            term: .hello,
             id: dummyID,
-            category: "Test",
+            category: .commonObjects,
             gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
         )
         self.flashcards = [dummyCard]
@@ -57,14 +57,14 @@ class FlashcardVM {
     func searchFlashCard(input: String) -> [String] {
         var results = [String]()
         for card in flashcards {
-            if card.term.lowercased().contains(input.lowercased()) {
-                results.append(card.term)
+            if card.term.rawValue.lowercased().contains(input.lowercased()) {
+                results.append(card.term.rawValue)
             }
         }   
         return results
     }
     
-    func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
+    func filterByCategory(from flashcards: [FlashcardModel], category: TermCategory) -> [FlashcardModel] {
         flashcards.filter { $0.category == category }
     }
     

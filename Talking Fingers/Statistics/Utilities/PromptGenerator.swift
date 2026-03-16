@@ -36,7 +36,7 @@ struct PromptGenerator {
         """
         
         for (index, flashcard) in flashcards.enumerated() {
-            prompt += "\(index+1). \(flashcard.term) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
+            prompt += "\(index+1). \(flashcard.term.rawValue) | Progress: \(flashcard.progress) | Starred: \(flashcard.starred)\n"
         }
         
         if !focusTerms.isEmpty {

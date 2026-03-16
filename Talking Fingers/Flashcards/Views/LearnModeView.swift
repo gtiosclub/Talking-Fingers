@@ -11,23 +11,38 @@ struct LearnModeView: View {
     @StateObject var vm: LearnModeVM
     var progress: Double
 
+    // Add this closure so the presenter can control dismissal.
+    var onClose: () -> Void = {}
+
+    @State private var showHint = false
+
     var body: some View {
-        VStack(spacing: 20) {
+        ZStack {
+            // Main content
+            VStack(spacing: 20) {
 
-            header
+                header
 
-            Text(vm.word)
-                .font(.system(size: 45, weight: .bold))
+                Text(vm.word)
+                    .font(.system(size: 45, weight: .bold))
 
-            imageArea
-                .frame(maxHeight: .infinity)
+                imageArea
+                    .frame(maxHeight: .infinity)
 
-            Spacer()
+                Spacer()
 
-            mainButton
+                mainButton
+            }
+            .padding(.top)
+            .padding(.horizontal)
         }
-        .padding(.top)
-        .padding(.horizontal)
+        .popupHost(isPresented: $showHint) {
+            HintPopUpComponent(
+                hintText: /* vm.hintText ?? */ "This sign resembles a B shape"
+            ) {
+                showHint = false
+            }
+        }
     }
 }
 
@@ -36,6 +51,7 @@ extension LearnModeView {
         HStack {
             Button {
                 // exit view
+                onClose()
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2)
@@ -56,7 +72,8 @@ extension LearnModeView {
             displayedImage
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if vm.showHintButton {
+            // Show hint icon ONLY when camera is showing
+            if vm.showingCamera {
                 hintButton
             }
         }
@@ -87,7 +104,7 @@ extension LearnModeView {
 
     var hintButton: some View {
         Button {
-            vm.tapHint()
+            showHint = true
         } label: {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 30))
@@ -116,9 +133,9 @@ extension LearnModeView {
 
 #Preview {
     let dummyCard = FlashcardModel(
-        term: "Hello",
+        term: .hello,
         id: UUID(),
-        category: "Greeting"
+        category: .greetings
     )
     LearnModeView(
         vm: LearnModeVM(flashcard: dummyCard),

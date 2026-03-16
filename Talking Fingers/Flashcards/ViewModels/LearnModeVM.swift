@@ -25,7 +25,7 @@ class LearnModeVM: ObservableObject {
     }
 
     var word: String {
-        flashcard.term
+        flashcard.term.rawValue
     }
 
     var signImageName: String {

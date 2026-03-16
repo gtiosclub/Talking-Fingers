@@ -207,9 +207,9 @@ private func generateSentencesForCategories(_ categories: Set<TermCategory>) asy
     // Create flashcards only for sentence-appropriate terms
     let flashcards = sentenceTerms.map { term in
         FlashcardModel(
-            term: term.rawValue,
+            term: term,
             id: UUID(),
-            category: term.category.rawValue,
+            category: term.category,
             gifFileName: nil
         )
     }

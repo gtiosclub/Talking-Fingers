@@ -107,7 +107,7 @@ class SwiftDataVM {
             let glossTermStrings = gloss.map { $0.rawValue }
             
             return glossTermStrings.compactMap { termString in
-                allFlashcards.first { $0.term == termString }
+                allFlashcards.first { $0.term.rawValue == termString }
             }
         }
 }

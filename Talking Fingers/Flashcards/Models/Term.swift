@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum TermCategory: String, CaseIterable {
+enum TermCategory: String, CaseIterable, Codable {
     case alphabet = "alphabet"
     case numbers = "numbers"
     case greetings = "greetings"
