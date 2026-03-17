@@ -12,7 +12,7 @@ struct PhraseHeader: View {
             ForEach(words.indices, id: \.self) { index in
 
                 Text(words[index])
-                    .font(.headline)
+                    .font(.title2)
                     .foregroundColor(
                         index == currentWordIndex
                         ? .primary
