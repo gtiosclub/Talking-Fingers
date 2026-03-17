@@ -40,7 +40,8 @@ struct SigningPracticeView: View {
     }()
 
     @State private var dotsVisibility: Bool = true
-    @State private var handOutlineVisibility: Bool = true
+    @State private var jointNamesVisibility: Bool = false
+    @State private var handOutlineVisibility: Bool = false
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
@@ -220,6 +221,7 @@ struct SigningPracticeView: View {
                     jointVisibility: $jointVisibility,
                     bodyJointVisibility: $bodyJointVisibility,
                     dotsVisibility: $dotsVisibility,
+                    jointNamesVisibility: $jointNamesVisibility,
                     handOutlineVisibility: $handOutlineVisibility,
                     handSkeletonVisibility: $handSkeletonVisibility,
                     bodySkeletonVisibility: $bodySkeletonVisibility
@@ -320,11 +322,13 @@ struct SigningPracticeView: View {
                                     : (hand.chirality == .left ? "L" : "R"))
 
                     ZStack {
-                        Text("\(handSide) \(joint.label)")
-                            .font(.caption2)
-                            .padding(4)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .position(pos)
+                        if jointNamesVisibility {
+                            Text("\(handSide) \(joint.label)")
+                                .font(.caption2)
+                                .padding(4)
+                                .background(.ultraThinMaterial, in: Capsule())
+                                .position(pos)
+                        }
 
                         if dotsVisibility {
                             Circle()
@@ -349,11 +353,13 @@ struct SigningPracticeView: View {
                         viewSize: size
                     )
                     ZStack {
-                        Text(joint.label)
-                            .font(.caption2)
-                            .padding(4)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .position(pos)
+                        if jointNamesVisibility {
+                            Text(joint.label)
+                                .font(.caption2)
+                                .padding(4)
+                                .background(.ultraThinMaterial, in: Capsule())
+                                .position(pos)
+                        }
 
                         if dotsVisibility {
                             Circle()
