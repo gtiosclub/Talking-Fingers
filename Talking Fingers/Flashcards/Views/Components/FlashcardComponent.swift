@@ -38,9 +38,9 @@ struct FlashcardComponent: View {
 #Preview {
     FlashcardComponent(
         card: FlashcardModel(
-            term: "Apple",
+            term: .food,
             id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
-            category: "Test"
+            category: .commonObjects
         )
     )
 }

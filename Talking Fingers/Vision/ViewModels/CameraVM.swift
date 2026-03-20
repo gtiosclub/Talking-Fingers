@@ -39,6 +39,24 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
+    
+    // MARK: - Sign recognition
+    var frameBuffer: SignReference = SignReference()
+    private let dtwEngine = DTWService()
+    var lastScore = 30.0
+    private var frameCounter = 0
+    private let stride = 12 // Run DTW every 4th frame
+    private let maxBufferSize = 75 // ~3 seconds of
+    private var currentSignReference: SignReference?
+    private var currentSignFrame: SignFrame?
+
+    // MARK: - Comparison mode
+    var isComparing = false
+    var confidenceScore: Double = 0.0
+    private var comparisonReference: SignReference?
+    private var smoothedConfidence: Double = 0.0
+    private let smoothingFactor: Double = 0.3
+
     #if os(iOS)
     private let motionManager = CMMotionManager()
     #endif
@@ -48,6 +66,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         super.init()
     }
 
+    
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -167,6 +186,77 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         recordingStartTime = nil
     }
 
+    // MARK: - Static sign comparison
+
+    func startComparing(forSign signName: String) {
+        let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !normalizedName.isEmpty else { return }
+        do {
+            let refs = try loadSignReferences(forSign: normalizedName)
+            comparisonReference = refs.first
+            isComparing = comparisonReference != nil
+            if !isComparing { confidenceScore = 0 }
+            smoothedConfidence = 0
+            frameBuffer.frames.removeAll()
+            frameCounter = 0
+        } catch {
+            print("Failed to load reference for '\(normalizedName)': \(error)")
+            stopComparing()
+        }
+    }
+
+    func stopComparing() {
+        isComparing = false
+        comparisonReference = nil
+        confidenceScore = 0
+        smoothedConfidence = 0
+        frameBuffer.frames.removeAll()
+        frameCounter = 0
+    }
+
+    /// Compares hand joints between a live frame and a reference frame using
+    /// centroid + scale normalization for translation/scale invariance.
+    /// Returns a confidence percentage 0–100.
+    func compareStaticFrames(live: SignFrame, reference: SignFrame) -> Double {
+        let liveJoints = live.joints
+        let refJoints = reference.joints
+
+        var matchedLive: [(x: Double, y: Double)] = []
+        var matchedRef: [(x: Double, y: Double)] = []
+
+        for (key, refJoint) in refJoints {
+            guard key.contains("VNHLK") else { continue }
+            guard let liveJoint = liveJoints[key] else { continue }
+            guard refJoint.confidence > 0.3, liveJoint.confidence > 0.3 else { continue }
+            matchedLive.append((x: liveJoint.x, y: liveJoint.y))
+            matchedRef.append((x: refJoint.x, y: refJoint.y))
+        }
+
+        guard matchedLive.count >= 5 else { return 0 }
+
+        let n = Double(matchedLive.count)
+
+        let liveCx = matchedLive.reduce(0.0) { $0 + $1.x } / n
+        let liveCy = matchedLive.reduce(0.0) { $0 + $1.y } / n
+        let refCx = matchedRef.reduce(0.0) { $0 + $1.x } / n
+        let refCy = matchedRef.reduce(0.0) { $0 + $1.y } / n
+
+        let liveScale = max(matchedLive.reduce(0.0) { max($0, hypot($1.x - liveCx, $1.y - liveCy)) }, 1e-6)
+        let refScale = max(matchedRef.reduce(0.0) { max($0, hypot($1.x - refCx, $1.y - refCy)) }, 1e-6)
+
+        var totalDist: Double = 0
+        for i in 0..<matchedLive.count {
+            let lx = (matchedLive[i].x - liveCx) / liveScale
+            let ly = (matchedLive[i].y - liveCy) / liveScale
+            let rx = (matchedRef[i].x - refCx) / refScale
+            let ry = (matchedRef[i].y - refCy) / refScale
+            totalDist += hypot(lx - rx, ly - ry)
+        }
+
+        let avgDist = totalDist / n
+        return max(0, min(100, 100.0 * exp(-3.0 * avgDist)))
+    }
+
     // THIS IS THE BRAIN: Where Vision meets the Camera
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -194,6 +284,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 DispatchQueue.main.async {
                     self.onPoseDetected?(handObservations, pts)
+                    self.onBodyPoseDetected?(bodyObservations, pts)
+                    
+                    // Do something with score
+                    self.processFrame(body: primaryBody, hands: handObservations, pitch: self.currentPitch, timestamp: pts)
+                    
 
                     // Existing pitch-correction normalization (this is not the scale-invariance unit-box normalization)
                     self.normalizedHands = handObservations.compactMap {
@@ -219,6 +314,67 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 print("Vision error: \(error)")
             }
         }
+    }
+    
+    //
+    func createSignFrame (body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
+        
+        let current = SignFrame(
+            body: body,
+            hands: hands,
+            at: timestamp,
+        )
+        
+        currentSignFrame = current
+        return current
+    }
+    
+    // MARK: - Processing Frames
+    func processFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], pitch: Double, timestamp: CMTime) {
+
+        let currentFrame = createSignFrame(body: body, hands: hands, at: timestamp)
+
+        if isComparing, let ref = comparisonReference {
+            if ref.signType == .static, let refFrame = ref.frames.first {
+                let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
+                let displayed = min(100, rawScore * 1.3)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                confidenceScore = smoothedConfidence
+                return
+            }
+
+            if ref.signType == .dynamic {
+                frameBuffer.frames.append(currentFrame)
+                if frameBuffer.frames.count > maxBufferSize {
+                    frameBuffer.frames.removeFirst()
+                }
+
+                frameCounter += 1
+                guard frameCounter % stride == 0 else { return }
+
+                let dtwScore = dtwEngine.computeDTW(buffer: frameBuffer, template: ref)
+                let rawScore = dtwScore.isFinite ? max(0, min(100, 100.0 * exp(-3.0 * dtwScore))) : 0
+                let displayed = min(100, rawScore * 1.5)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                confidenceScore = smoothedConfidence
+                return
+            }
+        }
+
+        self.frameBuffer.frames.append(currentFrame)
+        if self.frameBuffer.frames.count > maxBufferSize {
+            self.frameBuffer.frames.removeFirst()
+        }
+
+        self.frameCounter += 1
+        guard self.frameCounter % stride == 0 else { return }
+
+        let score = dtwEngine.computeDTW(
+            buffer: frameBuffer,
+            template: currentSignReference ?? SignReference()
+        )
+
+        lastScore = score
     }
 
     // NOTE: Kept identical to main for merge safety.
@@ -439,10 +595,21 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     func loadSignReferences(forSign signName: String) throws -> [SignReference] {
         let fileURL = try signFileURL(forSign: signName)
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
-        let data = try Data(contentsOf: fileURL)
-        guard !data.isEmpty else { return [] }
-        return try JSONDecoder().decode([SignReference].self, from: data)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            let data = try Data(contentsOf: fileURL)
+            if !data.isEmpty {
+                return try JSONDecoder().decode([SignReference].self, from: data)
+            }
+        }
+        let bundleURL = Bundle.main.url(forResource: signName, withExtension: "json", subdirectory: "Vision/References")
+            ?? Bundle.main.url(forResource: signName, withExtension: "json")
+        if let url = bundleURL {
+            let data = try Data(contentsOf: url)
+            if !data.isEmpty {
+                return try JSONDecoder().decode([SignReference].self, from: data)
+            }
+        }
+        return []
     }
 
     // MARK: - Local recording storage (SignFrame JSON)

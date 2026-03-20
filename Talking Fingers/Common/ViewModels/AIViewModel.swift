@@ -48,7 +48,7 @@ import FirebaseFirestore
             "messages": [
                 [
                     "role": "system",
-                    "content": "You are an ASL education assistant. Generate practice sentences with both English text and ASL gloss. Return ONLY valid JSON, no markdown formatting."
+                    "content": "You are an ASL education assistant. For each sentence return two parts: \"english\" (a natural, readable English sentence) and \"sentence\" (the ASL gloss using only allowed vocabulary). Return ONLY valid JSON, no markdown."
                 ],
                 ["role": "user", "content": prompt]
             ],
@@ -89,16 +89,31 @@ import FirebaseFirestore
             throw AIError.decodingError
         }
         
-        let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
-        let sentencesResponse = wrapper.sentences
-        
+        let sentencesResponse: [SentenceData]
+        do {
+            let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
+            sentencesResponse = wrapper.sentences
+        } catch {
+            print("❌ DECODING ERROR:")
+            print("Raw content from OpenAI:")
+            print(content)
+            print("Decoding error: \(error)")
+            throw AIError.decodingError
+        }
+
         var aiSentences: [AISentenceModel] = []
         
         for sentenceData in sentencesResponse {
             let glossWordStrings = sentenceData.sentence
                 .split(separator: ",")
                 .flatMap { $0.split(separator: " ") }
-                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .map { word in
+                    // Remove punctuation and convert to uppercase
+                    String(word)
+                        .trimmingCharacters(in: .whitespaces)
+                        .trimmingCharacters(in: .punctuationCharacters)
+                        .uppercased()
+                }
                 .filter { !$0.isEmpty }
             
             let glossTerms = Term.fromStrings(glossWordStrings)
@@ -112,8 +127,9 @@ import FirebaseFirestore
             
             let practiceType: PracticeType = .words
             
+            let displaySentence = sentenceData.english ?? sentenceData.sentence
             let aiSentence = AISentenceModel(
-                sentence: sentenceData.sentence,
+                sentence: displaySentence,
                 score: nil,
                 practiceType: practiceType,
                 gloss: glossTerms,
@@ -150,6 +166,9 @@ private struct SentencesWrapper: Codable {
 }
 
 private struct SentenceData: Codable {
+    /// Plain English sentence (for display). If missing, fall back to gloss string.
+    let english: String?
+    /// ASL gloss word order (for signing); only words from vocabulary list.
     let sentence: String
 }
 
