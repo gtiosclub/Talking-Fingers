@@ -45,7 +45,7 @@ struct CorrectAnswerPopUpTesterView: View {
                 ZStack(alignment: .top) {
                     
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemGray6))
+                        .fill(Color(hex: 0xF2F2F7))
                         .overlay(
                             Image(systemName: "person.fill")
                                 .resizable()

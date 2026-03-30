@@ -41,7 +41,7 @@ struct MultipleChoice: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            Color(.systemBackground).ignoresSafeArea()
+            Color(hex: 0xFFFFFF).ignoresSafeArea()
 
             VStack(spacing: 0) {
 
@@ -75,7 +75,7 @@ struct MultipleChoice: View {
                     .padding(.bottom, 10)
                 }
                 .background(
-                    Color(.systemBackground)
+                    Color(hex: 0xFFFFFF)
                         .overlay(
                             Rectangle()
                                 .fill(Color.black.opacity(0.05))
@@ -84,8 +84,10 @@ struct MultipleChoice: View {
                         )
                 )
             }
-            .background(Color(.systemBackground))
-            .navigationBarHidden(true)
+            .background(Color(hex: 0xFFFFFF))
+            #if os(iOS)
+            .toolbar(.hidden, for: .navigationBar)
+            #endif
         }
         // Hint popup like LearnModeView
         .popupHost(isPresented: $showHintPopup) {
@@ -136,7 +138,7 @@ struct MultipleChoice: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color(.systemGray5))
+                        .fill(Color(hex: 0xE5E5EA))
                         .frame(height: 6)
                     Capsule()
                         .fill(Color.blue)
@@ -193,7 +195,7 @@ struct MultipleChoice: View {
             // Sign illustration placeholder
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
+                    .fill(Color(hex: 0xFFFFFF))
                     .frame(height: 180)
                     .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
 
@@ -242,7 +244,7 @@ struct MultipleChoice: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.systemBackground))
+                .fill(Color(hex: 0xFFFFFF))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(Color.blue.opacity(0.25), lineWidth: 1.5)
@@ -265,10 +267,10 @@ struct MultipleChoice: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray6).opacity(0.6))
-        )
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(hex: 0xF2F2F7).opacity(0.6))
+                )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
@@ -307,14 +309,14 @@ struct MultipleChoice: View {
             HStack {
                 Text(isCorrectOption ? "\(option) *" : option)
                     .font(.body.weight(isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .black : Color(.label))
+                    .foregroundColor(isSelected ? .black : .primary)
                 Spacer()
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? Color(red: 1, green: 0.85, blue: 0.5) : Color(.systemGray6))
+                    .fill(isSelected ? Color(red: 1, green: 0.85, blue: 0.5) : Color(hex: 0xF2F2F7))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)

@@ -56,7 +56,15 @@ struct PracticeSessionView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background {
+            #if os(iOS)
+            Color(uiColor: .systemBackground)
+            #elseif os(macOS)
+            Color(nsColor: .windowBackgroundColor)
+            #else
+            Color.white
+            #endif
+        }
     }
 
     private var completionContent: some View {
@@ -82,7 +90,7 @@ struct PracticeSessionView: View {
                         .foregroundColor(.primary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color(.systemGray5))
+                        .background(Color(hex: 0xE5E5EA))
                         .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
@@ -94,7 +102,7 @@ struct PracticeSessionView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color(.darkGray))
+                        .background(Color.gray)
                         .cornerRadius(12)
                 }
                 .buttonStyle(.plain)

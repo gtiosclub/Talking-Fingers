@@ -30,7 +30,7 @@ struct GenerateSentencesView: View {
                     .font(.body)
                     .foregroundColor(.secondary)
                     .padding()
-                    .background(Color(.systemGray6))
+                    .background(Color(hex: 0xF2F2F7))
                     .cornerRadius(12)
             }
             
@@ -60,7 +60,7 @@ struct GenerateSentencesView: View {
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray6))
+                            .fill(Color(hex: 0xF2F2F7))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)

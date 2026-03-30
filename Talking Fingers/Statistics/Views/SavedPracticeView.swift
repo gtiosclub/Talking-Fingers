@@ -70,7 +70,7 @@ struct SavedPracticeView: View {
                     showSessionView = true
                 }
             }
-            .fullScreenCover(isPresented: $showSessionView) {
+            .universalFullScreenCover(isPresented: $showSessionView) {
                 PracticeSessionView(
                     sentences: $sessionSentences,
                     onFinish: { showSessionView = false },
