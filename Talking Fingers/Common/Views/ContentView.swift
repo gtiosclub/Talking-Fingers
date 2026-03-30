@@ -64,7 +64,7 @@ struct MainNavigationView: View {
                     category: .greetings
                 )
 
-                return StartCardComponent(
+                StartCardComponent(
                     modeTitle: "Exercise",
                     topic: "Greetings",
                     completed: 0,

@@ -2,9 +2,10 @@
 //  SigningPracticeView.swift
 //  Talking Fingers
 //
-#if os(iOS)
+
 import SwiftUI
 
+#if os(iOS)
 struct SigningPracticeView: View {
     @Environment(\.dismiss) var dismiss
     @State var passed: Bool = false
@@ -493,3 +494,10 @@ import AVFoundation
 import Vision
 #endif
 
+#if os(macOS)
+struct SigningPracticeView: View {
+    var body: some View {
+        Text("temp macOS view placeholder")
+    }
+}
+#endif
