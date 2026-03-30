@@ -4,7 +4,6 @@
 //
 //  Created by Ria on 2/23/26
 //
-#if os(iOS)
 import SwiftUI
 import WebKit
 
