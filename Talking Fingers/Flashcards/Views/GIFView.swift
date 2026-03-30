@@ -52,3 +52,4 @@ struct GIFView: NSViewRepresentable {
     }
 }
 #endif
+#endif
