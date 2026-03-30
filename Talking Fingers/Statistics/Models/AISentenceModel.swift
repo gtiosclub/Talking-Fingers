@@ -12,26 +12,24 @@ enum PracticeType: String, Codable {
     case signs = "signs"
 }
 
-enum Difficulty: String, Codable {
-    case easy = "easy"
-    case medium = "medium"
-    case hard = "hard"
-}
-
 struct AISentenceModel: Identifiable, Codable {
     var id = UUID()
     var sentence: String
-    var gloss: [String]
-    var score: [Int]
+    var gloss: [Term]
+    var score: Int?
     var practiceType: PracticeType
-    var difficulty: Difficulty
+    var completed: Bool
 
-    init(sentence: String, score: [Int], practiceType: PracticeType, difficulty: Difficulty, gloss: [String]) {
+    init(sentence: String, score: Int? = nil, practiceType: PracticeType, gloss: [Term], completed: Bool = false) {
         self.id = UUID()
         self.sentence = sentence
         self.score = score
         self.practiceType = practiceType
-        self.difficulty = difficulty
         self.gloss = gloss
+        self.completed = completed
+    }
+    
+    var glossStrings: [String] {
+        return gloss.map { $0.rawValue }
     }
 }

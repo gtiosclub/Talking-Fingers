@@ -27,12 +27,18 @@ struct MainNavigationView: View {
         NavigationSplitView {
             // Sidebar
             List(selection: $selectedSection) {
-                Label("Vision", systemImage: "eyeglasses")
+                Label("home", systemImage: "house")
                     .tag(NavigationSection.home)
                 Label("Flashcards", systemImage: "rectangle.stack.fill")
                     .tag(NavigationSection.flashcards)
+                Label("Sentences", systemImage: "text.bubble")
+                    .tag(NavigationSection.sentences)
                 Label("Stats", systemImage: "chart.bar.fill")
                     .tag(NavigationSection.stats)
+                Label("Vision", systemImage: "eyeglasses")
+                    .tag(NavigationSection.camera)
+                Label("Practice Test", systemImage: "pencil.and.scribble")
+                    .tag(NavigationSection.practice)
             }
             .navigationTitle("Talking Fingers")
         } detail: {
@@ -47,27 +53,56 @@ struct MainNavigationView: View {
         switch section {
         case .home:
             NavigationStack {
-                CameraView()
-                    .environment(authVM)
+                Text("home")
             }
+            
         case .flashcards:
             NavigationStack {
-                FlashcardView(flashcard: FlashcardModel(
-                    term: "Test",
-                    id: UUID(uuidString: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a")!,
-                    category: "Test",
-                    gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
-                ))
+                let dummyCard = FlashcardModel(
+                    term: .hello,
+                    id: UUID(),
+                    category: .greetings
+                )
+
+                return StartCardComponent(
+                    modeTitle: "Exercise",
+                    topic: "Greetings",
+                    completed: 0,
+                    total: 12,
+                    imageName: "greetingsIllustration",
+                    primaryAction: {},
+                    secondaryAction: {},
+                    closeAction: {},
+                    learnFlashcard: dummyCard,
+                    learnProgress: 0.25
+                )
+            }
+        case .sentences:
+            NavigationStack {
+                SavedPracticeView()
             }
         case .stats:
             NavigationStack {
                 StatsView()
             }
+            
+        case .camera:
+            NavigationStack {
+                CameraView()
+                    .environment(authVM)
+            }
+            
+        case .practice:
+            NavigationStack {
+                SigningPracticeView()
+                    .environment(authVM)
+            }
         }
+        
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, stats
+        case home, flashcards, sentences, stats, camera, practice
     }
 }
 struct StatsView: View {

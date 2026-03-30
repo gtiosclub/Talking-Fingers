@@ -36,19 +36,19 @@ import FirebaseFirestore
         }
     }
 
-    func generateAISentences(from flashcards: [StatsFlashcard]) async throws -> [AISentenceModel] {
+    func generateAISentences(from flashcards: [FlashcardModel], focusTerms: [Term] = []) async throws -> [AISentenceModel] {
         guard let apiKey = openAIKey else {
             throw AIError.missingAPIKey
         }
         
-        let prompt = generatePrompt(from: flashcards)
+        let prompt = generatePrompt(from: flashcards, focusTerms: focusTerms)
         
         let requestBody: [String: Any] = [
             "model": "gpt-4o",
             "messages": [
                 [
                     "role": "system",
-                    "content": "You are an ASL education assistant. Generate practice sentences with both English text and ASL gloss. Return ONLY valid JSON, no markdown formatting."
+                    "content": "You are an ASL education assistant. For each sentence return two parts: \"english\" (a natural, readable English sentence) and \"sentence\" (the ASL gloss using only allowed vocabulary). Return ONLY valid JSON, no markdown."
                 ],
                 ["role": "user", "content": prompt]
             ],
@@ -89,40 +89,51 @@ import FirebaseFirestore
             throw AIError.decodingError
         }
         
-        let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
-        let sentencesResponse = wrapper.sentences
-        
+        let sentencesResponse: [SentenceData]
+        do {
+            let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
+            sentencesResponse = wrapper.sentences
+        } catch {
+            print("❌ DECODING ERROR:")
+            print("Raw content from OpenAI:")
+            print(content)
+            print("Decoding error: \(error)")
+            throw AIError.decodingError
+        }
+
         var aiSentences: [AISentenceModel] = []
         
         for sentenceData in sentencesResponse {
-            let glossWords = sentenceData.sentence
+            let glossWordStrings = sentenceData.sentence
                 .split(separator: ",")
                 .flatMap { $0.split(separator: " ") }
-                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .map { word in
+                    // Remove punctuation and convert to uppercase
+                    String(word)
+                        .trimmingCharacters(in: .whitespaces)
+                        .trimmingCharacters(in: .punctuationCharacters)
+                        .uppercased()
+                }
                 .filter { !$0.isEmpty }
             
-            let score = Array(repeating: 0, count: glossWords.count)
+            let glossTerms = Term.fromStrings(glossWordStrings)
             
-            let difficulty: Difficulty
-            switch sentenceData.difficulty.lowercased() {
-            case "easy":
-                difficulty = .easy
-            case "medium":
-                difficulty = .medium
-            case "hard":
-                difficulty = .hard
-            default:
-                difficulty = .medium
+            guard glossTerms.count == glossWordStrings.count else {
+                print("⚠️ Warning: Could not convert all words to Terms for sentence: \(sentenceData.sentence)")
+                print("Converted \(glossTerms.count)/\(glossWordStrings.count) words")
+                print("Unrecognized words: \(Set(glossWordStrings).subtracting(glossTerms.map { $0.rawValue }))")
+                continue
             }
             
-            let practiceType: PracticeType = (difficulty == .easy) ? .words : .signs
+            let practiceType: PracticeType = .words
             
+            let displaySentence = sentenceData.english ?? sentenceData.sentence
             let aiSentence = AISentenceModel(
-                sentence: sentenceData.sentence,
-                score: score,
+                sentence: displaySentence,
+                score: nil,
                 practiceType: practiceType,
-                difficulty: difficulty,
-                gloss: glossWords
+                gloss: glossTerms,
+                completed: false
             )
             
             aiSentences.append(aiSentence)
@@ -131,8 +142,8 @@ import FirebaseFirestore
         return aiSentences
     }
 
-    private func generatePrompt(from flashcards: [StatsFlashcard]) -> String {
-        return PromptGenerator.generatePromptForLLM(from: flashcards)
+    private func generatePrompt(from flashcards: [FlashcardModel], focusTerms: [Term]) -> String {
+        return PromptGenerator.generatePromptForLLM(from: flashcards, focusTerms: focusTerms)
     }
 }
 
@@ -155,7 +166,9 @@ private struct SentencesWrapper: Codable {
 }
 
 private struct SentenceData: Codable {
-    let difficulty: String
+    /// Plain English sentence (for display). If missing, fall back to gloss string.
+    let english: String?
+    /// ASL gloss word order (for signing); only words from vocabulary list.
     let sentence: String
 }
 

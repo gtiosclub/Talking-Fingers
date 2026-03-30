@@ -4,7 +4,7 @@
 //
 //  Created by Nikola Cao on 2/6/26.
 //
-#if os(iOS)
+//#if os(iOS)
 import SwiftUI
 import Vision
 struct JointsSheetView: View {
@@ -12,6 +12,7 @@ struct JointsSheetView: View {
     @Binding var jointVisibility: [VNHumanHandPoseObservation.JointName: Bool]
     @Binding var bodyJointVisibility: [VNHumanBodyPoseObservation.JointName: Bool]
     @Binding var dotsVisibility: Bool
+    @Binding var jointNamesVisibility: Bool
     @Binding var handOutlineVisibility: Bool
     @Binding var handSkeletonVisibility: Bool
     @Binding var bodySkeletonVisibility: Bool
@@ -52,6 +53,7 @@ struct JointsSheetView: View {
                 Section("General Overlays") {
                     // Dots toggle
                     Toggle("Show Dots", isOn: $dotsVisibility)
+                    Toggle("Show Joint Names", isOn: $jointNamesVisibility)
                     // Hand outline toggle
                     Toggle("Show Hand Outline", isOn: $handOutlineVisibility)
                 }
@@ -96,9 +98,9 @@ struct JointsSheetView: View {
             }
             .navigationTitle("Joint Overlays")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
+                ToolbarItem(placement: .automatic) {
+                        Button("Done") { dismiss() }
+                    }
             }
         }
     }
@@ -128,6 +130,7 @@ struct JointsSheetView: View {
         .rightElbow: false
     ]
     @Previewable @State var previewDots: Bool = true
+    @Previewable @State var previewJointNames: Bool = true
     @Previewable @State var previewHandOutline: Bool = true
     @Previewable @State var previewHandSkeleton: Bool = true
     @Previewable @State var previewBodySkeleton: Bool = true
@@ -136,10 +139,11 @@ struct JointsSheetView: View {
             jointVisibility: $previewHandJoints,
             bodyJointVisibility: $previewBodyJoints,
             dotsVisibility: $previewDots,
+            jointNamesVisibility: $previewJointNames,
             handOutlineVisibility: $previewHandOutline,
             handSkeletonVisibility: $previewHandSkeleton,
             bodySkeletonVisibility: $previewBodySkeleton
         )
     }
 }
-#endif  // os(iOS)66  os(iOS) 
+//#endif  // os(iOS)66  os(iOS) 

@@ -6,10 +6,15 @@
 //
 import Foundation
 import Combine
+import SwiftData
 
 @Observable
 class FlashcardVM {
-    var flashcards: [FlashcardModel] = FlashcardVM.dummyFlashcards
+    var flashcards: [FlashcardModel] = []
+    var isLoading = false
+    var isSyncing = false
+    private let firebaseService = FlashcardsServices()
+    var fakeFlashcards: [FlashcardModel] = FlashcardVM.dummyFlashcards
     var lastCardID: UUID?
 
     static let dummyFlashcards: [FlashcardModel] = {
@@ -21,29 +26,29 @@ class FlashcardVM {
         }
 
         return [
-            FlashcardModel(term: "Hello", id: UUID(), lastSucceeded: nil,starred: false, progress: .new, category: "Greetings"),
-            FlashcardModel(term: "Goodbye", id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning,  category: "Greetings"),
-            FlashcardModel(term: "Thank You", id: UUID(), lastSucceeded: daysAgo(3),starred: true,  progress: .learning, category: "Greetings"),
-            FlashcardModel(term: "Please", id: UUID(), lastSucceeded: daysAgo(1),starred: false, progress: .polishing, category: "Greetings"),
+            FlashcardModel(term: .hello, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .greetings),
+            FlashcardModel(term: .bye, id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: .greetings),
+            FlashcardModel(term: .niceMeetYou, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .learning, category: .greetings),
+            FlashcardModel(term: .howYou, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .polishing, category: .greetings),
 
-            FlashcardModel(term: "One", id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning,  category: "Numbers"),
-            FlashcardModel(term: "Two", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: "Numbers"),
-            FlashcardModel(term: "Three", id: UUID(), lastSucceeded: daysAgo(5),starred: true,  progress: .polishing, category: "Numbers"),
-            FlashcardModel(term: "Four", id: UUID(), lastSucceeded: daysAgo(1),starred: false, progress: .mastered,  category: "Numbers"),
+            FlashcardModel(term: .one, id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: .numbers),
+            FlashcardModel(term: .two, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: .numbers),
+            FlashcardModel(term: .three, id: UUID(), lastSucceeded: daysAgo(5), starred: true, progress: .polishing, category: .numbers),
+            FlashcardModel(term: .four, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .numbers),
 
-            FlashcardModel(term: "Red", id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered,  category: "Colors"),
-            FlashcardModel(term: "Blue", id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: "Colors"),
-            FlashcardModel(term: "Green", id: UUID(), lastSucceeded: daysAgo(3),starred: true,  progress: .polishing, category: "Colors"),
-            FlashcardModel(term: "Yellow", id: UUID(), lastSucceeded: daysAgo(1),starred: false, progress: .mastered,  category: "Colors"),
+            FlashcardModel(term: .good, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .commonDescriptors),
+            FlashcardModel(term: .happy, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: .feelingsEmotions),
+            FlashcardModel(term: .sad, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .polishing, category: .feelingsEmotions),
+            FlashcardModel(term: .excited, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .feelingsEmotions),
         ]
     }()
     
     init() {
         let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID() // change to static diagram test to test static diagram
         let dummyCard = FlashcardModel(
-            term: "Test",
+            term: .hello,
             id: dummyID,
-            category: "Test",
+            category: .commonObjects,
             gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
         )
         self.flashcards = [dummyCard]
@@ -52,14 +57,14 @@ class FlashcardVM {
     func searchFlashCard(input: String) -> [String] {
         var results = [String]()
         for card in flashcards {
-            if card.term.lowercased().contains(input.lowercased()) {
-                results.append(card.term)
+            if card.term.rawValue.lowercased().contains(input.lowercased()) {
+                results.append(card.term.rawValue)
             }
-        }
+        }   
         return results
     }
     
-    func filterByCategory(from flashcards: [FlashcardModel], category: String) -> [FlashcardModel] {
+    func filterByCategory(from flashcards: [FlashcardModel], category: TermCategory) -> [FlashcardModel] {
         flashcards.filter { $0.category == category }
     }
     
@@ -84,6 +89,59 @@ class FlashcardVM {
             }
         }
         return progressTotal / Float(flashcards.count)
+    }
+
+    
+    func loadFlashcards(modelContext: ModelContext) async {
+        
+        isLoading = true
+        flashcards = fetchFromSwiftData(modelContext)
+        isLoading = false
+        isSyncing = true
+        Task {
+            do {
+                let remoteCards = try await firebaseService.downloadFlashcards()
+                await saveToSwiftData(remoteCards, modelContext: modelContext)
+                flashcards = fetchFromSwiftData(modelContext)
+            } catch {
+                print("Firebase sync failed: \(error)")
+            }
+            isSyncing = false
+        }
+    }
+
+    private func fetchFromSwiftData(_ modelContext: ModelContext) -> [FlashcardModel] {
+        let descriptor = FetchDescriptor<FlashcardModel>()
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    private func saveToSwiftData(_ cards: [FlashcardModel], modelContext: ModelContext) async {
+        for card in cards {
+            let cardID = card.id
+            let descriptor = FetchDescriptor<FlashcardModel>(
+                predicate: #Predicate<FlashcardModel> { flashcard in
+                    flashcard.id == cardID
+                }
+            )
+            if let existing = try? modelContext.fetch(descriptor).first {
+                existing.term = card.term
+                existing.category = card.category
+                existing.starred = card.starred
+                existing.progress = card.progress
+                existing.lastSucceeded = card.lastSucceeded
+            } else {
+                modelContext.insert(card)
+            }
+        }
+        try? modelContext.save()
+    }
+
+    func updateFlashcard(_ card: FlashcardModel, modelContext: ModelContext) async {
+        try? modelContext.save()
+        
+        Task {
+            try? await firebaseService.uploadFlashcards([card])
+        }
     }
     
     func updateStatusFull(flashcard: FlashcardModel, progress: ProgressType) -> FlashcardModel {
@@ -134,38 +192,60 @@ class FlashcardVM {
     func nextCard() -> FlashcardModel? {
         guard !flashcards.isEmpty else { return nil }
         
-        // return a weight to help determine probability of card appearing
-        func weight(for card: FlashcardModel) -> Int {
+        let now = Date()
+        
+        func baseWeight(for card: FlashcardModel) -> Double {
             switch card.progress {
-            case .new:
-                return 5
-            case .learning:
-                return 4
-            case .polishing:
-                return 2
-            case .mastered:
-                return 1
+            case .new: return 5
+            case .learning: return 4
+            case .polishing: return 2
+            case .mastered: return 1
             }
         }
         
-        // if flashcards array is: [A (weight 4), B (weight 1), C (weight 2)]
-        // -> returns flattened array repeating card weight # times: [A, A, A, A, B, C, C]
-        let weightedCards = flashcards.flatMap { card -> [FlashcardModel] in
-            let weight = weight(for: card)
-            return Array(repeating: card, count: weight)
+        // ideal amount of time before seeing cards
+        func interval(for card: FlashcardModel) -> TimeInterval {
+            switch card.progress {
+            case .new: return 0
+            case .learning: return 60 * 60 * 24 // 1 day
+            case .polishing: return 60 * 60 * 24 * 3 // 3 days
+            case .mastered: return 60 * 60 * 24 * 7 // 7 days
+            }
         }
         
-        // to not repeat same card twice in a row, create new array that removes most recent card
-        let filtered = weightedCards.filter { $0.id != lastCardID }
-        let chosenCard = (filtered.isEmpty ? weightedCards : filtered).randomElement()
-        lastCardID = chosenCard?.id
-        return chosenCard
-    }
+        // decides how overdue a card is to increase or lower the chance of it appearing
+        func timeMultiplier(for card: FlashcardModel) -> Double {
+            guard let last = card.lastSucceeded else { return 2.0 }
+            let elapsed = now.timeIntervalSince(last)
+            let target = interval(for: card)
+            guard target > 0 else { return 1.5 }
+            let ratio = elapsed / target
+            if ratio >= 1 { return 2.0 }
+            if ratio >= 0.5 { return 1.2 }
+            return 0.6
+        }
         
-        // possible additions: should it end, if so when;
-        // maybe we can have a queue of recently missed cards and prioritize those first;
-        // implementing time-spaced spacing with lastSucceeded
-
+        let weightedPairs = flashcards.map { card -> (card: FlashcardModel, weight: Double) in
+            let weight = max(0.1, baseWeight(for: card) * timeMultiplier(for: card))
+            return (card, weight)
+        }
+        
+        // filter out the last card to prevent repeats
+        let filteredPairs = weightedPairs.filter { $0.card.id != lastCardID }
+        let finalPairs = filteredPairs.isEmpty ? weightedPairs : filteredPairs
+        
+        let totalWeight = finalPairs.reduce(0) { $0 + $1.weight }
+        var randomThreshold = Double.random(in: 0..<totalWeight)
+        for pair in finalPairs {
+            randomThreshold -= pair.weight
+            if randomThreshold <= 0 {
+                lastCardID = pair.card.id
+                return pair.card
+            }
+        }
+        return finalPairs.last?.card
+    }
+    
     func generateDailyReviewQueue(limit: Int = 5) -> DailyReviewQueue {
         let sorted = flashcards.sorted { a, b in
             if a.progress != b.progress {
