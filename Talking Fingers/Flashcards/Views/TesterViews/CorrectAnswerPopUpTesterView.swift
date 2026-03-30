@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+#if os(iOS)
 struct CorrectAnswerPopUpTesterView: View {
     
     @State private var showPopup = false
@@ -196,3 +196,4 @@ struct CorrectAnswerPopUpTesterView: View {
 #Preview {
     CorrectAnswerPopUpTesterView()
 }
+#endif

@@ -63,14 +63,18 @@ struct SavedPracticeView: View {
                 floatingPlusButton
             }
             .sheet(isPresented: $showCreatePracticeView) {
+                #if os(iOS)
                 GenerateSentencesView { sentences, categories in
                     lastCategories = categories
                     sessionSentences = sentences
                     showCreatePracticeView = false
                     showSessionView = true
                 }
+                #endif
             }
+            #if os(iOS)
             .fullScreenCover(isPresented: $showSessionView) {
+                
                 PracticeSessionView(
                     sentences: $sessionSentences,
                     onFinish: { showSessionView = false },
@@ -87,6 +91,7 @@ struct SavedPracticeView: View {
                     }
                 )
             }
+#endif
     }
 
     private var headerSection: some View {

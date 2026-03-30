@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+#if os(iOS)
 struct GenerateSentencesView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategories: Set<TermCategory> = []
@@ -268,3 +268,4 @@ struct TestGenerateSentencesView: View {
 #Preview {
     TestGenerateSentencesView()
 }
+#endif

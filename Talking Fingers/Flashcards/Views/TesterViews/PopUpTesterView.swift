@@ -41,7 +41,7 @@ struct PopUpTesterView: View {
                 ZStack(alignment: .top) {
                     
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemGray6))
+//                        .fill(Color(.systemGray6))
                         .overlay(
                             Image(systemName: "person.fill")
                                 .resizable()

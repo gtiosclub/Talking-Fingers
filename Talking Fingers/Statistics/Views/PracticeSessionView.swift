@@ -7,7 +7,7 @@
 //
 
 import SwiftUI
-
+#if os(iOS)
 struct PracticeSessionView: View {
     @Binding var sentences: [AISentenceModel]
     var onFinish: () -> Void
@@ -115,3 +115,4 @@ struct PracticeSessionView: View {
         }
     }
 }
+#endif

@@ -4,11 +4,13 @@
 //
 //  Created by Ria on 2/23/26
 //
-#if os(iOS)
+
 import SwiftUI
 import WebKit
 
 #if canImport(UIKit)
+import UIKit
+
 struct GIFView: UIViewRepresentable {
     let gifFileName: String
 
@@ -31,7 +33,10 @@ struct GIFView: UIViewRepresentable {
         }
     }
 }
+
 #elseif canImport(AppKit)
+import AppKit
+
 struct GIFView: NSViewRepresentable {
     let gifFileName: String
 
@@ -52,4 +57,5 @@ struct GIFView: NSViewRepresentable {
         }
     }
 }
+
 #endif

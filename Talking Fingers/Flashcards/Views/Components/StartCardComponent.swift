@@ -5,7 +5,7 @@
 //  Created by Na Hua on 3/2/26.
 //
 import SwiftUI
-
+#if os(iOS)
 struct StartCardComponent: View {
     let modeTitle: String
     let topic: String
@@ -291,3 +291,4 @@ private struct MultipleChoiceFlow: View {
         learnProgress: 0.25
     )
 }
+#endif

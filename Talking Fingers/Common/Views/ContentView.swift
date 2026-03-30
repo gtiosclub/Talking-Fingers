@@ -58,6 +58,7 @@ struct MainNavigationView: View {
             
         case .flashcards:
             NavigationStack {
+#if os(iOS)
                 let dummyCard = FlashcardModel(
                     term: .hello,
                     id: UUID(),
@@ -76,7 +77,9 @@ struct MainNavigationView: View {
                     learnFlashcard: dummyCard,
                     learnProgress: 0.25
                 )
+#endif
             }
+            
         case .sentences:
             NavigationStack {
                 SavedPracticeView()
@@ -94,10 +97,14 @@ struct MainNavigationView: View {
             
         case .practice:
             NavigationStack {
+#if os(iOS)
                 SigningPracticeView()
                     .environment(authVM)
+                #endif
             }
+            
         }
+       
         
     }
     
