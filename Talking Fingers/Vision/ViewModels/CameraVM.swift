@@ -648,6 +648,62 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         try data.write(to: url, options: [.atomic])
         return url
     }
+    
+    func trimFramesByVelocity(_ frames: [SignFrame]) -> [SignFrame] {
+        guard frames.count > 1 else { return frames }
+        
+        let velocityThreshold = 0.015
+        let padding = 3
+        
+        // Use raw Vision-normalized coordinates (0...1), not normalizedJoints.
+        // normalizedJoints are anchor-relative, so wrist positions would always be ~0,0.
+        let trackedJointKeys = [
+            "leftWrist", "rightWrist",
+            "leftIndexTip", "rightIndexTip"
+        ]
+        
+        func distance(_ a: Joint, _ b: Joint) -> Double {
+            let dx = a.x - b.x
+            let dy = a.y - b.y
+            return sqrt(dx * dx + dy * dy)
+        }
+        
+        // Marks whether each frame contains meaningful motion.
+        // active[i] describes motion from frames[i - 1] -> frames[i]
+        var active = Array(repeating: false, count: frames.count)
+        
+        for i in 1..<frames.count {
+            let previous = frames[i - 1]
+            let current = frames[i]
+            
+            var maxMotion = 0.0
+            
+            for key in trackedJointKeys {
+                guard
+                    let prevJoint = previous.joints[key],
+                    let currJoint = current.joints[key]
+                else {
+                    continue
+                }
+                
+                let motion = distance(prevJoint, currJoint)
+                maxMotion = max(maxMotion, motion)
+            }
+            
+            active[i] = maxMotion >= velocityThreshold
+        }
+        
+        guard let firstActive = active.firstIndex(of: true),
+              let lastActive = active.lastIndex(of: true) else {
+            // No meaningful movement detected
+            return []
+        }
+        
+        let startIndex = max(0, firstActive - padding)
+        let endIndex = min(frames.count - 1, lastActive + padding)
+        
+        return Array(frames[startIndex...endIndex])
+    }
 
     /// Loads SignFrames from a local recording JSON.
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
