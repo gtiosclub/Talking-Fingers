@@ -41,12 +41,12 @@ struct HintPopUpTesterView: View {
                 // Image card with lightbulb button
                 ZStack(alignment: .topTrailing) {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemGray6))
+                        .fill(Color(hex: 0xF2F2F7))
                         .overlay(
                             Image(systemName: "person.fill")
                                 .resizable()
                                 .scaledToFit()
-                                .foregroundColor(Color(.systemGray3))
+                                .foregroundColor(Color(hex: 0xC7C7CC))
                                 .padding(40)
                         )
                     

@@ -36,6 +36,18 @@ extension View {
         self
         #endif
     }
+
+    @ViewBuilder
+    func universalFullScreenCover<Content: View>(
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        #if os(iOS)
+        self.fullScreenCover(isPresented: isPresented, content: content)
+        #else
+        self.sheet(isPresented: isPresented, content: content)
+        #endif
+    }
 }
 
 #if canImport(UIKit)

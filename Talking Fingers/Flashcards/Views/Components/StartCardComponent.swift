@@ -104,10 +104,10 @@ struct StartCardComponent: View {
                 flashcardVM.flashcards = makeMultipleChoiceDummyFlashcards()
             }
         }
-        .fullScreenCover(isPresented: $showDashboard) {
+        .universalFullScreenCover(isPresented: $showDashboard) {
             DashboardView()
         }
-        .fullScreenCover(isPresented: $showLearn) {
+        .universalFullScreenCover(isPresented: $showLearn) {
             MultipleChoiceFlow(
                 initialCard: learnFlashcard,
                 imageName: imageName,
