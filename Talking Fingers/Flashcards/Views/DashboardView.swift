@@ -36,74 +36,95 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-
-                // MARK: - Search icon
-                HStack {
-                    Spacer()
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 22))
-                        .foregroundStyle(.black)
-                }
-                .padding(.horizontal)
-
-                // MARK: - In Progress
-                if !inProgressCategories.isEmpty {
-                    Text("In Progress")
+        NavigationStack{
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    
+                    // MARK: - Search icon
+                    HStack {
+                        Spacer()
+                        NavigationLink {
+                            Text("Search Page") // replace later
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 22))
+                                .foregroundStyle(.black)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // MARK: - In Progress
+                    if !inProgressCategories.isEmpty {
+                        Text("In Progress")
+                            .font(.system(size: 26, weight: .bold))
+                            .padding(.horizontal)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
+                                    NavigationLink {
+                                        Text("Go to \(item.category.rawValue)")
+                                    } label: {
+                                        InProgressCard(
+                                            category: item.category,
+                                            mode: item.mode,
+                                            progress: item.progress,
+                                            backgroundColor: index == 0
+                                                ? Color(red: 0.78, green: 0.85, blue: 0.93)
+                                                : Color(red: 0.96, green: 0.92, blue: 0.80)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    
+                    // MARK: - Daily Challenge
+                    Text("Daily Challenge")
                         .font(.system(size: 26, weight: .bold))
                         .padding(.horizontal)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 14) {
-                            ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
-                                InProgressCard(
-                                    category: item.category,
-                                    mode: item.mode,
-                                    progress: item.progress,
-                                    backgroundColor: index == 0
-                                        ? Color(red: 0.78, green: 0.85, blue: 0.93)   // blue
-                                        : Color(red: 0.96, green: 0.92, blue: 0.80)    // cream
-                                )
-                            }
-                        }
+                    
+                    NavigationLink {
+                        Text("Daily Challenge Page") // later replace with real view
+                    } label: {
+                        DailyChallengeCard(
+                            streak: 3,
+                            completed: dailyQueue.cards.count,
+                            total: dailyQueue.requestedLimit
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    
+                    // MARK: - Categories
+                    Text("Categories")
+                        .font(.system(size: 26, weight: .bold))
                         .padding(.horizontal)
+                    
+                    let columns = [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ]
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(allCategories, id: \.self) { category in
+                            NavigationLink {
+                                Text("Category: \(category)")
+                            } label: {
+                                CategoryComponent(title: category)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                }
-
-                // MARK: - Daily Challenge
-                Text("Daily Challenge")
-                    .font(.system(size: 26, weight: .bold))
                     .padding(.horizontal)
-
-                DailyChallengeCard(
-                    streak: 3,
-                    completed: dailyQueue.cards.count,
-                    total: dailyQueue.requestedLimit
-                )
-                .padding(.horizontal)
-
-                // MARK: - Categories
-                Text("Categories")
-                    .font(.system(size: 26, weight: .bold))
-                    .padding(.horizontal)
-
-                let columns = [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ]
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(allCategories, id: \.self) { category in
-                        CategoryComponent(title: category)
-                    }
+                    
+                    Spacer(minLength: 80)
                 }
-                .padding(.horizontal)
-
-                Spacer(minLength: 80)
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
+            .background(Color.categoryComponentColor)
         }
-        .background(Color.categoryComponentColor)
     }
 }
 
@@ -118,12 +139,14 @@ private struct InProgressCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Illustration placeholder using the asset if available, else SF Symbol
-            Image(category == .greetings ? "greetingsIllustration" : "dummySign")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 100)
-                .frame(maxWidth: .infinity)
-                .clipped()
+            ZStack {
+                Image(category == .greetings ? "greetingsIllustration" : "dummySign")
+                    .resizable()
+                    .scaledToFit()
+                    .padding(10)
+            }
+            .frame(height: 100)
+            .frame(maxWidth: .infinity)
 
             VStack(alignment: .center, spacing: 4) {
                 Text("Continue \(mode)")
@@ -132,6 +155,8 @@ private struct InProgressCard: View {
 
                 Text(category.rawValue)
                     .font(.system(size: 18, weight: .bold))
+                    .multilineTextAlignment(.center)
+                    .frame(height: 44)
             }
             .frame(maxWidth: .infinity)
 
@@ -154,19 +179,9 @@ private struct InProgressCard: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
-
-            // Jump In link
-            HStack {
-                Spacer()
-                Text("Jump In")
-                    .font(.system(size: 14, weight: .medium))
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .foregroundStyle(.primary)
         }
-        .padding(14)
-        .frame(width: 170)
+        .padding(16)
+        .frame(width: 180)
         .background(backgroundColor)
         .cornerRadius(20)
     }
