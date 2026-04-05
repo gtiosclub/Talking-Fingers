@@ -2,27 +2,25 @@
 //  RecordedSignPlaybackView.swift
 //  Talking Fingers
 //
-//  Created by Akshaj Nadimpalli on 4/5/26.
-//
 
 #if os(iOS)
 import SwiftUI
-import CoreMedia
+import AVFoundation
+import AVKit
 
 struct RecordedSignPlaybackView: View {
-    let recording: RecordedSignFile
+    let take: RecordedSignTake
 
     @State private var cameraVM = CameraVM()
     @State private var frames: [SignFrame] = []
-    @State private var currentFrameIndex: Int = 0
+    @State private var player: AVPlayer?
+    @State private var currentPlaybackTime: Double = 0
     @State private var isPlaying: Bool = false
-    @State private var playbackTask: Task<Void, Never>?
+    @State private var timeObserverToken: Any?
+    @State private var playbackEndedObserver: NSObjectProtocol?
     @State private var errorMessage: String?
 
-    private let bodyConnections: [(String, String)] = [
-        ("left_shoulder_1_joint", "left_elbow_1_joint"),
-        ("right_shoulder_1_joint", "right_elbow_1_joint")
-    ]
+    private let fallbackFPS: Double = 24.0
 
     var body: some View {
         ScrollView {
@@ -31,19 +29,28 @@ struct RecordedSignPlaybackView: View {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(.black)
 
-                    if let currentFrame {
-                        RecordedFrameCanvas(
-                            frame: currentFrame,
-                            bodyConnections: bodyConnections
-                        )
-                        .padding(12)
+                    if let player {
+                        PlayerLayerView(player: player)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay {
+                                GeometryReader { geo in
+                                    if let currentFrame {
+                                        RecordedJointOverlayView(
+                                            frame: currentFrame,
+                                            viewSize: geo.size
+                                        )
+                                        .allowsHitTesting(false)
+                                    }
+                                }
+                            }
                     } else {
-                        ContentUnavailableView(
-                            "No Frames",
-                            systemImage: "video.slash",
-                            description: Text("This recording does not contain any playable frames.")
-                        )
-                        .foregroundStyle(.white)
+                        VStack(spacing: 8) {
+                            Image(systemName: "video.slash")
+                                .font(.largeTitle)
+                                .foregroundStyle(.white.opacity(0.8))
+                            Text("No recorded video available")
+                                .foregroundStyle(.white.opacity(0.8))
+                        }
                     }
                 }
                 .aspectRatio(9.0 / 16.0, contentMode: .fit)
@@ -56,7 +63,7 @@ struct RecordedSignPlaybackView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Label(recording.signName.capitalized, systemImage: "hands.sparkles.fill")
+                        Label(take.signName.capitalized, systemImage: "hands.sparkles.fill")
                             .font(.headline)
 
                         Spacer()
@@ -66,66 +73,56 @@ struct RecordedSignPlaybackView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text(recording.fileName)
+                    Text(take.displayFileName)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
                     if !frames.isEmpty {
-                        VStack(spacing: 10) {
-                            Slider(
-                                value: Binding(
-                                    get: { Double(currentFrameIndex) },
-                                    set: { newValue in
-                                        stopPlayback()
-                                        currentFrameIndex = min(max(Int(newValue.rounded()), 0), max(frames.count - 1, 0))
-                                    }
-                                ),
-                                in: 0...Double(max(frames.count - 1, 0)),
-                                step: 1
-                            )
+                        HStack {
+                            Text("Overlay frame: \(currentFrameIndexDisplay)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
 
-                            HStack {
-                                Text("Frame \(currentFrameIndex + 1) / \(frames.count)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                            Spacer()
 
-                                Spacer()
-
-                                Text(currentTimestampLabel)
-                                    .font(.subheadline.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            HStack(spacing: 16) {
-                                Button {
-                                    stepBackward()
-                                } label: {
-                                    Image(systemName: "backward.frame.fill")
-                                        .font(.title2)
-                                }
-
-                                Button {
-                                    togglePlayback()
-                                } label: {
-                                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                        .font(.system(size: 42))
-                                }
-
-                                Button {
-                                    stepForward()
-                                } label: {
-                                    Image(systemName: "forward.frame.fill")
-                                        .font(.title2)
-                                }
-
-                                Spacer()
-
-                                Button("Restart") {
-                                    restartPlayback()
-                                }
-                                .buttonStyle(.bordered)
-                            }
+                            Text(String(format: "%.2fs", currentPlaybackTime))
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
                         }
+                    }
+
+                    HStack(spacing: 12) {
+                        Button {
+                            seek(by: -1.0 / fallbackFPS)
+                        } label: {
+                            Image(systemName: "gobackward.frame")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            togglePlayPause()
+                        } label: {
+                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                .font(.title3)
+                                .frame(minWidth: 28)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button {
+                            seek(by: 1.0 / fallbackFPS)
+                        } label: {
+                            Image(systemName: "goforward.frame")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Spacer()
+
+                        Button("Restart") {
+                            restart()
+                        }
+                        .buttonStyle(.bordered)
                     }
                 }
                 .padding(.horizontal)
@@ -133,13 +130,13 @@ struct RecordedSignPlaybackView: View {
             .padding(.top, 12)
             .padding(.bottom, 24)
         }
-        .navigationTitle(recording.signName.capitalized)
+        .navigationTitle(take.signName.capitalized)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            loadFrames()
+            loadAssets()
         }
         .onDisappear {
-            stopPlayback()
+            cleanupPlayer()
         }
         .alert("Playback Error", isPresented: Binding(
             get: { errorMessage != nil },
@@ -151,121 +148,271 @@ struct RecordedSignPlaybackView: View {
         }
     }
 
+    // MARK: - Frame selection
+
     private var currentFrame: SignFrame? {
-        guard frames.indices.contains(currentFrameIndex) else { return nil }
-        return frames[currentFrameIndex]
+        guard !frames.isEmpty else { return nil }
+
+        // Prevent the "frozen last pose" effect near the end:
+        // once playback goes past the last captured pose by more than half a frame,
+        // stop drawing the overlay.
+        if let last = frames.last {
+            let cutoff = last.timestamp.seconds + (frameDuration / 2.0)
+            if currentPlaybackTime > cutoff {
+                return nil
+            }
+        }
+
+        let idx = nearestFrameIndex(for: currentPlaybackTime)
+        guard frames.indices.contains(idx) else { return nil }
+        return frames[idx]
     }
 
-    private var currentTimestampLabel: String {
-        guard let currentFrame else { return "0.00s" }
-        return String(format: "%.2fs", currentFrame.timestamp.seconds)
+    private var currentFrameIndexDisplay: String {
+        guard !frames.isEmpty else { return "0 / 0" }
+
+        if let last = frames.last {
+            let cutoff = last.timestamp.seconds + (frameDuration / 2.0)
+            if currentPlaybackTime > cutoff {
+                return "\(frames.count) / \(frames.count)"
+            }
+        }
+
+        let idx = nearestFrameIndex(for: currentPlaybackTime)
+        return "\(idx + 1) / \(frames.count)"
     }
 
-    private func loadFrames() {
+    private var frameDuration: Double {
+        guard frames.count >= 2 else { return 1.0 / fallbackFPS }
+
+        let deltas = zip(frames, frames.dropFirst()).map { max(0.0001, $1.timestamp.seconds - $0.timestamp.seconds) }
+        let avg = deltas.reduce(0, +) / Double(deltas.count)
+        return avg.isFinite ? avg : (1.0 / fallbackFPS)
+    }
+
+    private func nearestFrameIndex(for time: Double) -> Int {
+        guard !frames.isEmpty else { return 0 }
+        if frames.count == 1 { return 0 }
+
+        // Binary search for first frame whose timestamp >= time
+        var low = 0
+        var high = frames.count - 1
+
+        while low < high {
+            let mid = (low + high) / 2
+            if frames[mid].timestamp.seconds < time {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+
+        let right = low
+        let left = max(0, right - 1)
+
+        let leftTime = frames[left].timestamp.seconds
+        let rightTime = frames[right].timestamp.seconds
+
+        if abs(time - leftTime) <= abs(rightTime - time) {
+            return left
+        } else {
+            return right
+        }
+    }
+
+    // MARK: - Loading
+
+    private func loadAssets() {
         do {
-            frames = try cameraVM.loadRecordingFramesFromJSON(url: recording.url)
-            currentFrameIndex = 0
-            isPlaying = false
+            if let jsonURL = take.jsonURL {
+                frames = try cameraVM.loadRecordingFramesFromJSON(url: jsonURL)
+            } else {
+                frames = []
+            }
+
+            if let videoURL = take.videoURL {
+                let newPlayer = AVPlayer(url: videoURL)
+                newPlayer.actionAtItemEnd = .pause
+                player = newPlayer
+                installTimeObserver(on: newPlayer)
+            } else {
+                player = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func togglePlayback() {
-        guard !frames.isEmpty else { return }
+    // MARK: - Controls
+
+    private func togglePlayPause() {
+        guard let player else { return }
 
         if isPlaying {
-            stopPlayback()
+            player.pause()
+            isPlaying = false
         } else {
-            startPlayback()
+            player.play()
+            isPlaying = true
         }
     }
 
-    private func startPlayback() {
-        guard !frames.isEmpty else { return }
+    private func restart() {
+        guard let player else { return }
+        player.seek(to: .zero)
+        currentPlaybackTime = 0
+        player.pause()
+        isPlaying = false
+    }
 
-        stopPlayback()
-        isPlaying = true
+    private func seek(by delta: Double) {
+        guard let player else { return }
 
-        playbackTask = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(42))
+        let durationSeconds = player.currentItem?.duration.seconds ?? 0
+        let upperBound = durationSeconds.isFinite ? durationSeconds : max(0, currentPlaybackTime + delta)
+        let newTime = max(0, min(currentPlaybackTime + delta, upperBound))
+        let target = CMTime(seconds: newTime, preferredTimescale: 600)
 
-                await MainActor.run {
-                    guard !frames.isEmpty else {
-                        stopPlayback()
-                        return
-                    }
+        player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+        currentPlaybackTime = newTime
+    }
 
-                    if currentFrameIndex >= frames.count - 1 {
-                        stopPlayback()
-                    } else {
-                        currentFrameIndex += 1
-                    }
-                }
+    // MARK: - Timing
+
+    private func installTimeObserver(on player: AVPlayer) {
+        cleanupPlayer(removePlayerOnly: false)
+
+        // Higher-frequency updates reduce overlay lag.
+        let interval = CMTime(seconds: 1.0 / 60.0, preferredTimescale: 600)
+
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
+            currentPlaybackTime = max(0, time.seconds)
+            isPlaying = player.timeControlStatus == .playing
+        }
+
+        playbackEndedObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { _ in
+            isPlaying = false
+
+            // Snap displayed time to the true end.
+            if let end = player.currentItem?.duration.seconds, end.isFinite {
+                currentPlaybackTime = max(0, end)
             }
         }
     }
 
-    private func stopPlayback() {
+    private func cleanupPlayer(removePlayerOnly: Bool = true) {
+        if let player, let token = timeObserverToken {
+            player.removeTimeObserver(token)
+            timeObserverToken = nil
+        }
+
+        if let playbackEndedObserver {
+            NotificationCenter.default.removeObserver(playbackEndedObserver)
+            self.playbackEndedObserver = nil
+        }
+
+        player?.pause()
+
+        if removePlayerOnly {
+            player = nil
+        }
+
         isPlaying = false
-        playbackTask?.cancel()
-        playbackTask = nil
-    }
-
-    private func restartPlayback() {
-        stopPlayback()
-        currentFrameIndex = 0
-    }
-
-    private func stepBackward() {
-        stopPlayback()
-        currentFrameIndex = max(currentFrameIndex - 1, 0)
-    }
-
-    private func stepForward() {
-        stopPlayback()
-        currentFrameIndex = min(currentFrameIndex + 1, max(frames.count - 1, 0))
     }
 }
 
-private struct RecordedFrameCanvas: View {
+// MARK: - Lightweight player view
+
+private struct PlayerLayerView: UIViewRepresentable {
+    let player: AVPlayer
+
+    func makeUIView(context: Context) -> PlayerContainerView {
+        let view = PlayerContainerView()
+        view.playerLayer.videoGravity = .resizeAspectFill
+        view.playerLayer.player = player
+        return view
+    }
+
+    func updateUIView(_ uiView: PlayerContainerView, context: Context) {
+        uiView.playerLayer.player = player
+    }
+}
+
+private final class PlayerContainerView: UIView {
+    override class var layerClass: AnyClass { AVPlayerLayer.self }
+
+    var playerLayer: AVPlayerLayer {
+        layer as! AVPlayerLayer
+    }
+}
+
+// MARK: - Joint overlay
+
+private struct RecordedJointOverlayView: View {
     let frame: SignFrame
-    let bodyConnections: [(String, String)]
+    let viewSize: CGSize
+
+    private let handConnections: [(String, String)] = [
+        ("leftVNHLKWRI", "leftVNHLKTCMC"), ("leftVNHLKTCMC", "leftVNHLKTMP"), ("leftVNHLKTMP", "leftVNHLKTIP"), ("leftVNHLKTIP", "leftVNHLKTTIP"),
+        ("leftVNHLKWRI", "leftVNHLKIMCP"), ("leftVNHLKIMCP", "leftVNHLKIPIP"), ("leftVNHLKIPIP", "leftVNHLKIDIP"), ("leftVNHLKIDIP", "leftVNHLKITIP"),
+        ("leftVNHLKWRI", "leftVNHLKMMCP"), ("leftVNHLKMMCP", "leftVNHLKMPIP"), ("leftVNHLKMPIP", "leftVNHLKMDIP"), ("leftVNHLKMDIP", "leftVNHLKMTIP"),
+        ("leftVNHLKWRI", "leftVNHLKRMCP"), ("leftVNHLKRMCP", "leftVNHLKRPIP"), ("leftVNHLKRPIP", "leftVNHLKRDIP"), ("leftVNHLKRDIP", "leftVNHLKRTIP"),
+        ("leftVNHLKWRI", "leftVNHLKLMCP"), ("leftVNHLKLMCP", "leftVNHLKLPIP"), ("leftVNHLKLPIP", "leftVNHLKLDIP"), ("leftVNHLKLDIP", "leftVNHLKLTIP"),
+
+        ("rightVNHLKWRI", "rightVNHLKTCMC"), ("rightVNHLKTCMC", "rightVNHLKTMP"), ("rightVNHLKTMP", "rightVNHLKTIP"), ("rightVNHLKTIP", "rightVNHLKTTIP"),
+        ("rightVNHLKWRI", "rightVNHLKIMCP"), ("rightVNHLKIMCP", "rightVNHLKIPIP"), ("rightVNHLKIPIP", "rightVNHLKIDIP"), ("rightVNHLKIDIP", "rightVNHLKITIP"),
+        ("rightVNHLKWRI", "rightVNHLKMMCP"), ("rightVNHLKMMCP", "rightVNHLKMPIP"), ("rightVNHLKMPIP", "rightVNHLKMDIP"), ("rightVNHLKMDIP", "rightVNHLKMTIP"),
+        ("rightVNHLKWRI", "rightVNHLKRMCP"), ("rightVNHLKRMCP", "rightVNHLKRPIP"), ("rightVNHLKRPIP", "rightVNHLKRDIP"), ("rightVNHLKRDIP", "rightVNHLKRTIP"),
+        ("rightVNHLKWRI", "rightVNHLKLMCP"), ("rightVNHLKLMCP", "rightVNHLKLPIP"), ("rightVNHLKLPIP", "rightVNHLKLDIP"), ("rightVNHLKLDIP", "rightVNHLKLTIP")
+    ]
+
+    private let bodyConnections: [(String, String)] = [
+        ("left_shoulder_1_joint", "left_elbow_1_joint"),
+        ("right_shoulder_1_joint", "right_elbow_1_joint")
+    ]
 
     var body: some View {
-        GeometryReader { geo in
-            Canvas { context, size in
-                drawSkeleton(in: &context, size: size)
-            }
+        Canvas { context, _ in
+            drawBodyConnections(in: &context)
+            drawHandConnections(in: &context)
+            drawJointDots(in: &context)
         }
     }
 
-    private func drawSkeleton(in context: inout GraphicsContext, size: CGSize) {
-        drawBodyConnections(in: &context, size: size)
-        drawJointDots(in: &context, size: size)
-    }
-
-    private func drawBodyConnections(in context: inout GraphicsContext, size: CGSize) {
+    private func drawBodyConnections(in context: inout GraphicsContext) {
         for (fromKey, toKey) in bodyConnections {
             guard let from = frame.joints[fromKey], let to = frame.joints[toKey],
                   from.confidence > 0.3, to.confidence > 0.3 else { continue }
 
-            let start = screenPoint(x: from.x, y: from.y, in: size)
-            let end = screenPoint(x: to.x, y: to.y, in: size)
-
             var path = Path()
-            path.move(to: start)
-            path.addLine(to: end)
-
-            context.stroke(path, with: .color(.orange.opacity(0.9)), lineWidth: 4)
+            path.move(to: point(from))
+            path.addLine(to: point(to))
+            context.stroke(path, with: .color(.orange.opacity(0.85)), lineWidth: 4)
         }
     }
 
-    private func drawJointDots(in context: inout GraphicsContext, size: CGSize) {
+    private func drawHandConnections(in context: inout GraphicsContext) {
+        for (fromKey, toKey) in handConnections {
+            guard let from = frame.joints[fromKey], let to = frame.joints[toKey],
+                  from.confidence > 0.3, to.confidence > 0.3 else { continue }
+
+            let color: Color = fromKey.hasPrefix("left") ? .blue : .purple
+
+            var path = Path()
+            path.move(to: point(from))
+            path.addLine(to: point(to))
+            context.stroke(path, with: .color(color.opacity(0.75)), lineWidth: 3)
+        }
+    }
+
+    private func drawJointDots(in context: inout GraphicsContext) {
         for (key, joint) in frame.joints where joint.confidence > 0.3 {
-            let point = screenPoint(x: joint.x, y: joint.y, in: size)
-            let rect = CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8)
+            let p = point(joint)
+            let rect = CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)
 
             let color: Color = {
                 if key.hasPrefix("left") { return .blue }
@@ -277,10 +424,10 @@ private struct RecordedFrameCanvas: View {
         }
     }
 
-    private func screenPoint(x: Double, y: Double, in size: CGSize) -> CGPoint {
+    private func point(_ joint: Joint) -> CGPoint {
         CGPoint(
-            x: x * size.width,
-            y: (1 - y) * size.height
+            x: joint.x * viewSize.width,
+            y: (1 - joint.y) * viewSize.height
         )
     }
 }
@@ -288,11 +435,12 @@ private struct RecordedFrameCanvas: View {
 #Preview {
     NavigationStack {
         RecordedSignPlaybackView(
-            recording: RecordedSignFile(
-                url: URL(fileURLWithPath: "/tmp/example.json"),
+            take: RecordedSignTake(
+                baseName: "hello_2026-04-05_18-00-00",
                 signName: "hello",
                 createdAt: .now,
-                fileName: "hello_2026-04-05_12-00-00.json"
+                jsonURL: nil,
+                videoURL: nil
             )
         )
     }

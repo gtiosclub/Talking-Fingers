@@ -2,9 +2,6 @@
 //  RecordedSignsView.swift
 //  Talking Fingers
 //
-//  Created by Akshaj Nadimpalli on 4/5/26.
-//
-
 
 #if os(iOS)
 import SwiftUI
@@ -12,11 +9,11 @@ import SwiftUI
 struct RecordedSignsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var cameraVM = CameraVM()
-    @State private var recordings: [RecordedSignFile] = []
+    @State private var takes: [RecordedSignTake] = []
     @State private var errorMessage: String?
 
-    private var groupedRecordings: [(key: String, value: [RecordedSignFile])] {
-        Dictionary(grouping: recordings, by: { $0.signName })
+    private var groupedTakes: [(key: String, value: [RecordedSignTake])] {
+        Dictionary(grouping: takes, by: { $0.signName })
             .sorted { lhs, rhs in
                 lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
             }
@@ -24,7 +21,7 @@ struct RecordedSignsView: View {
 
     var body: some View {
         List {
-            if recordings.isEmpty {
+            if takes.isEmpty {
                 ContentUnavailableView(
                     "No Recorded Signs",
                     systemImage: "play.slash",
@@ -32,26 +29,40 @@ struct RecordedSignsView: View {
                 )
                 .listRowBackground(Color.clear)
             } else {
-                ForEach(groupedRecordings, id: \.key) { group in
+                ForEach(groupedTakes, id: \.key) { group in
                     Section(group.key.capitalized) {
-                        ForEach(group.value) { recording in
+                        ForEach(group.value) { take in
                             NavigationLink {
-                                RecordedSignPlaybackView(recording: recording)
+                                RecordedSignPlaybackView(take: take)
                             } label: {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(recording.fileName)
+                                    Text(take.displayFileName)
                                         .font(.headline)
                                         .lineLimit(1)
 
-                                    Text(recording.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 8) {
+                                        Text(take.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+
+                                        if take.videoAvailable {
+                                            Label("Video", systemImage: "video.fill")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        if take.frameDataAvailable {
+                                            Label("Joints", systemImage: "point.3.filled.connected.trianglepath.dotted")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
                                 }
                                 .padding(.vertical, 2)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    delete(recording)
+                                    delete(take)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
@@ -71,14 +82,14 @@ struct RecordedSignsView: View {
 
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    loadRecordings()
+                    loadTakes()
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
             }
         }
         .task {
-            loadRecordings()
+            loadTakes()
         }
         .alert("Could Not Load Recordings", isPresented: Binding(
             get: { errorMessage != nil },
@@ -90,18 +101,18 @@ struct RecordedSignsView: View {
         }
     }
 
-    private func loadRecordings() {
+    private func loadTakes() {
         do {
-            recordings = try cameraVM.listRecordedSignFiles()
+            takes = try cameraVM.listRecordedTakes()
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func delete(_ recording: RecordedSignFile) {
+    private func delete(_ take: RecordedSignTake) {
         do {
-            try cameraVM.deleteRecording(recording)
-            recordings.removeAll { $0.id == recording.id }
+            try cameraVM.deleteTake(take)
+            takes.removeAll { $0.id == take.id }
         } catch {
             errorMessage = error.localizedDescription
         }

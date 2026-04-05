@@ -30,19 +30,41 @@ final class SignReference: Identifiable, Sendable, Codable {
     }
 }
 
-/// Represents a locally saved recording JSON file that can be browsed and played back.
-struct RecordedSignFile: Identifiable, Hashable, Sendable {
-    let id: URL
-    let url: URL
+/// A single locally recorded take, backed by files in Application Support/Recordings.
+/// Usually both `jsonURL` and `videoURL` exist and share the same basename.
+struct RecordedSignTake: Identifiable, Hashable, Sendable {
+    let id: String
+    let baseName: String
     let signName: String
     let createdAt: Date
-    let fileName: String
+    let jsonURL: URL?
+    let videoURL: URL?
 
-    init(url: URL, signName: String, createdAt: Date, fileName: String? = nil) {
-        self.id = url
-        self.url = url
+    init(
+        baseName: String,
+        signName: String,
+        createdAt: Date,
+        jsonURL: URL?,
+        videoURL: URL?
+    ) {
+        self.id = baseName
+        self.baseName = baseName
         self.signName = signName
         self.createdAt = createdAt
-        self.fileName = fileName ?? url.lastPathComponent
+        self.jsonURL = jsonURL
+        self.videoURL = videoURL
     }
+
+    var displayFileName: String {
+        if let videoURL {
+            return videoURL.lastPathComponent
+        }
+        if let jsonURL {
+            return jsonURL.lastPathComponent
+        }
+        return baseName
+    }
+
+    var frameDataAvailable: Bool { jsonURL != nil }
+    var videoAvailable: Bool { videoURL != nil }
 }
