@@ -5,7 +5,6 @@
 //  Created by Anushka Prabhu on 2/16/26.
 //
 
-
 import Foundation
 
 enum SignType: String, Codable, CaseIterable, Sendable {
@@ -31,3 +30,19 @@ final class SignReference: Identifiable, Sendable, Codable {
     }
 }
 
+/// Represents a locally saved recording JSON file that can be browsed and played back.
+struct RecordedSignFile: Identifiable, Hashable, Sendable {
+    let id: URL
+    let url: URL
+    let signName: String
+    let createdAt: Date
+    let fileName: String
+
+    init(url: URL, signName: String, createdAt: Date, fileName: String? = nil) {
+        self.id = url
+        self.url = url
+        self.signName = signName
+        self.createdAt = createdAt
+        self.fileName = fileName ?? url.lastPathComponent
+    }
+}

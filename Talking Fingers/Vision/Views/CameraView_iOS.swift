@@ -22,6 +22,7 @@ struct CameraView: View {
     var onRecordingFinished: (([SignFrame], URL) -> Void)? = nil
 
     @State private var showJointsSheet: Bool = false
+    @State private var showRecordedSigns: Bool = false
     @State private var cameraVM: CameraVM = CameraVM()
 
     @State private var hands: [VNHumanHandPoseObservation] = []
@@ -186,8 +187,23 @@ struct CameraView: View {
                     .padding(.top, 24)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    // future UI elements
+                VStack(alignment: .leading, spacing: 12) {
+                    Button {
+                        showRecordedSigns = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "play.rectangle.on.rectangle")
+                            Text("Browse Recorded Signs")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.headline)
+                        .padding()
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
@@ -195,6 +211,7 @@ struct CameraView: View {
             }
             .padding(.top, 12)
         }
+        .navigationTitle("Camera")
         .onAppear {
             cameraVM.checkPermission()
 
@@ -246,8 +263,13 @@ struct CameraView: View {
                 bodySkeletonVisibility: $bodySkeletonVisibility
             )
         }
+        .sheet(isPresented: $showRecordedSigns) {
+            NavigationStack {
+                RecordedSignsView()
+            }
+        }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItemGroup(placement: .topBarLeading) {
                 Button(action: { toggleRecording() }) {
                     Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
@@ -255,7 +277,15 @@ struct CameraView: View {
                         .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
                 .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty || cameraMode == .compare)
+
+                Button {
+                    showRecordedSigns = true
+                } label: {
+                    Image(systemName: "film.stack")
+                }
+                .accessibilityLabel("Browse Recorded Signs")
             }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { showJointsSheet = true }) {
                     Image(systemName: "gearshape.fill")
@@ -443,7 +473,8 @@ struct CameraView: View {
                 let signRef = SignReference(signName: normalizedName, signType: signType, frames: filteredFrames)
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
 
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames)
+                let recordingFilename = cameraVM.makeRecordingFilename(forSign: normalizedName)
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames, filename: recordingFilename)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)
@@ -474,7 +505,10 @@ struct CameraView: View {
             for tick in stride(from: 3, through: 1, by: -1) {
                 countdown = tick
                 try? await Task.sleep(for: .seconds(1))
-                if Task.isCancelled { countdown = 0; return }
+                if Task.isCancelled {
+                    countdown = 0
+                    return
+                }
             }
             countdown = 0
             cameraVM.toggleRecording()
@@ -501,11 +535,13 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 #Preview {
-    CameraView(onRecordingFinished: { frames, url in
-        print("Preview received \(frames.count) frames")
-        print("Saved at: \(url.path)")
-        print(frames.prefix(3))
-    })
-    .environment(AuthenticationViewModel())
+    NavigationStack {
+        CameraView(onRecordingFinished: { frames, url in
+            print("Preview received \(frames.count) frames")
+            print("Saved at: \(url.path)")
+            print(frames.prefix(3))
+        })
+        .environment(AuthenticationViewModel())
+    }
 }
 #endif

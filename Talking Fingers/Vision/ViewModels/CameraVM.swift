@@ -19,10 +19,10 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession() // connects camera hardware to the app
     private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
-    
+
     // Keep track of normalized hand observations
     var normalizedHands: [NormalizedHandModel] = []
-    
+
     // --- Recording Logic ---
     var isRecording = false
     private(set) var recordedFrames: [SignFrame] = []
@@ -39,7 +39,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
-    
+
     // MARK: - Sign recognition
     var frameBuffer: SignReference = SignReference()
     private let dtwEngine = DTWService()
@@ -61,12 +61,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let motionManager = CMMotionManager()
     #endif
     var currentPitch: Double = 0.0
-    
+
     override init() {
         super.init()
     }
 
-    
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -88,9 +87,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private func setupSession() {
         session.beginConfiguration()
         defer { session.commitConfiguration() } // Always commit, even on early return
-        
+
         session.sessionPreset = .hd1280x720 // 720p — clear preview without the memory cost of full 1080p
-        
+
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else { return }
 
@@ -103,16 +102,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         } catch {
             print("Could not configure frame rate: \(error)")
         }
-        
+
         if session.canAddInput(videoInput) { session.addInput(videoInput) }
-        
+
         videoOutput.alwaysDiscardsLateVideoFrames = true
         videoOutput.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
         ]
         videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "video.output.queue"))
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
-        
+
         // Ensure orientation is correct for the front camera
         if let connection = videoOutput.connection(with: .video) {
             #if os(iOS)
@@ -128,11 +127,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         self.startMotionUpdates()
         sessionQueue.async {
             guard self.isAuthorized else { return }
-            
+
             if self.session.inputs.isEmpty {
                 self.setupSession()
             }
-            
+
             if !self.session.isRunning {
                 self.session.startRunning()
             }
@@ -147,18 +146,18 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
-    
+
     func startMotionUpdates() {
         #if os(iOS)
         guard motionManager.isDeviceMotionAvailable else { return }
-        
+
         motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
         motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
             guard let motion = motion else { return }
             self?.currentPitch = motion.attitude.pitch
         }
         #else
-        // maxOS: No motion tracking available
+        // macOS: No motion tracking available
         currentPitch = 0.0
         #endif
     }
@@ -279,24 +278,20 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 let handObservations = handPoseRequest.results ?? []
                 let bodyObservations = bodyPoseRequest.results ?? []
-                
+
                 let primaryBody = bodyObservations.first
 
                 DispatchQueue.main.async {
                     self.onPoseDetected?(handObservations, pts)
                     self.onBodyPoseDetected?(bodyObservations, pts)
-                    
+
                     // Do something with score
                     self.processFrame(body: primaryBody, hands: handObservations, pitch: self.currentPitch, timestamp: pts)
-                    
 
                     // Existing pitch-correction normalization (this is not the scale-invariance unit-box normalization)
                     self.normalizedHands = handObservations.compactMap {
                         NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2))
                     }
-
-                    // New body callback (for overlays/labels)
-                    self.onBodyPoseDetected?(bodyObservations, pts)
 
                     if self.isRecording {
                         if self.recordingStartTime == nil { self.recordingStartTime = pts }
@@ -315,20 +310,18 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
     }
-    
-    //
-    func createSignFrame (body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
-        
+
+    func createSignFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
         let current = SignFrame(
             body: body,
             hands: hands,
-            at: timestamp,
+            at: timestamp
         )
-        
+
         currentSignFrame = current
         return current
     }
-    
+
     // MARK: - Processing Frames
     func processFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], pitch: Double, timestamp: CMTime) {
 
@@ -385,7 +378,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let y = (1 - visionPoint.y) * viewSize.height
         return CGPoint(x: x, y: y)
     }
-    
+
     // Returns translated list that treats some anchor joint (e.g. wrist) as the origin (0,0)
     // and the locations of every other joint relative to it.
     func convertAbsolutePointsToRelativePoints(
@@ -434,7 +427,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
         return rel.isEmpty ? nil : rel
     }
-    
+
     /// Removes all frames that were recorded after `cutoff`.
     /// Call this before `filterFrames` / `filterReferences` to discard the
     /// trailing grace-period where hands were no longer visible.
@@ -461,7 +454,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             return avgConfidence >= minConfidence
         }
     }
-    
+
     // MARK: - Scale invariance / unit-box normalization (SignFrame ONLY)
 
     struct NormalizedHand {
@@ -477,7 +470,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
         /// Translation applied before scale (subtracting minX/minY)
         let translation: CGPoint
-        
+
         /// Optional padding to center the scaled hand within the unit box
         let padding: CGPoint
     }
@@ -628,6 +621,75 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         }
         return dir
+    }
+
+    func makeRecordingFilename(forSign signName: String) -> String {
+        let normalized = signName
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "_")
+
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+
+        return "\(normalized)_\(df.string(from: Date())).json"
+    }
+
+    private func parseRecordedSignFile(from url: URL) -> RecordedSignFile {
+        let fileName = url.lastPathComponent
+        let base = url.deletingPathExtension().lastPathComponent
+
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let createdAt = (attrs?[.creationDate] as? Date) ?? (attrs?[.modificationDate] as? Date) ?? Date()
+
+        let signName: String = {
+            if base.hasPrefix("recording_") {
+                return "untitled"
+            }
+
+            let components = base.split(separator: "_")
+            guard components.count >= 3 else { return base }
+
+            let dateCandidate = components.suffix(2)
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+
+            if dateFormatter.date(from: dateCandidate.joined(separator: "_")) != nil {
+                return components.dropLast(2).joined(separator: " ")
+            }
+
+            return base.replacingOccurrences(of: "_", with: " ")
+        }()
+
+        return RecordedSignFile(
+            url: url,
+            signName: signName.isEmpty ? "untitled" : signName,
+            createdAt: createdAt,
+            fileName: fileName
+        )
+    }
+
+    func listRecordedSignFiles() throws -> [RecordedSignFile] {
+        let dir = try recordingsDirectoryURL()
+        let urls = try FileManager.default.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        return urls
+            .filter { $0.pathExtension.lowercased() == "json" }
+            .map(parseRecordedSignFile(from:))
+            .sorted { lhs, rhs in
+                if lhs.signName == rhs.signName {
+                    return lhs.createdAt > rhs.createdAt
+                }
+                return lhs.signName.localizedCaseInsensitiveCompare(rhs.signName) == .orderedAscending
+            }
+    }
+
+    func deleteRecording(_ recording: RecordedSignFile) throws {
+        try FileManager.default.removeItem(at: recording.url)
     }
 
     /// Saves the given frames to Application Support/Recordings/*.json and returns the file URL.
