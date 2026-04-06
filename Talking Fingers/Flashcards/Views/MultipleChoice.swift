@@ -530,12 +530,12 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
 private func optionsFor(card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
     var distractors = pool
         .filter { $0.id != card.id }
-        .map { $0.term.rawValue }
+        .map { $0.term.displayName }
         .shuffled()
         .prefix(max(0, count - 1))
 
     var opts = Array(distractors)
-    opts.append(card.term.rawValue)
+    opts.append(card.term.displayName)
     // Ensure unique and random order
     return Array(Set(opts)).shuffled()
 }
@@ -554,7 +554,7 @@ struct MultipleChoiceSRTester: View {
                     question: "What sign is being shown?",
                     imageName: "greetingsIllustration",
                     options: currentOptions,
-                    correctAnswer: current.term.rawValue,
+                    correctAnswer: current.term.displayName,
                     explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
                     currentCard: current,
                     onNext: { next in
