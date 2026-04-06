@@ -693,14 +693,38 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             active[i] = maxMotion >= velocityThreshold
         }
         
-        guard let firstActive = active.firstIndex(of: true),
-              let lastActive = active.lastIndex(of: true) else {
-            // No meaningful movement detected
+        guard let firstActive = active.firstIndex(of: true) else {
             return []
         }
         
+        // Scan backwards to find the first quiet gap >= 1 second.
+        // This discards trailing motion from reaching to press stop.
+        let quietGapThreshold: Double = 1.0
+        var endCutoff = frames.count - 1
+        
+        var i = frames.count - 1
+        while i >= firstActive {
+            if !active[i] {
+                let quietEnd = i
+                while i >= firstActive && !active[i] {
+                    i -= 1
+                }
+                let quietStart = i + 1
+                let gapDuration = frames[quietEnd].timestamp.seconds
+                                - frames[quietStart].timestamp.seconds
+                if gapDuration >= quietGapThreshold {
+                    endCutoff = quietStart - 1
+                    break
+                }
+            } else {
+                i -= 1
+            }
+        }
+        
         let startIndex = max(0, firstActive - padding)
-        let endIndex = min(frames.count - 1, lastActive + padding)
+        let endIndex = min(endCutoff, frames.count - 1)
+        
+        guard endIndex >= startIndex else { return [] }
         
         return Array(frames[startIndex...endIndex])
     }
