@@ -495,9 +495,185 @@ import Vision
 #endif
 
 #if os(macOS)
+import SwiftUI
+import AVFoundation
+import Vision
+
 struct SigningPracticeView: View {
+    @Environment(\.dismiss) var dismiss
+    
+    let words: [String] = ["A", "B", "C"]
+    @State private var currentWordIndex: Int = 0
+    @State var pass: Bool = false
+    
+    @State private var cameraVM: CameraVM = CameraVM()
+    @State private var hands: [VNHumanHandPoseObservation] = []
+    @State private var bodies: [VNHumanBodyPoseObservation] = []
+    
+    @State var signName: String = "a"
+    
     var body: some View {
-        Text("temp macOS view placeholder")
+        VStack(spacing: 20) {
+            
+            // Top bar
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("Leave", systemImage: "door.left.hand.open")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                
+                
+                // Progress
+                ProgressBar(
+                    total: words.count,
+                    current: currentWordIndex
+                )
+                .frame(maxWidth: 400)
+            }
+            
+            // Word
+            Text(signName.capitalized)
+                .font(.largeTitle)
+            
+            // Camera
+            ZStack {
+                if cameraVM.isAuthorized {
+                    CameraPreviewViewMac(session: cameraVM.session)
+                }
+                
+                VStack {
+                    Spacer()
+                    Text("\(Int(cameraVM.confidenceScore))%")
+                        .font(.system(size: 40, weight: .bold))
+                        .padding(8)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(12)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            
+            Spacer()
+            
+            // Next button
+            if pass && (currentWordIndex < words.count - 1) {
+                Button("Next") {
+                    nextWord()
+                    signName = words[currentWordIndex]
+                    pass = false
+                }
+                .frame(width: 200)
+                .padding()
+                .background(Color.green)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+                .buttonStyle(.plain)
+            } else if pass && (currentWordIndex == words.count - 1) {
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("Finish")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .foregroundColor(.white)
+                        .background(Color.green)
+                        .cornerRadius(111)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: 400)
+            }
+        }
+        .padding()
+        .onAppear {
+            cameraVM.checkPermission()
+            
+            cameraVM.onPoseDetected = { handObservations, _ in
+                hands = handObservations
+            }
+            
+            cameraVM.onBodyPoseDetected = { bodyObservations, _ in
+                bodies = bodyObservations
+            }
+            
+            cameraVM.startComparing(forSign: signName)
+            cameraVM.start()
+        }
+        .onDisappear {
+            cameraVM.stop()
+        }
+        .onChange(of: signName) { _, newValue in
+            cameraVM.startComparing(forSign: newValue)
+            pass = false
+        }
+        .onChange(of: cameraVM.confidenceScore) { _, newValue in
+            //MARK: change later
+            if Int(newValue) > 50 { //change once normalization is done
+                pass = true
+            }
+        }
+    }
+    
+    func nextWord() {
+        if currentWordIndex < words.count - 1 {
+            currentWordIndex += 1
+        }
     }
 }
+
+// MARK: - macOS Camera View (NSViewRepresentable)
+
+struct CameraPreviewViewMac: NSViewRepresentable {
+    let session: AVCaptureSession
+    
+    class VideoPreviewView: NSView {
+        override func makeBackingLayer() -> CALayer {
+            AVCaptureVideoPreviewLayer()
+        }
+        var previewLayer: AVCaptureVideoPreviewLayer {
+            layer as! AVCaptureVideoPreviewLayer
+        }
+    }
+    
+    func makeNSView(context: Context) -> VideoPreviewView {
+        let view = VideoPreviewView()
+        view.wantsLayer = true
+        view.previewLayer.session = session
+        view.previewLayer.videoGravity = .resizeAspectFill
+        return view
+    }
+    
+    func updateNSView(_ nsView: VideoPreviewView, context: Context) {
+        nsView.previewLayer.session = session
+    }
+}
+
+// MARK: - Progress Bar (unchanged)
+
+struct ProgressBar: View {
+    let total: Int
+    let current: Int
+    
+    var body: some View {
+        let height: CGFloat = 10
+        let progress = max(0, min(1, Double(current + 1) / Double(total)))
+        
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: height/2)
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(height: height)
+                
+                RoundedRectangle(cornerRadius: height/2)
+                    .fill(Color.accentColor)
+                    .frame(width: proxy.size.width * progress, height: height)
+            }
+        }
+        .frame(height: height)
+    }
+}
+
 #endif
