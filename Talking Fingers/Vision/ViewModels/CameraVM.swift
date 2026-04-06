@@ -658,8 +658,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         // Use raw Vision-normalized coordinates (0...1), not normalizedJoints.
         // normalizedJoints are anchor-relative, so wrist positions would always be ~0,0.
         let trackedJointKeys = [
-            "leftWrist", "rightWrist",
-            "leftIndexTip", "rightIndexTip"
+            "leftVNHLKWRI", "rightVNHLKWRI",
+            "leftVNHLKITIP", "rightVNHLKITIP"
         ]
         
         func distance(_ a: Joint, _ b: Joint) -> Double {
