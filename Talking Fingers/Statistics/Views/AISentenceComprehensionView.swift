@@ -7,237 +7,407 @@
 
 import SwiftUI
 
-struct WordChip: Identifiable, Equatable {
+struct AISentenceComprehensionView: View {
+    let sentenceModel: AISentenceModel
+    var sessionProgress: Double = 0
+    var onSentenceComplete: (() -> Void)? = nil
+
+    private var correctOrder: [String] {
+        sentenceModel.gloss.map { $0.rawValue.lowercased() }
+    }
+
+    @State private var allChips: [CompWordChip] = []
+    @State private var lineChips: [CompWordChip] = []
+    @State private var submitState: CompSubmitState = .idle
+    @State private var attemptNumber: Int = 0          // 0 = hasn't submitted yet
+    private let maxAttempts: Int = 2
+
+    private var glossTerms: [Term] { sentenceModel.gloss }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            CustomProgressBar(progress: sessionProgress)
+                .padding(.top, 20)
+
+            Text("New sentence!")
+                .font(.title3)
+                .fontWeight(.medium)
+                .foregroundColor(.gray)
+
+            Spacer(minLength: 0)
+
+            // Sign images grid (placeholders)
+            signImagesGrid
+
+            // Status label row: "INCORRECT 1/2" or "CORRECT"
+            statusLabelRow
+
+            // Answer area — bordered box, border colour changes on submit
+            answerArea
+
+            // Word bank
+            wordBankView
+
+            Spacer(minLength: 0)
+
+            // Bottom: solution (if 2nd incorrect) + buttons
+            bottomArea
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 30)
+        .onAppear { setupChips() }
+    }
+
+    // MARK: - Sign Images Grid
+
+    private var signImagesGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 6),
+                            count: min(max(glossTerms.count, 1), 4))
+        return LazyVGrid(columns: columns, spacing: 6) {
+            ForEach(Array(glossTerms.enumerated()), id: \.offset) { _, term in
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(white: 0.93))
+                    VStack(spacing: 2) {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.gray.opacity(0.5))
+                        Text(term.rawValue.lowercased())
+                            .font(.system(size: 9))
+                            .foregroundColor(.gray.opacity(0.65))
+                            .lineLimit(1)
+                    }
+                }
+                .aspectRatio(1, contentMode: .fit)
+            }
+        }
+        .padding(.bottom, 4)
+    }
+
+    // MARK: - Status Label Row (INCORRECT 1/2  or  CORRECT)
+
+    @ViewBuilder
+    private var statusLabelRow: some View {
+        switch submitState {
+        case .incorrect:
+            HStack {
+                Text("INCORRECT")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.red)
+                Spacer()
+                Text("\(attemptNumber)/\(maxAttempts)")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.red.opacity(0.7))
+            }
+        case .correct:
+            HStack {
+                Text("CORRECT")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color(red: 0.30, green: 0.69, blue: 0.31))
+                Spacer()
+            }
+        case .idle:
+            EmptyView()
+        }
+    }
+
+    // MARK: - Answer Area (bordered box — red/green/gray border)
+
+    private var answerArea: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            CompWrappingHStack(horizontalSpacing: 8, verticalSpacing: 8) {
+                ForEach(lineChips) { chip in
+                    chipView(chip.text, background: answerChipBg)
+                        .onTapGesture {
+                            guard submitState == .idle else { return }
+                            withAnimation(.spring()) {
+                                lineChips.removeAll { $0.id == chip.id }
+                            }
+                        }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 52)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(answerBorderColor, lineWidth: submitState == .idle ? 1 : 2)
+        )
+    }
+
+    private var answerBorderColor: Color {
+        switch submitState {
+        case .correct:   return Color(red: 0.30, green: 0.69, blue: 0.31)
+        case .incorrect: return .red
+        case .idle:      return Color.gray.opacity(0.35)
+        }
+    }
+
+    private var answerChipBg: Color {
+        switch submitState {
+        case .correct:   return Color(red: 0.78, green: 0.93, blue: 0.78)
+        case .incorrect: return Color(red: 0.96, green: 0.82, blue: 0.82)
+        case .idle:      return Color(white: 0.91)
+        }
+    }
+
+    // MARK: - Word Bank
+
+    private var wordBankView: some View {
+        CompWrappingHStack(horizontalSpacing: 8, verticalSpacing: 8) {
+            ForEach(allChips) { chip in
+                if lineChips.contains(where: { $0.id == chip.id }) {
+                    // Shadow placeholder
+                    Text(chip.text)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .opacity(0)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(minHeight: 40)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(white: 0.55).opacity(0.45))
+                        )
+                } else {
+                    chipView(chip.text, background: Color(white: 0.91))
+                        .onTapGesture {
+                            guard submitState == .idle else { return }
+                            withAnimation(.spring()) {
+                                lineChips.append(chip)
+                            }
+                        }
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    // MARK: - Chip
+
+    private func chipView(_ text: String, background: Color) -> some View {
+        Text(text)
+            .font(.subheadline)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 40)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Bottom Area
+
+    @ViewBuilder
+    private var bottomArea: some View {
+        switch submitState {
+        case .idle:
+            Button(action: submit) {
+                Text("Submit")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        lineChips.count == correctOrder.count
+                            ? Color(red: 0.30, green: 0.69, blue: 0.31)
+                            : Color.gray
+                    )
+                    .cornerRadius(12)
+            }
+            .disabled(lineChips.count != correctOrder.count)
+
+        case .incorrect:
+            VStack(spacing: 10) {
+                // Show solution only on final attempt (attempt 2 of 2)
+                if attemptNumber >= maxAttempts {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("SOLUTION:")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.gray)
+                        Text(correctOrder.joined(separator: " "))
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.05))
+                    .cornerRadius(8)
+
+                    // Final attempt: "Take a break" + "Continue"
+                    HStack(spacing: 16) {
+                        Button(action: { onSentenceComplete?() }) {
+                            Text("Take a break")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+
+                        Button(action: { onSentenceComplete?() }) {
+                            Text("Continue")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+                    }
+                } else {
+                    // First attempt incorrect: "End attempt" + "Try again"
+                    HStack(spacing: 16) {
+                        Button(action: { onSentenceComplete?() }) {
+                            Text("End attempt")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+
+                        Button(action: tryAgain) {
+                            Text("Try again")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+        case .correct:
+            VStack(spacing: 12) {
+                Text("Great job!")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color(red: 0.30, green: 0.69, blue: 0.31))
+
+                if attemptNumber >= maxAttempts {
+                    // Got it right on final attempt: "Take a break" + "Continue"
+                    HStack(spacing: 16) {
+                        Button(action: { onSentenceComplete?() }) {
+                            Text("Take a break")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+
+                        Button(action: { onSentenceComplete?() }) {
+                            Text("Continue")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+                    }
+                } else {
+                    // Got it right on first try: "End attempt" + "Try again"
+                    HStack(spacing: 16) {
+                        Button(action: { onSentenceComplete?() }) {
+                            Text("End attempt")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+
+                        Button(action: tryAgain) {
+                            Text("Try again")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.gray.opacity(0.12))
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: - Logic
+
+    private func setupChips() {
+        let correctSet = Set(correctOrder)
+        let allTermStrings = Term.allCases.map { $0.rawValue.lowercased() }
+        let possibleDistractors = allTermStrings.filter { !correctSet.contains($0) }
+        let numDistractors = max(0, 7 - correctOrder.count)
+        let distractors = Array(possibleDistractors.shuffled().prefix(numDistractors))
+
+        let allWords = (correctOrder + distractors).shuffled()
+        allChips = allWords.map { CompWordChip(text: $0) }
+        lineChips = []
+        submitState = .idle
+    }
+
+    private func submit() {
+        guard lineChips.count == correctOrder.count else { return }
+        attemptNumber += 1
+
+        let userAnswer = lineChips.map { $0.text }
+        if userAnswer == correctOrder {
+            withAnimation { submitState = .correct }
+        } else {
+            withAnimation { submitState = .incorrect }
+        }
+    }
+
+    private func tryAgain() {
+        withAnimation {
+            lineChips = []
+            submitState = .idle
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+private enum CompSubmitState: Equatable {
+    case idle
+    case correct
+    case incorrect
+}
+
+private struct CompWordChip: Identifiable, Equatable {
     let id = UUID()
     let text: String
 }
 
-struct AISentenceComprehensionView: View {
-    private let carouselImages = ["Image 1", "Image 2", "Image 3", "Image 4", "Image 5"]
-    @State private var currentIndex = 0
+// MARK: - Wrapping HStack Layout
 
-    private var currentImage: String {
-        carouselImages[currentIndex]
-    }
-    
-    private var progress: CGFloat = 0.5
-
-    /// Fixed order of all words; bank shows this order with shadows where words are on the line.
-    @State private var allWordsInOrder: [WordChip] = [
-        WordChip(text: "word 1"), WordChip(text: "word 2"), WordChip(text: "word 3"),
-        WordChip(text: "word 4"), WordChip(text: "word 5"), WordChip(text: "word 6"),
-        WordChip(text: "word 7")
-    ]
-    @State private var lineWords: [WordChip] = []
-
-    private static let lineHorizontalSpacing: CGFloat = 10
-    /// Vertical spacing between word rows; also drives notebook line positions so words sit on the lines.
-    private static let lineVerticalSpacing: CGFloat = 18
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // 1. Top: progress bar container
-            VStack(alignment: .leading, spacing: 20) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(white: 0.9))
-                            .frame(height: 8)
-                        Capsule()
-                            .fill(Color(white: 0.5))
-                            .frame(width: geo.size.width * min(max(progress, 0), 1), height: 8)
-                    }
-                }
-                .frame(height: 4)
-
-                Text("Translate!")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(Color(white: 0.3))
-            }
-            .padding(.horizontal)
-            .padding(.top, 16)
-
-            Spacer(minLength: 0)
-
-            // 2. Middle: square + lines + word bank
-            VStack(spacing: 40) {
-                HStack(spacing: 16) {
-                Button {
-                    currentIndex = (currentIndex - 1 + carouselImages.count) % carouselImages.count
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 44)
-                        .background(Color(white: 0.9))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-
-                ZStack(alignment: .bottom) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(white: 0.92))
-                        Text(currentImage)
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .aspectRatio(1, contentMode: .fit)
-
-                    HStack(spacing: 6) {
-                        ForEach(carouselImages.indices, id: \.self) { index in
-                            Circle()
-                                .fill(index == currentIndex ? Color(white: 0.4) : Color(white: 0.85))
-                                .frame(width: 6, height: 6)
-                        }
-                    }
-                    .padding(.bottom, 8)
-                }
-
-                Button {
-                    currentIndex = (currentIndex + 1) % carouselImages.count
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.title2.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 44)
-                        .background(Color(white: 0.9))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Lines + word bank: same width as Check button (padded); content inside has no extra padding
-            VStack(spacing: 32) {
-                linesZoneView
-                bankZoneView
-            }
-            .padding(.horizontal)
-            }
-            .frame(maxHeight: .infinity)
-
-            Spacer(minLength: 0)
-
-            // 3. Bottom: Check button
-            Button("Check") { }
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color(white: 0.3))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .buttonStyle(.plain)
-                .padding(.horizontal)
-        }
-        .padding()
-    }
-
-    // MARK: - Lines Zone
-
-    /// Gap between the bottom of a word row and the notebook line below it.
-    private static let lineToWordGap: CGFloat = 6
-    /// Must match chip minHeight and WrappingHStack row height.
-    private static let notebookRowHeight: CGFloat = 44
-    private static var linesZoneHeight: CGFloat {
-        let secondLineY = notebookRowHeight + Self.lineVerticalSpacing + notebookRowHeight - 1 + lineToWordGap
-        return secondLineY + 4
-    }
-
-    private var linesZoneView: some View {
-        ZStack(alignment: .topLeading) {
-            notebookLinesView
-            WrappingHStack(horizontalSpacing: Self.lineHorizontalSpacing, verticalSpacing: Self.lineVerticalSpacing) {
-                ForEach(lineWords) { chip in
-                    chipView(chip, onLine: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: Self.linesZoneHeight, maxHeight: Self.linesZoneHeight, alignment: .top)
-        }
-        .frame(height: Self.linesZoneHeight)
-    }
-
-    private var notebookLinesView: some View {
-        let rowHeight = Self.notebookRowHeight
-        let gap = Self.lineToWordGap
-        // First line: just below first row of words (same as WrappingHStack row 0 bottom + gap).
-        let firstLineY = rowHeight - 1 + gap
-        // Second line: just below second row of words (row 0 + spacing + row 1 + gap).
-        let secondLineY = rowHeight + Self.lineVerticalSpacing + rowHeight - 1 + gap
-        return Color.clear
-            .frame(height: Self.linesZoneHeight)
-            .overlay(alignment: .topLeading) {
-                Group {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.4))
-                        .frame(height: 2)
-                        .offset(y: firstLineY)
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.4))
-                        .frame(height: 2)
-                        .offset(y: secondLineY)
-                }
-            }
-    }
-
-    // MARK: - Bank Zone
-
-    private var bankZoneView: some View {
-        WrappingHStack(horizontalSpacing: 10, verticalSpacing: 10) {
-            ForEach(allWordsInOrder) { chip in
-                if lineWords.contains(where: { $0.id == chip.id }) {
-                    bankShadowView(for: chip)
-                } else {
-                    chipView(chip, onLine: false)
-                }
-            }
-        }
-    }
-
-    /// Shadow placeholder in the bank: same size as the chip, darker, no text. Word stays in its slot when on the line.
-    private func bankShadowView(for chip: WordChip) -> some View {
-        Text(chip.text)
-            .font(.subheadline)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .opacity(0)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .frame(minHeight: 44)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(white: 0.4).opacity(0.5))
-            )
-    }
-
-    // MARK: - Chip View
-
-    private func chipView(_ chip: WordChip, onLine: Bool) -> some View {
-        Text(chip.text)
-            .font(.subheadline)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .frame(minHeight: 44)
-            .background(Color(white: 0.9))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.spring()) {
-                    if onLine {
-                        lineWords.removeAll { $0.id == chip.id }
-                    } else {
-                        lineWords.append(chip)
-                    }
-                }
-            }
-    }
-}
-
-private struct WrappingHStack: Layout {
+private struct CompWrappingHStack: Layout {
     var horizontalSpacing: CGFloat
     var verticalSpacing: CGFloat
 
@@ -287,5 +457,12 @@ private struct WrappingHStack: Layout {
 }
 
 #Preview {
-    AISentenceComprehensionView()
+    AISentenceComprehensionView(
+        sentenceModel: AISentenceModel(
+            sentence: "Today was good, thank you.",
+            practiceType: .comprehension,
+            gloss: [.today, .good, .happy, .you]
+        ),
+        sessionProgress: 0.4
+    )
 }
