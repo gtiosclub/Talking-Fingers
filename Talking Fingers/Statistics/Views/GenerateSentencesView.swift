@@ -10,6 +10,7 @@ import SwiftUI
 struct GenerateSentencesView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategories: Set<TermCategory> = []
+    @State private var modeSelection = PracticeModeSelection(signing: true, comprehension: false)
     @State private var trainingName: String = ""
     @State private var isGenerating: Bool = false
     @State private var errorMessage: String?
@@ -51,6 +52,33 @@ struct GenerateSentencesView: View {
                 }
             }
             
+            // MARK: - Mode Selection (multi-select, at least one required)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Modes")
+                    .font(.headline)
+
+                HStack(spacing: 12) {
+                    ModeToggleButton(
+                        label: "Sign",
+                        isSelected: modeSelection.signing,
+                        action: {
+                            // Don't allow deselecting if it's the only one on
+                            if modeSelection.signing && !modeSelection.comprehension { return }
+                            modeSelection.signing.toggle()
+                        }
+                    )
+
+                    ModeToggleButton(
+                        label: "Comprehend",
+                        isSelected: modeSelection.comprehension,
+                        action: {
+                            if modeSelection.comprehension && !modeSelection.signing { return }
+                            modeSelection.comprehension.toggle()
+                        }
+                    )
+                }
+            }
+
             // Training Name Section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Name")
@@ -138,7 +166,7 @@ struct GenerateSentencesView: View {
             
             do {
                 let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
-                let sentences = try await generateSentencesForCategories(effectiveCategories)
+                let sentences = try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
                 
                 await MainActor.run {
                     onSentencesGenerated(sentences, effectiveCategories)
@@ -153,9 +181,9 @@ struct GenerateSentencesView: View {
     }
 
     /// Generate 5 sentences for the given categories (e.g. for Extend in a session).
-    static func generateSentences(categories: Set<TermCategory>) async throws -> [AISentenceModel] {
+    static func generateSentences(categories: Set<TermCategory>, modeSelection: PracticeModeSelection = PracticeModeSelection(signing: true, comprehension: false)) async throws -> [AISentenceModel] {
         let effectiveCategories = categories.isEmpty ? Set(TermCategory.allCases) : categories
-        return try await generateSentencesForCategories(effectiveCategories)
+        return try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
     }
 }
 
@@ -185,7 +213,41 @@ struct CategoryButton: View {
         }
     }
 }
-private func generateSentencesForCategories(_ categories: Set<TermCategory>) async throws -> [AISentenceModel] {
+
+// MARK: - Mode Toggle Button
+
+struct ModeToggleButton: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Circle()
+                    .fill(isSelected ? Color(hex: "#D4A843") ?? .yellow : Color.gray.opacity(0.3))
+                    .frame(width: 10, height: 10)
+            }
+            .foregroundColor(Color(hex: "#737373") ?? Color.gray)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? (Color(hex: "#EBEBEB") ?? Color(white: 0.92)) : Color.white)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.black, lineWidth: 1)
+            )
+        }
+    }
+}
+
+private func generateSentencesForCategories(_ categories: Set<TermCategory>, modeSelection: PracticeModeSelection = PracticeModeSelection(signing: true, comprehension: false)) async throws -> [AISentenceModel] {
     // 1. Get all terms for the selected categories
     let focusTerms = categories.flatMap { category in
         Term.words(for: category)
@@ -224,18 +286,52 @@ private func generateSentencesForCategories(_ categories: Set<TermCategory>) asy
         from: flashcards,
         focusTerms: sentenceTerms
     )
+
+    // 4. Assign practiceType based on mode selection
+    let assignedSentences = assignPracticeTypes(to: sentences, modeSelection: modeSelection)
         
     print("📋 GENERATED SENTENCES:")
-    for (index, sentence) in sentences.enumerated() {
+    for (index, sentence) in assignedSentences.enumerated() {
         print("\n--- Sentence \(index + 1) ---")
         print("Text: \(sentence.sentence)")
         print("Gloss: \(sentence.gloss.map { $0.rawValue })")
         print("Practice Type: \(sentence.practiceType.rawValue)")
         print("Completed: \(sentence.completed)")
     }
-    print("\n✅ Total: \(sentences.count) sentences\n")
+    print("\n✅ Total: \(assignedSentences.count) sentences\n")
         
-    return sentences
+    return assignedSentences
+}
+
+/// Assigns practiceType to sentences based on the user's mode selection.
+/// - Both modes: first half signing, second half comprehension
+/// - Signing only: all .words
+/// - Comprehension only: all .comprehension
+private func assignPracticeTypes(to sentences: [AISentenceModel], modeSelection: PracticeModeSelection) -> [AISentenceModel] {
+    guard !sentences.isEmpty else { return sentences }
+
+    if modeSelection.signing && modeSelection.comprehension {
+        // Split roughly half-and-half
+        let halfIndex = sentences.count / 2
+        return sentences.enumerated().map { index, sentence in
+            var s = sentence
+            s.practiceType = index < halfIndex ? .words : .comprehension
+            return s
+        }
+    } else if modeSelection.comprehension {
+        return sentences.map { sentence in
+            var s = sentence
+            s.practiceType = .comprehension
+            return s
+        }
+    } else {
+        // signing only (default)
+        return sentences.map { sentence in
+            var s = sentence
+            s.practiceType = .words
+            return s
+        }
+    }
 }
 
 // MARK: - Preview
