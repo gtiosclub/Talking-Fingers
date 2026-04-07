@@ -125,12 +125,12 @@ struct StartCardComponent: View {
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
         var distractors = pool
             .filter { $0.id != card.id }
-            .map { $0.term.rawValue }
+            .map { $0.term.displayName }
             .shuffled()
             .prefix(max(0, count - 1))
 
         var opts = Array(distractors)
-        opts.append(card.term.rawValue)
+        opts.append(card.term.displayName)
         return Array(Set(opts)).shuffled()
     }
 
@@ -231,7 +231,7 @@ private struct MultipleChoiceFlow: View {
             question: "What sign is being shown?",
             imageName: imageName,
             options: options,
-            correctAnswer: currentCard.term.rawValue,
+            correctAnswer: currentCard.term.displayName,
             explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
             currentCard: currentCard,
             onNext: { next in
@@ -260,12 +260,12 @@ private struct MultipleChoiceFlow: View {
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
         var distractors = pool
             .filter { $0.id != card.id }
-            .map { $0.term.rawValue }
+            .map { $0.term.displayName }
             .shuffled()
             .prefix(max(0, count - 1))
 
         var opts = Array(distractors)
-        opts.append(card.term.rawValue)
+        opts.append(card.term.displayName)
         return Array(Set(opts)).shuffled()
     }
 }

@@ -440,10 +440,21 @@ struct CameraView: View {
             }
 
             do {
-                let signRef = SignReference(signName: normalizedName, signType: signType, frames: filteredFrames)
+                
+                // Trim by motion
+                let trimmedSignFrames = cameraVM.trimFramesByVelocity(filteredFrames)
+                
+                guard !trimmedSignFrames.isEmpty else {
+                    print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
+                    cameraVM.clearBuffer()
+                    return
+                }
+                
+                let signRef = SignReference(signName: normalizedName, signType: signType, frames: trimmedSignFrames)
+                
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
 
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames)
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(trimmedSignFrames)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)

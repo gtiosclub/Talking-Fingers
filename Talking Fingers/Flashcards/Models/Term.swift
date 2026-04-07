@@ -293,5 +293,7 @@ enum Term: String, CaseIterable, Codable {
     
     var displayName: String {
         return self.rawValue
+                  .replacingOccurrences(of: "-", with: " ")
+                  .capitalized
     }
 }
