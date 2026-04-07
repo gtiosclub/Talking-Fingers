@@ -4,25 +4,32 @@
 //
 //  Created by Sanvi Adusumilli on 3/30/26.
 //
+
 import SwiftUI
 
 struct SearchView: View {
     
     @StateObject private var vm = SearchViewModel()
     @FocusState private var isFocused: Bool
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 
-                HStack(spacing: 6) {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 15))
-                        .foregroundColor(.gray)
-                    Text("Leave")
-                        .font(.system(size: 17))
-                        .foregroundColor(.gray)
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 15))
+                            .foregroundColor(.gray)
+                        Text("Leave")
+                            .font(.system(size: 17))
+                            .foregroundColor(.gray)
+                    }
                 }
+                .buttonStyle(.plain)
                 
                 HStack(spacing: 10) {
                     HStack {
@@ -95,21 +102,23 @@ struct SearchView: View {
                                 
                                 ForEach(vm.recentSearches, id: \.self) { search in
                                     VStack(spacing: 0) {
-                                        HStack {
-                                            Text(search)
-                                                .font(.system(size: 20, weight: .semibold))
-                                                .foregroundColor(.black)
-                                            Spacer()
-                                            Image(systemName: "arrow.up.right")
-                                                .font(.system(size: 13))
-                                                .foregroundColor(.gray)
-                                        }
-                                        .padding(.vertical, 10)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
+                                        Button {
                                             vm.selectRecentSearch(search)
                                             isFocused = true
+                                        } label: {
+                                            HStack {
+                                                Text(search)
+                                                    .font(.system(size: 20, weight: .semibold))
+                                                    .foregroundColor(.black)
+                                                Spacer()
+                                                Image(systemName: "arrow.up.right")
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.gray)
+                                            }
+                                            .padding(.vertical, 10)
+                                            .contentShape(Rectangle())
                                         }
+                                        .buttonStyle(.plain)
                                         
                                         Divider()
                                     }
@@ -123,12 +132,14 @@ struct SearchView: View {
                         
                         VStack(spacing: 14) {
                             ForEach(vm.categories, id: \.self) { category in
-                                categoryRow(for: category)
-                                    .onTapGesture {
-                                        vm.selectCategory(category)
-                                        vm.saveRecentSearch(category.displayName)
-                                        isFocused = true
-                                    }
+                                Button {
+                                    vm.selectCategory(category)
+                                    vm.saveRecentSearch(category.displayName)
+                                    isFocused = true
+                                } label: {
+                                    categoryRow(for: category)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -139,7 +150,7 @@ struct SearchView: View {
             .padding()
             .padding(.top, 16)
         }
-        .ignoresSafeArea()
+        .background(Color.white)
     }
     
     @ViewBuilder
@@ -206,9 +217,9 @@ struct SearchView: View {
         case .commonDescriptors:    return "Describe size, color, and more"
         case .commonObjects:        return "Everyday items around you"
         }
-   }
+    }
 }
 
 #Preview {
-   SearchView()
+    SearchView()
 }
