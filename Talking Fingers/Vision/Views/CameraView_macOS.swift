@@ -7,6 +7,8 @@
 
 #if os(macOS)
 import SwiftUI
+import AVFoundation
+import AppKit
 
 struct CameraView: View {
     @Environment(AuthenticationViewModel.self) var authVM
@@ -17,7 +19,6 @@ struct CameraView: View {
                 .ignoresSafeArea()
 
             HStack(alignment: .top, spacing: 24) {
-                // Main column (center)
                 VStack(alignment: .leading, spacing: 18) {
                     topStrip
                     headerArea
@@ -27,29 +28,20 @@ struct CameraView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                // Right widgets column
                 rightWidgetsColumn
             }
             .padding(28)
         }
         .toolbar {
-            // Intentionally empty for now.
-            // Teammates can add real toolbar items later without undoing layout work.
         }
     }
 }
 
-// MARK: - Sections
-
 private extension CameraView {
     var topStrip: some View {
         HStack {
-            // Leave area (empty)
             EmptyView()
-
             Spacer(minLength: 12)
-
-            // Progress area (empty)
             EmptyView()
         }
         .frame(maxWidth: .infinity)
@@ -58,10 +50,7 @@ private extension CameraView {
 
     var headerArea: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // "Try sign it out!" area (empty)
             EmptyView()
-
-            // Big sentence area (empty)
             EmptyView()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,10 +59,8 @@ private extension CameraView {
     var practiceSurface: some View {
         PracticeSurfaceCardView {
             VStack(spacing: 18) {
-                // Tip chip area (empty)
                 EmptyView()
 
-                // Camera feed container (empty now; teammate can drop in their real view later)
                 CameraFeedContainerView {
                     EmptyView()
                 }
@@ -85,7 +72,6 @@ private extension CameraView {
     }
 
     var bottomControlsRow: some View {
-        // Bottom icon row area (empty)
         HStack {
             Spacer()
             EmptyView()
@@ -110,8 +96,6 @@ private extension CameraView {
         .padding(.top, 44)
     }
 }
-
-// MARK: - Styled Containers (no placeholder text)
 
 private struct PracticeSurfaceCardView<Content: View>: View {
     @ViewBuilder let content: () -> Content
@@ -155,6 +139,62 @@ private struct WidgetCardView<Content: View>: View {
             )
             .overlay { content() }
             .shadow(color: Color.black.opacity(0.20), radius: 14, x: 0, y: 6)
+    }
+}
+
+struct CameraPreviewView: NSViewRepresentable {
+    let session: AVCaptureSession
+    var isMirrored: Bool = true
+
+    final class VideoPreviewView: NSView {
+        let previewLayer = AVCaptureVideoPreviewLayer()
+
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            wantsLayer = true
+            layer = CALayer()
+            layer?.masksToBounds = true
+
+            previewLayer.videoGravity = .resizeAspectFill
+            layer?.addSublayer(previewLayer)
+        }
+
+        required init?(coder: NSCoder) {
+            super.init(coder: coder)
+            wantsLayer = true
+            layer = CALayer()
+            layer?.masksToBounds = true
+
+            previewLayer.videoGravity = .resizeAspectFill
+            layer?.addSublayer(previewLayer)
+        }
+
+        override func layout() {
+            super.layout()
+            previewLayer.frame = bounds
+        }
+    }
+
+    func makeNSView(context: Context) -> VideoPreviewView {
+        let view = VideoPreviewView()
+        configure(view)
+        return view
+    }
+
+    func updateNSView(_ nsView: VideoPreviewView, context: Context) {
+        configure(nsView)
+    }
+
+    private func configure(_ view: VideoPreviewView) {
+        view.previewLayer.session = session
+        view.previewLayer.videoGravity = .resizeAspectFill
+        view.previewLayer.frame = view.bounds
+
+        if isMirrored {
+            view.previewLayer.setAffineTransform(CGAffineTransform(scaleX: -1, y: 1))
+        } else {
+            view.previewLayer.setAffineTransform(.identity)
+        }
     }
 }
 

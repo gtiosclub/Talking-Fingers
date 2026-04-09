@@ -9,11 +9,6 @@ import SwiftUI
 import AVFoundation
 import Vision
 
-enum CameraMode: String, CaseIterable {
-    case `static`
-    case dynamic
-    case compare
-}
 
 struct CameraView: View {
 
