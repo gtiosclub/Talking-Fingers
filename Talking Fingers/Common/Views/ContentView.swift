@@ -5,8 +5,13 @@
 //  Created by Nikola Cao on 1/24/26.
 //
 import SwiftUI
+import SwiftData
 struct ContentView: View {
     @Environment(AuthenticationViewModel.self) var authVM
+    @Environment(SwiftDataVM.self) private var dataVM
+    @Environment(\.scenePhase) private var scenePhase
+    
+    @Query private var users: [User]
     
     var body: some View {
         Group {
@@ -17,6 +22,12 @@ struct ContentView: View {
             }
         }
         .environment(authVM)
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .active, let currentUser = users.first {
+                dataVM.checkAndResetStreak(for: currentUser)
+                print("Streak checked for user: \(currentUser.name)")
+            }
+        }
     }
 }
 struct MainNavigationView: View {
