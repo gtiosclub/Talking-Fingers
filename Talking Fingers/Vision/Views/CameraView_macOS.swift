@@ -84,8 +84,9 @@ struct CameraView: View {
     var body: some View {
         ZStack {
             if cameraVM.isAuthorized {
-                CameraPreviewView(session: cameraVM.session)
-
+                
+                CameraPreviewView(session: cameraVM.session, cameraVM: cameraVM)
+                
                 GeometryReader { geo in
                     handOutlineOverlay(in: geo.size)
                     handJointLabelsOverlay(in: geo.size)
@@ -133,12 +134,9 @@ struct CameraView: View {
     /// Mirrors the overlay horizontally when the preview is mirrored,
     /// so skeletons/labels line up with the camera image on macOS.
     private func screenPosition(from visionPoint: CGPoint, in viewSize: CGSize) -> CGPoint {
-        let mirroredX = cameraVM.isMirrored ? (1 - visionPoint.x) : visionPoint.x
-        let x = mirroredX * viewSize.width
-        let y = (1 - visionPoint.y) * viewSize.height
-        return CGPoint(x: x, y: y)
+        cameraVM.layerPoint(from: visionPoint, in: viewSize)
     }
-
+    
     // MARK: - Overlays
 
     @ViewBuilder
@@ -290,6 +288,7 @@ struct CameraView: View {
 
 struct CameraPreviewView: NSViewRepresentable {
     let session: AVCaptureSession
+    let cameraVM: CameraVM
 
     class VideoPreviewView: NSView {
         override func makeBackingLayer() -> CALayer {
@@ -299,6 +298,11 @@ struct CameraPreviewView: NSViewRepresentable {
         var previewLayer: AVCaptureVideoPreviewLayer {
             layer as! AVCaptureVideoPreviewLayer
         }
+        
+        override func layout() {
+                super.layout()
+                previewLayer.frame = bounds
+            }
     }
 
     func makeNSView(context: Context) -> VideoPreviewView {
@@ -306,11 +310,15 @@ struct CameraPreviewView: NSViewRepresentable {
         view.wantsLayer = true
         view.previewLayer.session = session
         view.previewLayer.videoGravity = .resizeAspectFill
+        cameraVM.previewLayer = view.previewLayer
         return view
     }
 
     func updateNSView(_ nsView: VideoPreviewView, context: Context) {
         nsView.previewLayer.session = session
+        nsView.previewLayer.videoGravity = .resizeAspectFill
+        nsView.previewLayer.frame = nsView.bounds
+        cameraVM.previewLayer = nsView.previewLayer
     }
 }
 

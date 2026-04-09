@@ -17,6 +17,7 @@ import CoreGraphics
 class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     let session = AVCaptureSession() // connects camera hardware to the app
+    var previewLayer: AVCaptureVideoPreviewLayer?
     private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
     private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
     
@@ -652,5 +653,28 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     /// Loads SignFrames from a local recording JSON.
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
         try SignFrame.decodeArray(from: url)
+    }
+    
+     //
+    
+    func layerPoint(from visionPoint: CGPoint, in viewSize: CGSize) -> CGPoint {
+        guard let previewLayer else {
+            let mirroredX = isMirrored ? (1 - visionPoint.x) : visionPoint.x
+            return CGPoint(
+                x: mirroredX * viewSize.width,
+                y: (1 - visionPoint.y) * viewSize.height
+            )
+        }
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        previewLayer.frame = CGRect(origin: .zero, size: viewSize)
+
+        let point = previewLayer.layerPointConverted(
+            fromCaptureDevicePoint: CGPoint(x: visionPoint.x, y: 1 - visionPoint.y)
+        )
+
+        CATransaction.commit()
+        return point
     }
 }
