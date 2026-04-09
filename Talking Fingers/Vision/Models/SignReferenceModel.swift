@@ -5,7 +5,6 @@
 //  Created by Anushka Prabhu on 2/16/26.
 //
 
-
 import Foundation
 
 enum SignType: String, Codable, CaseIterable, Sendable {
@@ -31,3 +30,41 @@ final class SignReference: Identifiable, Sendable, Codable {
     }
 }
 
+/// A single locally recorded take, backed by files in Application Support/Recordings.
+/// Usually both `jsonURL` and `videoURL` exist and share the same basename.
+struct RecordedSignTake: Identifiable, Hashable, Sendable {
+    let id: String
+    let baseName: String
+    let signName: String
+    let createdAt: Date
+    let jsonURL: URL?
+    let videoURL: URL?
+
+    init(
+        baseName: String,
+        signName: String,
+        createdAt: Date,
+        jsonURL: URL?,
+        videoURL: URL?
+    ) {
+        self.id = baseName
+        self.baseName = baseName
+        self.signName = signName
+        self.createdAt = createdAt
+        self.jsonURL = jsonURL
+        self.videoURL = videoURL
+    }
+
+    var displayFileName: String {
+        if let videoURL {
+            return videoURL.lastPathComponent
+        }
+        if let jsonURL {
+            return jsonURL.lastPathComponent
+        }
+        return baseName
+    }
+
+    var frameDataAvailable: Bool { jsonURL != nil }
+    var videoAvailable: Bool { videoURL != nil }
+}
