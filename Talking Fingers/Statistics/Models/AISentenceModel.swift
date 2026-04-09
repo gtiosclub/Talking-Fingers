@@ -10,6 +10,16 @@ import Foundation
 enum PracticeType: String, Codable {
     case words = "word"
     case signs = "signs"
+    case comprehension = "comprehension"
+}
+
+/// Which practice modes the user wants in this session.
+/// At least one must be selected.
+struct PracticeModeSelection: Equatable {
+    var signing: Bool = true
+    var comprehension: Bool = false
+
+    var isValid: Bool { signing || comprehension }
 }
 
 struct AISentenceModel: Identifiable, Codable {
