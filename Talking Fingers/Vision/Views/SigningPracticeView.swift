@@ -506,7 +506,7 @@ import Vision
 struct SigningPracticeView: View {
     @Environment(\.dismiss) private var dismiss
 
-    let words: [String] = ["C", "B", "A"]
+    let words: [String] = ["A", "B", "C"]
 
     @State private var currentWordIndex: Int = 0
     @State private var pass: Bool = false
