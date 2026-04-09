@@ -161,7 +161,9 @@ class FlashcardVM {
         return card
     }
     
-    func handleAnswer(for card: FlashcardModel, correct: Bool) {
+    func handleAnswer(for card: FlashcardModel, correct: Bool, user: User, dataVM: SwiftDataVM) {
+        dataVM.updateStreak(for: user)
+        
         let newProgress: ProgressType
 
         switch (card.progress, correct) {

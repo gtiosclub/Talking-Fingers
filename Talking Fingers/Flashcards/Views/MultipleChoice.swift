@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct MultipleChoice: View {
 
@@ -26,6 +27,8 @@ struct MultipleChoice: View {
     // MARK: - Environment (Observation framework)
     @Environment(FlashcardVM.self) private var flashcardVM
     @Environment(\.dismiss) private var dismiss
+    @Environment(SwiftDataVM.self) private var dataVM
+    @Query private var users: [User]
 
     // MARK: - State
     @State private var selectedAnswer: String? = nil
@@ -350,7 +353,9 @@ struct MultipleChoice: View {
         let isCorrect = (selected == correctAnswer)
 
         // Update spaced repetition progress
-        flashcardVM.handleAnswer(for: currentCard, correct: isCorrect)
+        if let currentUser = users.first {
+            flashcardVM.handleAnswer(for: currentCard, correct: isCorrect, user: currentUser, dataVM: dataVM)
+        }
 
         if isCorrect {
             withAnimation(.easeInOut(duration: 0.25)) {
