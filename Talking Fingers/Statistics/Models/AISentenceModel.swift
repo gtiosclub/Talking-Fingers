@@ -22,7 +22,7 @@ struct PracticeModeSelection: Equatable {
     var isValid: Bool { signing || comprehension }
 }
 
-struct AISentenceModel: Identifiable, Codable {
+struct AISentenceModel: Identifiable, Codable, Equatable {
     var id = UUID()
     var sentence: String
     var gloss: [Term]

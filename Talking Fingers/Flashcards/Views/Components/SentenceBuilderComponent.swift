@@ -193,10 +193,18 @@ struct SentenceBuilderView: View {
 }
 
 #Preview {
+    let dummySentence = AISentenceModel(
+        sentence: "Arrange the sentence",
+        practiceType: .signs,
+        gloss: [], // or add some dummy Terms if needed
+        completed: false
+    )
+    
     let ex = SentenceExerciseModel(
-        prompt: "Arrange the sentence",
+        sentence: dummySentence,
         correctOrder: ["today", "was", "amazing"],
         wordBank: ["today", "was", "amazing", "thank", "you"]
     )
-    return SentenceBuilderView(vm: SentenceBuilderVM(exercise: ex))
+    
+    SentenceBuilderView(vm: SentenceBuilderVM(exercise: ex))
 }

@@ -14,10 +14,17 @@ struct FlashcardComponent: View {
     
     init(card: FlashcardModel) {
         self.card = card
-        // replace this with the real exercise for this card
+        
+        let dummySentence = AISentenceModel(
+            sentence: "I like eating \(card.term.rawValue)",
+            practiceType: .signs,
+            gloss: [card.term],
+            completed: false
+        )
+        
         let ex = SentenceExerciseModel(
-            prompt: "Arrange the sentence",
-            correctOrder: ["today", "was", "amazing"],
+            sentence: dummySentence,
+            correctOrder: ["I", "like", "eating", card.term.rawValue],
             distractors: ["thank", "you"]
         )
 

@@ -1,6 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct SavedPracticeView: View {
+    @Environment(SwiftDataVM.self) private var dataVM
+    @Query(sort: \SavedPracticeModel.date, order: .reverse) private var savedSessions: [SavedPracticeModel]
+    
     @State private var selectedFilter = "All"
     @State private var expandedCardID: UUID?
     @State private var showCreatePracticeView = false
@@ -8,41 +12,26 @@ struct SavedPracticeView: View {
     @State private var sessionSentences: [AISentenceModel] = []
     @State private var lastCategories: Set<TermCategory>?
     @State private var lastModeSelection = PracticeModeSelection(signing: true, comprehension: false)
-
+    
     private let filters = ["All", "Sign", "Comprehend", "Category"]
-
-    private let trainings: [TrainingItem] = [
-        TrainingItem(
-            title: "Greetings Comprehension",
-            subtitle: "Started 2 days ago",
-            score: nil,
-            kind: .comprehension
-        ),
-        TrainingItem(
-            title: "Sports",
-            subtitle: "Completed 4 days ago",
-            score: 75,
-            kind: .completed
-        ),
-        TrainingItem(
-            title: "Greetings + goodbyes",
-            subtitle: "Completed 6 days ago",
-            score: 75,
-            kind: .completed
-        ),
-        TrainingItem(
-            title: "Untitled Practice",
-            subtitle: "Completed 6 days ago",
-            score: 75,
-            kind: .completed
-        ),
-        TrainingItem(
-            title: "Greetings + goodbyes",
-            subtitle: "Completed 6 days ago",
-            score: 75,
-            kind: .completed
-        )
-    ]
+    
+    private var trainings: [TrainingItem] {
+        savedSessions.map { session in
+            let completedCount = session.sentences.filter { $0.completed }.count
+            let totalCount = session.sentences.count
+            let score = totalCount > 0 ? (completedCount * 100 / totalCount) : 0
+            
+            let isComprehension = session.sentences.first?.practiceType == .comprehension
+            
+            return TrainingItem(
+                id: session.id,
+                title: session.categories.joined(separator: " + ").capitalized,
+                subtitle: "Saved \(session.date.formatted(.dateTime.month().day().year()))",
+                score: score,
+                kind: score == 100 ? .completed : (isComprehension ? .comprehension : .completed)
+            )
+        }
+    }
 
     var body: some View {
             ZStack(alignment: .bottom) {
@@ -53,7 +42,12 @@ struct SavedPracticeView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         headerSection
                         filterSection
-                        progressCard
+                        
+                        if let latest = savedSessions.first,
+                           latest.sentences.filter({ $0.completed }).count < latest.sentences.count {
+                            progressCard(for: latest)
+                        }
+                        
                         trainingCardsSection
                     }
                     .padding(.horizontal, 20)
@@ -74,7 +68,10 @@ struct SavedPracticeView: View {
             .universalFullScreenCover(isPresented: $showSessionView) {
                 PracticeSessionView(
                     sentences: $sessionSentences,
-                    onFinish: { showSessionView = false },
+                    onFinish: {
+                        saveSessionToDatabase()
+                        showSessionView = false
+                    },
                     onExtend: {
                         guard let categories = lastCategories else { return }
                         do {
@@ -124,9 +121,13 @@ struct SavedPracticeView: View {
         }
     }
 
-    private var progressCard: some View {
+    @ViewBuilder
+    private func progressCard(for session: SavedPracticeModel) -> some View {
+        let completedCount = session.sentences.filter { $0.completed }.count
+        let total = session.sentences.count
+        let percent = total > 0 ? Double(completedCount) / Double(total) : 0
         VStack(alignment: .leading, spacing: 22) {
-            Text("You’re almost done with your Greetings Comprehension practice!")
+            Text("You’re almost done with your \(session.categories.first?.capitalized ?? "Practice") practice!")
                 .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.black.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
@@ -140,12 +141,12 @@ struct SavedPracticeView: View {
 
                         Capsule()
                             .fill(Color.gray.opacity(0.42))
-                            .frame(width: geometry.size.width * 0.8, height: 12)
+                            .frame(width: geometry.size.width * percent, height: 12)
                     }
                 }
                 .frame(height: 12)
 
-                Text("80%")
+                Text("\(Int(percent * 100))%")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.gray)
             }
@@ -221,6 +222,24 @@ struct SavedPracticeView: View {
                 .padding(.trailing, 18)
             }
         }
+    }
+    
+    private func saveSessionToDatabase() {
+        let categoryStrings = lastCategories?.map { $0.rawValue } ?? ["General"]
+        
+        if let existingSession = savedSessions.first(where: { session in
+            session.sentences.first?.id == sessionSentences.first?.id
+        }) {
+            existingSession.sentences = sessionSentences
+            existingSession.date = Date()
+        } else {
+            dataVM.savePracticeSession(
+                sentences: sessionSentences,
+                categories: categoryStrings
+            )
+        }
+        
+        sessionSentences = []
     }
 }
 
@@ -354,7 +373,7 @@ struct InProgressCircleView: View {
 }
 
 struct TrainingItem: Identifiable {
-    let id = UUID()
+    let id: UUID
     let title: String
     let subtitle: String
     let score: Int?
@@ -367,5 +386,12 @@ enum TrainingKind {
 }
 
 #Preview {
+    let schema = Schema([SavedPracticeModel.self, FlashcardModel.self])
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [config])
+    let vm = SwiftDataVM(modelContext: container.mainContext)
+    
     SavedPracticeView()
+        .modelContainer(container)
+        .environment(vm)
 }
