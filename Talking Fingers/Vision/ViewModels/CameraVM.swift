@@ -633,6 +633,86 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         try data.write(to: url, options: [.atomic])
         return url
     }
+    
+    func trimFramesByVelocity(_ frames: [SignFrame]) -> [SignFrame] {
+        guard frames.count > 1 else { return frames }
+        
+        let velocityThreshold = 0.015
+        let padding = 3
+        
+        // Use raw Vision-normalized coordinates (0...1), not normalizedJoints.
+        // normalizedJoints are anchor-relative, so wrist positions would always be ~0,0.
+        let trackedJointKeys = [
+            "leftVNHLKWRI", "rightVNHLKWRI",
+            "leftVNHLKITIP", "rightVNHLKITIP"
+        ]
+        
+        func distance(_ a: Joint, _ b: Joint) -> Double {
+            let dx = a.x - b.x
+            let dy = a.y - b.y
+            return sqrt(dx * dx + dy * dy)
+        }
+        
+        // Marks whether each frame contains meaningful motion.
+        // active[i] describes motion from frames[i - 1] -> frames[i]
+        var active = Array(repeating: false, count: frames.count)
+        
+        for i in 1..<frames.count {
+            let previous = frames[i - 1]
+            let current = frames[i]
+            
+            var maxMotion = 0.0
+            
+            for key in trackedJointKeys {
+                guard
+                    let prevJoint = previous.joints[key],
+                    let currJoint = current.joints[key]
+                else {
+                    continue
+                }
+                
+                let motion = distance(prevJoint, currJoint)
+                maxMotion = max(maxMotion, motion)
+            }
+            
+            active[i] = maxMotion >= velocityThreshold
+        }
+        
+        guard let firstActive = active.firstIndex(of: true) else {
+            return []
+        }
+        
+        // Scan backwards to find the first quiet gap >= 1 second.
+        // This discards trailing motion from reaching to press stop.
+        let quietGapThreshold: Double = 1.0
+        var endCutoff = frames.count - 1
+        
+        var i = frames.count - 1
+        while i >= firstActive {
+            if !active[i] {
+                let quietEnd = i
+                while i >= firstActive && !active[i] {
+                    i -= 1
+                }
+                let quietStart = i + 1
+                let gapDuration = frames[quietEnd].timestamp.seconds
+                                - frames[quietStart].timestamp.seconds
+                if gapDuration >= quietGapThreshold {
+                    endCutoff = quietStart - 1
+                    break
+                }
+            } else {
+                i -= 1
+            }
+        }
+        
+        let startIndex = max(0, firstActive - padding)
+        let endIndex = min(endCutoff, frames.count - 1)
+        
+        guard endIndex >= startIndex else { return [] }
+        
+        return Array(frames[startIndex...endIndex])
+    }
 
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
         try SignFrame.decodeArray(from: url)

@@ -7,6 +7,7 @@ struct SavedPracticeView: View {
     @State private var showSessionView = false
     @State private var sessionSentences: [AISentenceModel] = []
     @State private var lastCategories: Set<TermCategory>?
+    @State private var lastModeSelection = PracticeModeSelection(signing: true, comprehension: false)
 
     private let filters = ["All", "Sign", "Comprehend", "Category"]
 
@@ -77,7 +78,10 @@ struct SavedPracticeView: View {
                     onExtend: {
                         guard let categories = lastCategories else { return }
                         do {
-                            let more = try await GenerateSentencesView.generateSentences(categories: categories)
+                            let more = try await GenerateSentencesView.generateSentences(
+                                categories: categories,
+                                modeSelection: lastModeSelection
+                            )
                             await MainActor.run {
                                 sessionSentences.append(contentsOf: more)
                             }
