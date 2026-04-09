@@ -77,10 +77,8 @@ class SwiftDataVM {
     }
     
     // MARK: - Saved Practice Sessions
-    func savePracticeSession(user: User, sentences: [AISentenceModel], categories: [String]) {
+    func savePracticeSession(sentences: [AISentenceModel], categories: [String]) {
         guard let modelContext = modelContext else { return }
-        
-        updateStreak(for: user)
         
         let savedPractice = SavedPracticeModel(sentences: sentences, categories: categories)
         modelContext.insert(savedPractice)
