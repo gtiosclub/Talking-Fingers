@@ -671,7 +671,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         previewLayer.frame = CGRect(origin: .zero, size: viewSize)
 
         let point = previewLayer.layerPointConverted(
-            fromCaptureDevicePoint: CGPoint(x: visionPoint.x, y: 1 - visionPoint.y)
+            fromCaptureDevicePoint: CGPoint(x: 1 - visionPoint.x, y: 1 - visionPoint.y)
         )
 
         CATransaction.commit()
