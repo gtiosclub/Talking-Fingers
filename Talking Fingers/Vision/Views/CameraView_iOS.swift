@@ -470,7 +470,7 @@ struct CameraView: View {
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
 
                 let baseName = cameraVM.currentRecordingBaseName ?? cameraVM.makeRecordingBaseName(forSign: normalizedName)
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames, baseName: baseName)
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(trimmedSignFrames, baseName: baseName)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)
