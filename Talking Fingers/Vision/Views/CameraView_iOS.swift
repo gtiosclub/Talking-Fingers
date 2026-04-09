@@ -12,11 +12,10 @@ import Vision
 
 struct CameraView: View {
 
-    /// Called when a recording is stopped.
-    /// Provides decoded SignFrames and the saved JSON file URL.
     var onRecordingFinished: (([SignFrame], URL) -> Void)? = nil
 
     @State private var showJointsSheet: Bool = false
+    @State private var showRecordedSigns: Bool = false
     @State private var cameraVM: CameraVM = CameraVM()
 
     @State private var hands: [VNHumanHandPoseObservation] = []
@@ -24,7 +23,6 @@ struct CameraView: View {
 
     @Environment(AuthenticationViewModel.self) var authVM
 
-    /// Tracks which hand joints the user wants visible on the overlay.
     @State private var jointVisibility: [VNHumanHandPoseObservation.JointName: Bool] = {
         var dict: [VNHumanHandPoseObservation.JointName: Bool] = [:]
         for joint in JointsSheetView.handJointLabels {
@@ -33,7 +31,6 @@ struct CameraView: View {
         return dict
     }()
 
-    /// Tracks which body joints the user wants visible on the overlay.
     @State private var bodyJointVisibility: [VNHumanBodyPoseObservation.JointName: Bool] = {
         var dict: [VNHumanBodyPoseObservation.JointName: Bool] = [:]
         for joint in JointsSheetView.bodyJointLabels {
@@ -58,33 +55,23 @@ struct CameraView: View {
     @State private var countdown: Int = 0
     @State private var countdownTask: Task<Void, Never>?
 
-    /// Tracks when both hands were last visible during a recording.
-    /// `nil` means hands haven't appeared yet this recording session.
     @State private var handsLastSeenDate: Date?
     @State private var handsLastSeenPTS: CMTime?
     private let autoStopGracePeriod: TimeInterval = 1.5
 
-    // Store all hand joint connections for drawing lines
     let handConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
-        // Thumb
         (.wrist, .thumbCMC), (.thumbCMC, .thumbMP), (.thumbMP, .thumbIP), (.thumbIP, .thumbTip),
-        // Index
         (.wrist, .indexMCP), (.indexMCP, .indexPIP), (.indexPIP, .indexDIP), (.indexDIP, .indexTip),
-        // Middle
         (.wrist, .middleMCP), (.middleMCP, .middlePIP), (.middlePIP, .middleDIP), (.middleDIP, .middleTip),
-        // Ring
         (.wrist, .ringMCP), (.ringMCP, .ringPIP), (.ringPIP, .ringDIP), (.ringDIP, .ringTip),
-        // Little
         (.wrist, .littleMCP), (.littleMCP, .littlePIP), (.littlePIP, .littleDIP), (.littleDIP, .littleTip)
     ]
 
-    // Store body joint connections for upper body (shoulders to elbows only)
     let bodyConnections: [(VNHumanBodyPoseObservation.JointName, VNHumanBodyPoseObservation.JointName)] = [
         (.leftShoulder, .leftElbow),
         (.rightShoulder, .rightElbow)
     ]
 
-    // Store points to create polygon for hand (edges)
     let perimeterJoints: [VNHumanHandPoseObservation.JointName] = [
         .wrist,
         .thumbCMC, .thumbMP, .thumbIP, .thumbTip,
@@ -181,8 +168,23 @@ struct CameraView: View {
                     .padding(.top, 24)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    // future UI elements
+                VStack(alignment: .leading, spacing: 12) {
+                    Button {
+                        showRecordedSigns = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "play.rectangle.on.rectangle")
+                            Text("Browse Recorded Signs")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.headline)
+                        .padding()
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
@@ -190,6 +192,7 @@ struct CameraView: View {
             }
             .padding(.top, 12)
         }
+        .navigationTitle("Camera")
         .onAppear {
             cameraVM.checkPermission()
 
@@ -241,8 +244,13 @@ struct CameraView: View {
                 bodySkeletonVisibility: $bodySkeletonVisibility
             )
         }
+        .sheet(isPresented: $showRecordedSigns) {
+            NavigationStack {
+                RecordedSignsView()
+            }
+        }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItemGroup(placement: .topBarLeading) {
                 Button(action: { toggleRecording() }) {
                     Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
@@ -250,7 +258,15 @@ struct CameraView: View {
                         .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
                 .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty || cameraMode == .compare)
+
+                Button {
+                    showRecordedSigns = true
+                } label: {
+                    Image(systemName: "film.stack")
+                }
+                .accessibilityLabel("Browse Recorded Signs")
             }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { showJointsSheet = true }) {
                     Image(systemName: "gearshape.fill")
@@ -425,7 +441,6 @@ struct CameraView: View {
             handsLastSeenPTS = nil
 
             let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
-
             let filteredFrames = cameraVM.recordedFrames
 
             guard !filteredFrames.isEmpty else {
@@ -449,11 +464,12 @@ struct CameraView: View {
                 
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
 
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(trimmedSignFrames)
+                let baseName = cameraVM.currentRecordingBaseName ?? cameraVM.makeRecordingBaseName(forSign: normalizedName)
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(trimmedSignFrames, baseName: baseName)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)
-                print("Saved '\(normalizedName)' recording: \(fileURL.path) (\(decodedFrames.count) frames)")
+                print("Saved '\(normalizedName)' recording JSON: \(fileURL.path) (\(decodedFrames.count) frames)")
             } catch {
                 print("Recording save/load error: \(error)")
             }
@@ -480,9 +496,20 @@ struct CameraView: View {
             for tick in stride(from: 3, through: 1, by: -1) {
                 countdown = tick
                 try? await Task.sleep(for: .seconds(1))
-                if Task.isCancelled { countdown = 0; return }
+                if Task.isCancelled {
+                    countdown = 0
+                    return
+                }
             }
             countdown = 0
+
+            let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
+            do {
+                try cameraVM.beginVideoRecording(forSign: normalizedName)
+            } catch {
+                print("Failed to start video recording: \(error)")
+            }
+
             cameraVM.toggleRecording()
         }
     }
@@ -507,11 +534,13 @@ struct CameraPreviewView: UIViewRepresentable {
 }
 
 #Preview {
-    CameraView(onRecordingFinished: { frames, url in
-        print("Preview received \(frames.count) frames")
-        print("Saved at: \(url.path)")
-        print(frames.prefix(3))
-    })
-    .environment(AuthenticationViewModel())
+    NavigationStack {
+        CameraView(onRecordingFinished: { frames, url in
+            print("Preview received \(frames.count) frames")
+            print("Saved at: \(url.path)")
+            print(frames.prefix(3))
+        })
+        .environment(AuthenticationViewModel())
+    }
 }
 #endif

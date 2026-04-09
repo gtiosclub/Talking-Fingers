@@ -41,16 +41,31 @@ struct PracticeSessionView: View {
             .padding(.bottom, 4)
 
             if currentSentenceIndex < sentences.count {
-                AISentenceSigningView(
-                    sentenceModel: sentences[currentSentenceIndex],
-                    sessionProgress: sessionProgress,
-                    onSentenceComplete: {
-                        withAnimation {
-                            currentSentenceIndex += 1
+                let currentSentence = sentences[currentSentenceIndex]
+
+                if currentSentence.practiceType == .comprehension {
+                    AISentenceComprehensionView(
+                        sentenceModel: currentSentence,
+                        sessionProgress: sessionProgress,
+                        onSentenceComplete: {
+                            withAnimation {
+                                currentSentenceIndex += 1
+                            }
                         }
-                    }
-                )
-                .id(currentSentenceIndex)
+                    )
+                    .id(currentSentenceIndex)
+                } else {
+                    AISentenceSigningView(
+                        sentenceModel: currentSentence,
+                        sessionProgress: sessionProgress,
+                        onSentenceComplete: {
+                            withAnimation {
+                                currentSentenceIndex += 1
+                            }
+                        }
+                    )
+                    .id(currentSentenceIndex)
+                }
             } else {
                 completionContent
             }
