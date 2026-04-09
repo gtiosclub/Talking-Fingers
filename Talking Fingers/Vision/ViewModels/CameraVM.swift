@@ -653,6 +653,10 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
             return sqrt(dx * dx + dy * dy)
         }
         
+        // Raw per-frame motion values.
+        // rawMotion[i] describes motion from frames[i - 1] -> frames[i]
+        var rawMotion = Array(repeating: 0.0, count: frames.count)
+        
         // Marks whether each frame contains meaningful motion.
         // active[i] describes motion from frames[i - 1] -> frames[i]
         var active = Array(repeating: false, count: frames.count)
@@ -675,12 +679,34 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
                 maxMotion = max(maxMotion, motion)
             }
             
+            rawMotion[i] = maxMotion
             active[i] = maxMotion >= velocityThreshold
         }
         
         guard let firstActive = active.firstIndex(of: true) else {
             return []
         }
+        
+        // 3-frame moving average to smooth out single-frame jitters/spikes.
+        // Keep this window very small so we don't interfere with actual sign motion.
+        var smoothedMotion = Array(repeating: 0.0, count: frames.count)
+        for i in 0..<frames.count {
+            let start = max(0, i - 1)
+            let end = min(frames.count - 1, i + 1)
+            
+            var sum = 0.0
+            var count = 0
+            
+            for j in start...end {
+                sum += rawMotion[j]
+                count += 1
+            }
+            
+            smoothedMotion[i] = sum / Double(count)
+        }
+        
+        // Only use smoothed activity for the backward quiet-gap detection.
+        let smoothedActive = smoothedMotion.map { $0 >= velocityThreshold }
         
         // Scan backwards to find the first quiet gap >= 1 second.
         // This discards trailing motion from reaching to press stop.
@@ -689,9 +715,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         
         var i = frames.count - 1
         while i >= firstActive {
-            if !active[i] {
+            if !smoothedActive[i] {
                 let quietEnd = i
-                while i >= firstActive && !active[i] {
+                while i >= firstActive && !smoothedActive[i] {
                     i -= 1
                 }
                 let quietStart = i + 1
@@ -713,7 +739,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         
         return Array(frames[startIndex...endIndex])
     }
-
+    /// Loads SignFrames from a local recording JSON.
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
         try SignFrame.decodeArray(from: url)
     }
