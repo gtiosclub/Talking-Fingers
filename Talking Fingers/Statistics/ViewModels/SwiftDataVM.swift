@@ -103,11 +103,45 @@ class SwiftDataVM {
         }
     }
     func getFlashcardsForGloss(_ gloss: [Term]) -> [FlashcardModel] {
-            let allFlashcards = fetchFlashcards()
-            let glossTermStrings = gloss.map { $0.rawValue }
-            
-            return glossTermStrings.compactMap { termString in
-                allFlashcards.first { $0.term.rawValue == termString }
-            }
+        let allFlashcards = fetchFlashcards()
+        let glossTermStrings = gloss.map { $0.rawValue }
+        
+        return glossTermStrings.compactMap { termString in
+            allFlashcards.first { $0.term.rawValue == termString }
         }
+    }
+    
+    func updateStreak(for user: User) {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        // if first time, start at 1
+        guard let lastDate = user.lastActivity else {
+            user.streakCount = 1
+            user.lastActivity = now
+            return
+        }
+        
+        if calendar.isDateInToday(lastDate) {
+            user.lastActivity = now
+        } else if calendar.isDateInYesterday(lastDate) {
+            user.streakCount += 1
+            user.lastActivity = now
+        } else {
+            user.streakCount = 1
+            user.lastActivity = now
+        }
+        
+        try? modelContext?.save()
+    }
+        
+    func checkAndResetStreak(for user: User) {
+        guard let lastDate = user.lastActivity else { return }
+        let calendar = Calendar.current
+        
+        if !calendar.isDateInToday(lastDate) && !calendar.isDateInYesterday(lastDate) {
+            user.streakCount = 0
+            try? modelContext?.save()
+        }
+    }
 }

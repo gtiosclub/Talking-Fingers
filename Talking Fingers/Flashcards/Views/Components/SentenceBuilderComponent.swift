@@ -6,11 +6,14 @@
 //
 import SwiftUI
 import UniformTypeIdentifiers
+import SwiftData
 
 struct SentenceBuilderView: View {
-    
     @StateObject var vm: SentenceBuilderVM
     @State private var isEditingAnswer = false
+    
+    @Environment(SwiftDataVM.self) private var dataVM
+    @Query private var users: [User]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -82,10 +85,14 @@ struct SentenceBuilderView: View {
             }
             
             Spacer(minLength: 8)
-            Button("Submit") { vm.submit() }
-                .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity)
-                .disabled(!vm.isComplete)
+            Button("Submit") {
+                if let currentUser = users.first {
+                    vm.submit(user: currentUser, dataVM: dataVM)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity)
+            .disabled(!vm.isComplete)
             
             switch vm.submitState {
             case .idle:

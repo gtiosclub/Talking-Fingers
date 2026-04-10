@@ -43,11 +43,17 @@ class AppDelegate: NSObject {
 
 @main
 struct Talking_FingersApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+        
+    @State private var dataVM = SwiftDataVM()
+    @State private var authVM: AuthenticationViewModel
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
             StatsWidget.self,
             FlashcardModel.self,
+            User.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -57,9 +63,7 @@ struct Talking_FingersApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
-    
-    @State private var authVM: AuthenticationViewModel
-    
+        
     init() {
         FirebaseApp.configure()
         _authVM = State(initialValue: AuthenticationViewModel())
@@ -69,6 +73,10 @@ struct Talking_FingersApp: App {
         WindowGroup {
             ContentView()
                 .environment(authVM)
+                .environment(dataVM)
+                .onAppear {
+                    dataVM.modelContext = sharedModelContainer.mainContext
+                }
         }
         .modelContainer(sharedModelContainer)
     }

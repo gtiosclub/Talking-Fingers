@@ -71,11 +71,12 @@ final class SentenceBuilderVM: ObservableObject {
         answer.map(\.text) == exercise.correctOrder
     }
     
-    func submit() {
+    func submit(user: User, dataVM: SwiftDataVM) {
         guard isComplete else { return }
 
         if isCorrect {
             submitState = .correct
+            dataVM.updateStreak(for: user)
         } else {
             let solution = exercise.correctOrder.joined(separator: " ")
             submitState = .incorrect(solution: solution)

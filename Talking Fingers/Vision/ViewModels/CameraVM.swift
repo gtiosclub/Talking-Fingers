@@ -59,14 +59,21 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     #if os(iOS)
     private let motionManager = CMMotionManager()
+    private let staticScoreDecay: Double = 3.0
+    private let displayMultiplier: Double = 1.3
+    private let smoothingAlpha: Double = 0.3
+    #else
+    private let staticScoreDecay: Double = 2.1
+    private let displayMultiplier: Double = 1.45
+    private let smoothingAlpha: Double = 0.45
     #endif
+
     var currentPitch: Double = 0.0
     
     override init() {
         super.init()
     }
 
-    
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -158,7 +165,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             self?.currentPitch = motion.attitude.pitch
         }
         #else
-        // maxOS: No motion tracking available
+        // macOS: No motion tracking available
         currentPitch = 0.0
         #endif
     }
@@ -214,47 +221,146 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         frameCounter = 0
     }
 
-    /// Compares hand joints between a live frame and a reference frame using
-    /// centroid + scale normalization for translation/scale invariance.
-    /// Returns a confidence percentage 0–100.
-    func compareStaticFrames(live: SignFrame, reference: SignFrame) -> Double {
+    private func swappedHandKey(_ key: String) -> String? {
+        if key.hasPrefix("leftVNHLK") {
+            return "right" + String(key.dropFirst(4))
+        }
+        if key.hasPrefix("rightVNHLK") {
+            return "left" + String(key.dropFirst(5))
+        }
+        return nil
+    }
+
+    private func jointWeight(for key: String) -> Double {
+        #if os(macOS)
+        // More tolerant on macOS where occlusion/jitter is worse
+        if key.hasSuffix("WRI") { return 1.8 }
+        if key.hasSuffix("CMC") { return 1.4 }
+        if key.hasSuffix("MCP") { return 1.35 }
+        if key.hasSuffix("PIP") { return 1.1 }
+        if key.hasSuffix("IP")  { return 1.0 }
+        if key.hasSuffix("DIP") { return 0.7 }
+        if key.hasSuffix("TIP") { return 0.45 }
+        #else
+        // Closer to original stricter weighting on iOS
+        if key.hasSuffix("WRI") { return 1.5 }
+        if key.hasSuffix("MCP") { return 1.3 }
+        if key.hasSuffix("PIP") { return 1.1 }
+        if key.hasSuffix("DIP") { return 1.0 }
+        if key.hasSuffix("TIP") { return 0.9 }
+        #endif
+
+        return 1.0
+    }
+
+    private func scoreMatchedPairs(
+        live: SignFrame,
+        reference: SignFrame,
+        swapLiveHandPrefixes: Bool
+    ) -> Double {
         let liveJoints = live.joints
         let refJoints = reference.joints
 
-        var matchedLive: [(x: Double, y: Double)] = []
-        var matchedRef: [(x: Double, y: Double)] = []
+        var matchedLive: [(x: Double, y: Double, w: Double)] = []
+        var matchedRef: [(x: Double, y: Double, w: Double)] = []
 
         for (key, refJoint) in refJoints {
             guard key.contains("VNHLK") else { continue }
-            guard let liveJoint = liveJoints[key] else { continue }
-            guard refJoint.confidence > 0.3, liveJoint.confidence > 0.3 else { continue }
-            matchedLive.append((x: liveJoint.x, y: liveJoint.y))
-            matchedRef.append((x: refJoint.x, y: refJoint.y))
+
+            #if os(macOS)
+            guard refJoint.confidence > 0.2 else { continue }
+            #else
+            guard refJoint.confidence > 0.3 else { continue }
+            #endif
+
+            let liveKey: String
+            if swapLiveHandPrefixes, let swapped = swappedHandKey(key) {
+                liveKey = swapped
+            } else {
+                liveKey = key
+            }
+
+            guard let liveJoint = liveJoints[liveKey] else { continue }
+
+            #if os(macOS)
+            guard liveJoint.confidence > 0.2 else { continue }
+            #else
+            guard liveJoint.confidence > 0.3 else { continue }
+            #endif
+
+            let w = jointWeight(for: key)
+
+            matchedLive.append((x: liveJoint.x, y: liveJoint.y, w: w))
+            matchedRef.append((x: refJoint.x, y: refJoint.y, w: w))
         }
 
         guard matchedLive.count >= 5 else { return 0 }
 
-        let n = Double(matchedLive.count)
+        let totalWeight = matchedLive.reduce(0.0) { $0 + $1.w }
+        guard totalWeight > 0 else { return 0 }
 
-        let liveCx = matchedLive.reduce(0.0) { $0 + $1.x } / n
-        let liveCy = matchedLive.reduce(0.0) { $0 + $1.y } / n
-        let refCx = matchedRef.reduce(0.0) { $0 + $1.x } / n
-        let refCy = matchedRef.reduce(0.0) { $0 + $1.y } / n
+        let liveCx = matchedLive.reduce(0.0) { $0 + $1.x * $1.w } / totalWeight
+        let liveCy = matchedLive.reduce(0.0) { $0 + $1.y * $1.w } / totalWeight
+        let refCx = matchedRef.reduce(0.0) { $0 + $1.x * $1.w } / totalWeight
+        let refCy = matchedRef.reduce(0.0) { $0 + $1.y * $1.w } / totalWeight
 
-        let liveScale = max(matchedLive.reduce(0.0) { max($0, hypot($1.x - liveCx, $1.y - liveCy)) }, 1e-6)
-        let refScale = max(matchedRef.reduce(0.0) { max($0, hypot($1.x - refCx, $1.y - refCy)) }, 1e-6)
+        let liveScale = max(
+            matchedLive.reduce(0.0) { acc, p in
+                max(acc, hypot(p.x - liveCx, p.y - liveCy))
+            },
+            1e-6
+        )
 
-        var totalDist: Double = 0
+        let refScale = max(
+            matchedRef.reduce(0.0) { acc, p in
+                max(acc, hypot(p.x - refCx, p.y - refCy))
+            },
+            1e-6
+        )
+
+        var weightedDist = 0.0
+        var usedWeight = 0.0
+
         for i in 0..<matchedLive.count {
             let lx = (matchedLive[i].x - liveCx) / liveScale
             let ly = (matchedLive[i].y - liveCy) / liveScale
             let rx = (matchedRef[i].x - refCx) / refScale
             let ry = (matchedRef[i].y - refCy) / refScale
-            totalDist += hypot(lx - rx, ly - ry)
+
+            let w = matchedLive[i].w
+            weightedDist += hypot(lx - rx, ly - ry) * w
+            usedWeight += w
         }
 
-        let avgDist = totalDist / n
-        return max(0, min(100, 100.0 * exp(-3.0 * avgDist)))
+        guard usedWeight > 0 else { return 0 }
+
+        let avgDist = weightedDist / usedWeight
+        return max(0, min(100, 100.0 * exp(-staticScoreDecay * avgDist)))
+    }
+
+    /// Compares hand joints between a live frame and a reference frame using
+    /// centroid + scale normalization for translation/scale invariance.
+    /// Returns a confidence percentage 0–100.
+    ///
+    /// Important:
+    /// We score both the direct handedness match and a left/right-swapped match,
+    /// then take the better one. This makes static comparison robust to
+    /// front-camera mirrored chirality differences between recorded references
+    /// and live frames, especially on macOS.
+    func compareStaticFrames(live: SignFrame, reference: SignFrame) -> Double {
+        let directScore = scoreMatchedPairs(
+            live: live,
+            reference: reference,
+            swapLiveHandPrefixes: false
+        )
+
+        let swappedScore = scoreMatchedPairs(
+            live: live,
+            reference: reference,
+            swapLiveHandPrefixes: true
+        )
+
+        return max(directScore, swappedScore)
     }
 
     // THIS IS THE BRAIN: Where Vision meets the Camera
@@ -316,13 +422,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         }
     }
     
-    //
-    func createSignFrame (body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
-        
+    func createSignFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
         let current = SignFrame(
             body: body,
             hands: hands,
-            at: timestamp,
+            at: timestamp
         )
         
         currentSignFrame = current
@@ -337,8 +441,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         if isComparing, let ref = comparisonReference {
             if ref.signType == .static, let refFrame = ref.frames.first {
                 let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
-                let displayed = min(100, rawScore * 1.3)
-                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                let displayed = min(100, rawScore * displayMultiplier)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingAlpha) + displayed * smoothingAlpha
                 confidenceScore = smoothedConfidence
                 return
             }
@@ -377,13 +481,30 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         lastScore = score
     }
 
-    // NOTE: Kept identical to main for merge safety.
-    // If your overlays look horizontally flipped when mirrored,
-    // update this later in a separate PR (since it changes behavior).
     func convertVisionPointToScreenPosition(visionPoint: CGPoint, viewSize: CGSize) -> CGPoint {
+        #if os(macOS)
+        // Match AVCaptureVideoPreviewLayer(videoGravity: .resizeAspectFill)
+        // on macOS, where the camera buffer is 1280x720 landscape.
+        let sourceSize = CGSize(width: 1280, height: 720)
+
+        let scale = max(viewSize.width / sourceSize.width,
+                        viewSize.height / sourceSize.height)
+
+        let scaledWidth = sourceSize.width * scale
+        let scaledHeight = sourceSize.height * scale
+
+        let xCrop = (scaledWidth - viewSize.width) / 2
+        let yCrop = (scaledHeight - viewSize.height) / 2
+
+        let x = visionPoint.x * scaledWidth - xCrop
+        let y = (1 - visionPoint.y) * scaledHeight - yCrop
+
+        return CGPoint(x: x, y: y)
+        #else
         let x = visionPoint.x * viewSize.width
         let y = (1 - visionPoint.y) * viewSize.height
         return CGPoint(x: x, y: y)
+        #endif
     }
     
     // Returns translated list that treats some anchor joint (e.g. wrist) as the origin (0,0)
