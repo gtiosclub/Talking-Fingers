@@ -28,6 +28,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private(set) var recordedFrames: [SignFrame] = []
     var recordingStartTime: CMTime? = nil
 
+    /// Base name shared between the JSON and video file for the current take.
+    private(set) var currentRecordingBaseName: String?
+
+    // --- Video recording ---
+    private var assetWriter: AVAssetWriter?
+    private var assetWriterInput: AVAssetWriterInput?
+    private var isWritingVideo = false
+
     // --- Callbacks ---
     // Keep main signature so merge works with main as-is
     var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
@@ -179,6 +187,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func toggleRecording() {
         if isRecording {
             isRecording = false
+            stopVideoRecording()
             recordedFrames = filterFrames(recordedFrames)
             print("Filtered recording: \(recordedFrames.count) frames")
         } else {
@@ -191,6 +200,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func clearBuffer() {
         recordedFrames.removeAll(keepingCapacity: true)
         recordingStartTime = nil
+        currentRecordingBaseName = nil
     }
 
     // MARK: - Static sign comparison
@@ -752,12 +762,12 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     /// Saves the given frames to Application Support/Recordings/*.json and returns the file URL.
-    func saveRecordingFramesToJSON(_ frames: [SignFrame], filename: String? = nil) throws -> URL {
+    func saveRecordingFramesToJSON(_ frames: [SignFrame], baseName: String? = nil) throws -> URL {
         let dir = try recordingsDirectoryURL()
 
         let finalName: String = {
-            if let filename, !filename.isEmpty {
-                return filename.hasSuffix(".json") ? filename : "\(filename).json"
+            if let baseName, !baseName.isEmpty {
+                return baseName.hasSuffix(".json") ? baseName : "\(baseName).json"
             }
             let df = DateFormatter()
             df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
@@ -769,7 +779,50 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         try data.write(to: url, options: [.atomic])
         return url
     }
-    
+
+    func makeRecordingBaseName(forSign signName: String) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        return "\(signName)_\(df.string(from: Date()))"
+    }
+
+    /// Sets up AVAssetWriter to record video alongside the frame JSON.
+    func beginVideoRecording(forSign signName: String) throws {
+        let base = makeRecordingBaseName(forSign: signName)
+        currentRecordingBaseName = base
+
+        let dir = try recordingsDirectoryURL()
+        let videoURL = dir.appendingPathComponent("\(base).mov")
+
+        let writer = try AVAssetWriter(outputURL: videoURL, fileType: .mov)
+        let settings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: 1080,
+            AVVideoHeightKey: 1920
+        ]
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        input.expectsMediaDataInRealTime = true
+        writer.add(input)
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+
+        assetWriter = writer
+        assetWriterInput = input
+        isWritingVideo = true
+    }
+
+    /// Stops the asset writer and resets video recording state.
+    func stopVideoRecording() {
+        guard isWritingVideo else { return }
+        isWritingVideo = false
+        assetWriterInput?.markAsFinished()
+        assetWriter?.finishWriting { [weak self] in
+            self?.assetWriter = nil
+            self?.assetWriterInput = nil
+        }
+    }
+
     func trimFramesByVelocity(_ frames: [SignFrame]) -> [SignFrame] {
         guard frames.count > 1 else { return frames }
         
@@ -853,5 +906,70 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     /// Loads SignFrames from a local recording JSON.
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
         try SignFrame.decodeArray(from: url)
+    }
+
+    // MARK: - Listing & deleting recorded takes
+
+    private static let datePattern = /(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})/
+    private static let dateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        return df
+    }()
+
+    func listRecordedTakes() throws -> [RecordedSignTake] {
+        let dir = try recordingsDirectoryURL()
+        let fm = FileManager.default
+        let contents = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])
+
+        var grouped: [String: (json: URL?, video: URL?)] = [:]
+
+        for url in contents {
+            let name = url.deletingPathExtension().lastPathComponent
+            let ext = url.pathExtension.lowercased()
+            switch ext {
+            case "json":
+                grouped[name, default: (nil, nil)].json = url
+            case "mov", "mp4":
+                grouped[name, default: (nil, nil)].video = url
+            default:
+                continue
+            }
+        }
+
+        return grouped.compactMap { baseName, files -> RecordedSignTake? in
+            var signName = baseName
+            var createdAt = Date.distantPast
+
+            if let match = baseName.firstMatch(of: Self.datePattern) {
+                let dateString = "\(match.1)_\(match.2)"
+                if let date = Self.dateFormatter.date(from: dateString) {
+                    createdAt = date
+                }
+                let prefix = baseName[baseName.startIndex..<match.range.lowerBound]
+                let trimmed = prefix.hasSuffix("_") ? String(prefix.dropLast()) : String(prefix)
+                if !trimmed.isEmpty { signName = trimmed }
+            }
+
+            return RecordedSignTake(
+                baseName: baseName,
+                signName: signName,
+                createdAt: createdAt,
+                jsonURL: files.json,
+                videoURL: files.video
+            )
+        }
+        .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func deleteTake(_ take: RecordedSignTake) throws {
+        let fm = FileManager.default
+        if let url = take.jsonURL, fm.fileExists(atPath: url.path) {
+            try fm.removeItem(at: url)
+        }
+        if let url = take.videoURL, fm.fileExists(atPath: url.path) {
+            try fm.removeItem(at: url)
+        }
     }
 }
