@@ -14,37 +14,47 @@ import CoreMotion
 import CoreGraphics
 
 @Observable
-class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureFileOutputRecordingDelegate {
+class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
-    let session = AVCaptureSession()
-    private let videoOutput = AVCaptureVideoDataOutput()
-    private let movieOutput = AVCaptureMovieFileOutput()
-    private let sessionQueue = DispatchQueue(label: "camera.session.queue")
-
+    let session = AVCaptureSession() // connects camera hardware to the app
+    private let videoOutput = AVCaptureVideoDataOutput() // buffers video frames for the vision intelligence to use
+    private let sessionQueue = DispatchQueue(label: "camera.session.queue") // run the camera on a background thread so it doesn't freeze UI
+    
     // Keep track of normalized hand observations
     var normalizedHands: [NormalizedHandModel] = []
-
+    
     // --- Recording Logic ---
     var isRecording = false
     private(set) var recordedFrames: [SignFrame] = []
     var recordingStartTime: CMTime? = nil
+
+    /// Base name shared between the JSON and video file for the current take.
     private(set) var currentRecordingBaseName: String?
-    private(set) var lastFinishedVideoURL: URL?
+
+    // --- Video recording ---
+    private var assetWriter: AVAssetWriter?
+    private var assetWriterInput: AVAssetWriterInput?
+    private var isWritingVideo = false
 
     // --- Callbacks ---
+    // Keep main signature so merge works with main as-is
     var onPoseDetected: (([VNHumanHandPoseObservation], CMTime) -> Void)?
+
+    // Additive callback for body pose (doesn't break main)
     var onBodyPoseDetected: (([VNHumanBodyPoseObservation], CMTime) -> Void)?
 
     var isAuthorized = false
-    var isMirrored = true
 
+    // Track mirroring so overlays can align with preview when needed
+    var isMirrored = true
+    
     // MARK: - Sign recognition
     var frameBuffer: SignReference = SignReference()
     private let dtwEngine = DTWService()
     var lastScore = 30.0
     private var frameCounter = 0
-    private let stride = 12
-    private let maxBufferSize = 75
+    private let stride = 12 // Run DTW every 4th frame
+    private let maxBufferSize = 75 // ~3 seconds of
     private var currentSignReference: SignReference?
     private var currentSignFrame: SignFrame?
 
@@ -57,9 +67,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
 
     #if os(iOS)
     private let motionManager = CMMotionManager()
+    private let staticScoreDecay: Double = 3.0
+    private let displayMultiplier: Double = 1.3
+    private let smoothingAlpha: Double = 0.3
+    #else
+    private let staticScoreDecay: Double = 2.1
+    private let displayMultiplier: Double = 1.45
+    private let smoothingAlpha: Double = 0.45
     #endif
-    var currentPitch: Double = 0.0
 
+    var currentPitch: Double = 0.0
+    
     override init() {
         super.init()
     }
@@ -84,13 +102,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
 
     private func setupSession() {
         session.beginConfiguration()
-        defer { session.commitConfiguration() }
-
-        session.sessionPreset = .hd1280x720
-
+        defer { session.commitConfiguration() } // Always commit, even on early return
+        
+        session.sessionPreset = .hd1280x720 // 720p — clear preview without the memory cost of full 1080p
+        
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else { return }
 
+        // Cap frame rate to 24 fps
         do {
             try videoDevice.lockForConfiguration()
             videoDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 24)
@@ -99,18 +118,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         } catch {
             print("Could not configure frame rate: \(error)")
         }
-
+        
         if session.canAddInput(videoInput) { session.addInput(videoInput) }
-
+        
         videoOutput.alwaysDiscardsLateVideoFrames = true
         videoOutput.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
         ]
         videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "video.output.queue"))
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
-
-        if session.canAddOutput(movieOutput) { session.addOutput(movieOutput) }
-
+        
+        // Ensure orientation is correct for the front camera
         if let connection = videoOutput.connection(with: .video) {
             #if os(iOS)
             connection.videoOrientation = .portrait
@@ -119,26 +137,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
             #endif
             connection.isVideoMirrored = self.isMirrored
         }
-
-        if let movieConnection = movieOutput.connection(with: .video) {
-            #if os(iOS)
-            movieConnection.videoOrientation = .portrait
-            #else
-            movieConnection.videoRotationAngle = 0
-            #endif
-            movieConnection.isVideoMirrored = self.isMirrored
-        }
     }
 
     func start() {
         self.startMotionUpdates()
         sessionQueue.async {
             guard self.isAuthorized else { return }
-
+            
             if self.session.inputs.isEmpty {
                 self.setupSession()
             }
-
+            
             if !self.session.isRunning {
                 self.session.startRunning()
             }
@@ -153,17 +162,18 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
             }
         }
     }
-
+    
     func startMotionUpdates() {
         #if os(iOS)
         guard motionManager.isDeviceMotionAvailable else { return }
-
-        motionManager.deviceMotionUpdateInterval = 1.0 / 24.0
-        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
+        
+        motionManager.deviceMotionUpdateInterval = 1.0 / 24.0 // Match your camera FPS
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
             guard let motion = motion else { return }
             self?.currentPitch = motion.attitude.pitch
         }
         #else
+        // macOS: No motion tracking available
         currentPitch = 0.0
         #endif
     }
@@ -177,8 +187,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
     func toggleRecording() {
         if isRecording {
             isRecording = false
-            recordedFrames = filterFrames(recordedFrames)
             stopVideoRecording()
+            recordedFrames = filterFrames(recordedFrames)
             print("Filtered recording: \(recordedFrames.count) frames")
         } else {
             recordedFrames.removeAll(keepingCapacity: true)
@@ -190,6 +200,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
     func clearBuffer() {
         recordedFrames.removeAll(keepingCapacity: true)
         recordingStartTime = nil
+        currentRecordingBaseName = nil
     }
 
     // MARK: - Static sign comparison
@@ -220,46 +231,150 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         frameCounter = 0
     }
 
-    func compareStaticFrames(live: SignFrame, reference: SignFrame) -> Double {
+    private func swappedHandKey(_ key: String) -> String? {
+        if key.hasPrefix("leftVNHLK") {
+            return "right" + String(key.dropFirst(4))
+        }
+        if key.hasPrefix("rightVNHLK") {
+            return "left" + String(key.dropFirst(5))
+        }
+        return nil
+    }
+
+    private func jointWeight(for key: String) -> Double {
+        #if os(macOS)
+        // More tolerant on macOS where occlusion/jitter is worse
+        if key.hasSuffix("WRI") { return 1.8 }
+        if key.hasSuffix("CMC") { return 1.4 }
+        if key.hasSuffix("MCP") { return 1.35 }
+        if key.hasSuffix("PIP") { return 1.1 }
+        if key.hasSuffix("IP")  { return 1.0 }
+        if key.hasSuffix("DIP") { return 0.7 }
+        if key.hasSuffix("TIP") { return 0.45 }
+        #else
+        // Closer to original stricter weighting on iOS
+        if key.hasSuffix("WRI") { return 1.5 }
+        if key.hasSuffix("MCP") { return 1.3 }
+        if key.hasSuffix("PIP") { return 1.1 }
+        if key.hasSuffix("DIP") { return 1.0 }
+        if key.hasSuffix("TIP") { return 0.9 }
+        #endif
+
+        return 1.0
+    }
+
+    private func scoreMatchedPairs(
+        live: SignFrame,
+        reference: SignFrame,
+        swapLiveHandPrefixes: Bool
+    ) -> Double {
         let liveJoints = live.joints
         let refJoints = reference.joints
 
-        var matchedLive: [(x: Double, y: Double)] = []
-        var matchedRef: [(x: Double, y: Double)] = []
+        var matchedLive: [(x: Double, y: Double, w: Double)] = []
+        var matchedRef: [(x: Double, y: Double, w: Double)] = []
 
         for (key, refJoint) in refJoints {
             guard key.contains("VNHLK") else { continue }
-            guard let liveJoint = liveJoints[key] else { continue }
-            guard refJoint.confidence > 0.3, liveJoint.confidence > 0.3 else { continue }
-            matchedLive.append((x: liveJoint.x, y: liveJoint.y))
-            matchedRef.append((x: refJoint.x, y: refJoint.y))
+
+            #if os(macOS)
+            guard refJoint.confidence > 0.2 else { continue }
+            #else
+            guard refJoint.confidence > 0.3 else { continue }
+            #endif
+
+            let liveKey: String
+            if swapLiveHandPrefixes, let swapped = swappedHandKey(key) {
+                liveKey = swapped
+            } else {
+                liveKey = key
+            }
+
+            guard let liveJoint = liveJoints[liveKey] else { continue }
+
+            #if os(macOS)
+            guard liveJoint.confidence > 0.2 else { continue }
+            #else
+            guard liveJoint.confidence > 0.3 else { continue }
+            #endif
+
+            let w = jointWeight(for: key)
+
+            matchedLive.append((x: liveJoint.x, y: liveJoint.y, w: w))
+            matchedRef.append((x: refJoint.x, y: refJoint.y, w: w))
         }
 
         guard matchedLive.count >= 5 else { return 0 }
 
-        let n = Double(matchedLive.count)
+        let totalWeight = matchedLive.reduce(0.0) { $0 + $1.w }
+        guard totalWeight > 0 else { return 0 }
 
-        let liveCx = matchedLive.reduce(0.0) { $0 + $1.x } / n
-        let liveCy = matchedLive.reduce(0.0) { $0 + $1.y } / n
-        let refCx = matchedRef.reduce(0.0) { $0 + $1.x } / n
-        let refCy = matchedRef.reduce(0.0) { $0 + $1.y } / n
+        let liveCx = matchedLive.reduce(0.0) { $0 + $1.x * $1.w } / totalWeight
+        let liveCy = matchedLive.reduce(0.0) { $0 + $1.y * $1.w } / totalWeight
+        let refCx = matchedRef.reduce(0.0) { $0 + $1.x * $1.w } / totalWeight
+        let refCy = matchedRef.reduce(0.0) { $0 + $1.y * $1.w } / totalWeight
 
-        let liveScale = max(matchedLive.reduce(0.0) { max($0, hypot($1.x - liveCx, $1.y - liveCy)) }, 1e-6)
-        let refScale = max(matchedRef.reduce(0.0) { max($0, hypot($1.x - refCx, $1.y - refCy)) }, 1e-6)
+        let liveScale = max(
+            matchedLive.reduce(0.0) { acc, p in
+                max(acc, hypot(p.x - liveCx, p.y - liveCy))
+            },
+            1e-6
+        )
 
-        var totalDist: Double = 0
+        let refScale = max(
+            matchedRef.reduce(0.0) { acc, p in
+                max(acc, hypot(p.x - refCx, p.y - refCy))
+            },
+            1e-6
+        )
+
+        var weightedDist = 0.0
+        var usedWeight = 0.0
+
         for i in 0..<matchedLive.count {
             let lx = (matchedLive[i].x - liveCx) / liveScale
             let ly = (matchedLive[i].y - liveCy) / liveScale
             let rx = (matchedRef[i].x - refCx) / refScale
             let ry = (matchedRef[i].y - refCy) / refScale
-            totalDist += hypot(lx - rx, ly - ry)
+
+            let w = matchedLive[i].w
+            weightedDist += hypot(lx - rx, ly - ry) * w
+            usedWeight += w
         }
 
-        let avgDist = totalDist / n
-        return max(0, min(100, 100.0 * exp(-3.0 * avgDist)))
+        guard usedWeight > 0 else { return 0 }
+
+        let avgDist = weightedDist / usedWeight
+        return max(0, min(100, 100.0 * exp(-staticScoreDecay * avgDist)))
     }
 
+    /// Compares hand joints between a live frame and a reference frame using
+    /// centroid + scale normalization for translation/scale invariance.
+    /// Returns a confidence percentage 0–100.
+    ///
+    /// Important:
+    /// We score both the direct handedness match and a left/right-swapped match,
+    /// then take the better one. This makes static comparison robust to
+    /// front-camera mirrored chirality differences between recorded references
+    /// and live frames, especially on macOS.
+    func compareStaticFrames(live: SignFrame, reference: SignFrame) -> Double {
+        let directScore = scoreMatchedPairs(
+            live: live,
+            reference: reference,
+            swapLiveHandPrefixes: false
+        )
+
+        let swappedScore = scoreMatchedPairs(
+            live: live,
+            reference: reference,
+            swapLiveHandPrefixes: true
+        )
+
+        return max(directScore, swappedScore)
+    }
+
+    // THIS IS THE BRAIN: Where Vision meets the Camera
+    // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool {
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
@@ -280,29 +395,32 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
 
                 let handObservations = handPoseRequest.results ?? []
                 let bodyObservations = bodyPoseRequest.results ?? []
+                
                 let primaryBody = bodyObservations.first
 
                 DispatchQueue.main.async {
                     self.onPoseDetected?(handObservations, pts)
                     self.onBodyPoseDetected?(bodyObservations, pts)
-
+                    
+                    // Do something with score
                     self.processFrame(body: primaryBody, hands: handObservations, pitch: self.currentPitch, timestamp: pts)
+                    
 
+                    // Existing pitch-correction normalization (this is not the scale-invariance unit-box normalization)
                     self.normalizedHands = handObservations.compactMap {
                         NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2))
                     }
 
-                    if self.isRecording {
-                        if self.recordingStartTime == nil {
-                            self.recordingStartTime = pts
-                        }
+                    // New body callback (for overlays/labels)
+                    self.onBodyPoseDetected?(bodyObservations, pts)
 
-                        let relativePTS = CMTimeSubtract(pts, self.recordingStartTime ?? pts)
+                    if self.isRecording {
+                        if self.recordingStartTime == nil { self.recordingStartTime = pts }
 
                         let frame = SignFrame(
                             body: primaryBody,
                             hands: handObservations,
-                            at: relativePTS
+                            at: pts
                         )
 
                         self.recordedFrames.append(frame)
@@ -313,26 +431,28 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
             }
         }
     }
-
+    
     func createSignFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], at timestamp: CMTime) -> SignFrame {
         let current = SignFrame(
             body: body,
             hands: hands,
             at: timestamp
         )
-
+        
         currentSignFrame = current
         return current
     }
-
+    
+    // MARK: - Processing Frames
     func processFrame(body: VNHumanBodyPoseObservation?, hands: [VNHumanHandPoseObservation], pitch: Double, timestamp: CMTime) {
+
         let currentFrame = createSignFrame(body: body, hands: hands, at: timestamp)
 
         if isComparing, let ref = comparisonReference {
             if ref.signType == .static, let refFrame = ref.frames.first {
                 let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
-                let displayed = min(100, rawScore * 1.3)
-                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                let displayed = min(100, rawScore * displayMultiplier)
+                smoothedConfidence = smoothedConfidence * (1 - smoothingAlpha) + displayed * smoothingAlpha
                 confidenceScore = smoothedConfidence
                 return
             }
@@ -372,11 +492,33 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
     }
 
     func convertVisionPointToScreenPosition(visionPoint: CGPoint, viewSize: CGSize) -> CGPoint {
+        #if os(macOS)
+        // Match AVCaptureVideoPreviewLayer(videoGravity: .resizeAspectFill)
+        // on macOS, where the camera buffer is 1280x720 landscape.
+        let sourceSize = CGSize(width: 1280, height: 720)
+
+        let scale = max(viewSize.width / sourceSize.width,
+                        viewSize.height / sourceSize.height)
+
+        let scaledWidth = sourceSize.width * scale
+        let scaledHeight = sourceSize.height * scale
+
+        let xCrop = (scaledWidth - viewSize.width) / 2
+        let yCrop = (scaledHeight - viewSize.height) / 2
+
+        let x = visionPoint.x * scaledWidth - xCrop
+        let y = (1 - visionPoint.y) * scaledHeight - yCrop
+
+        return CGPoint(x: x, y: y)
+        #else
         let x = visionPoint.x * viewSize.width
         let y = (1 - visionPoint.y) * viewSize.height
         return CGPoint(x: x, y: y)
+        #endif
     }
-
+    
+    // Returns translated list that treats some anchor joint (e.g. wrist) as the origin (0,0)
+    // and the locations of every other joint relative to it.
     func convertAbsolutePointsToRelativePoints(
         _ hand: VNHumanHandPoseObservation,
         joints: [VNHumanHandPoseObservation.JointName],
@@ -399,6 +541,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         return rel
     }
 
+    /// Returns body joints (shoulders + elbows) normalized relative to the body center,
+    /// defined as the midpoint of both shoulders (body center = 0,0).
     func convertBodyPointsToRelativePoints(
         _ body: VNHumanBodyPoseObservation,
         joints: [VNHumanBodyPoseObservation.JointName] = [.leftShoulder, .rightShoulder, .leftElbow, .rightElbow],
@@ -421,18 +565,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
 
         return rel.isEmpty ? nil : rel
     }
-
+    
+    /// Removes all frames that were recorded after `cutoff`.
+    /// Call this before `filterFrames` / `filterReferences` to discard the
+    /// trailing grace-period where hands were no longer visible.
     func trimFrames(after cutoff: CMTime) {
-        let relativeCutoff: CMTime
-        if let start = recordingStartTime {
-            relativeCutoff = CMTimeSubtract(cutoff, start)
-        } else {
-            relativeCutoff = cutoff
-        }
-
-        recordedFrames.removeAll { $0.timestamp > relativeCutoff }
+        recordedFrames.removeAll { $0.timestamp > cutoff }
     }
 
+    // Filter frames (SignFrame-based)
+    // Relaxed thresholds (8 joints, 0.6 confidence) to support difficult hand shapes
+    // like "m" where fingers touching can reduce Vision's joint detection.
     func filterFrames(_ frames: [SignFrame]) -> [SignFrame] {
         let requiredJoints = 8
         let minConfidence: Float = 0.6
@@ -449,23 +592,37 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
             return avgConfidence >= minConfidence
         }
     }
-
-    // MARK: - Scale invariance / unit-box normalization
+    
+    // MARK: - Scale invariance / unit-box normalization (SignFrame ONLY)
 
     struct NormalizedHand {
+        /// Points normalized into a standard unit bounding box [0,1]x[0,1]
+        /// keyed by SignFrame's joint name strings.
         let unitPoints: [String: CGPoint]
+
+        /// Bounding box in Vision normalized image coords (0..1)
         let rawBounds: CGRect
+
+        /// Uniform scale applied (1 / max(width,height))
         let scale: CGFloat
+
+        /// Translation applied before scale (subtracting minX/minY)
         let translation: CGPoint
+        
+        /// Optional padding to center the scaled hand within the unit box
         let padding: CGPoint
     }
 
+    /// Same name as the original normalization API, but now purely SignFrame-based.
+    /// This normalizes the hand so it always fits within a standard unit bounding box,
+    /// regardless of how large the hand appears in the camera frame.
     func normalizeHandToUnitBox(
         hand: SignFrame,
         minConfidence: Float = 0.5,
         centerInBox: Bool = true
     ) -> NormalizedHand? {
 
+        // 1) Gather reliable landmarks in Vision normalized coordinates (0..1)
         var raw: [String: CGPoint] = [:]
         raw.reserveCapacity(hand.joints.count)
 
@@ -476,6 +633,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
 
         guard raw.count >= 3 else { return nil }
 
+        // 2) Compute bounding box
         let xs = raw.values.map { $0.x }
         let ys = raw.values.map { $0.y }
         guard let minX = xs.min(), let maxX = xs.max(),
@@ -485,9 +643,11 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         let height = max(maxY - minY, 1e-6)
         let bounds = CGRect(x: minX, y: minY, width: width, height: height)
 
+        // 3) Translate to origin, 4) uniform scale to fit inside 1x1
         let s = 1.0 / max(width, height)
         let translation = CGPoint(x: -minX, y: -minY)
 
+        // 5) optional centering padding
         let scaledW = width * s
         let scaledH = height * s
         let padding = centerInBox
@@ -512,15 +672,21 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         )
     }
 
-    // MARK: - Reference storage
+    // MARK: - Per-sign reference storage (Vision/References/<signName>.json)
 
+    /// In DEBUG builds, derives the repo's Vision/References/ path from this
+    /// source file's compile-time location so JSONs land directly in the repo.
+    /// Falls back to Documents/References/ on device (where the repo path
+    /// doesn't exist on the filesystem).
     private func referencesDirectoryURL(sourceFile: String = #filePath) throws -> URL {
         let fm = FileManager.default
 
         #if DEBUG
+        // CameraVM.swift lives at .../Vision/ViewModels/CameraVM.swift
+        // Go up 2 levels → .../Vision/, then append References/
         let visionDir = URL(fileURLWithPath: sourceFile)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+            .deletingLastPathComponent()  // ViewModels/
+            .deletingLastPathComponent()  // Vision/
         let repoDir = visionDir.appendingPathComponent("References", isDirectory: true)
 
         if fm.isWritableFile(atPath: visionDir.path) {
@@ -544,6 +710,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         return dir.appendingPathComponent("\(signName).json")
     }
 
+    /// Saves a single SignReference to the per-sign JSON file,
+    /// replacing any previous recording for that sign.
+    /// `signName` should already be lowercased by the caller.
     func saveSignReference(_ ref: SignReference, forSign signName: String) throws {
         let fileURL = try signFileURL(forSign: signName)
 
@@ -574,7 +743,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         return []
     }
 
-    // MARK: - Local recording storage
+    // MARK: - Local recording storage (SignFrame JSON)
 
     private func recordingsDirectoryURL() throws -> URL {
         let fm = FileManager.default
@@ -592,48 +761,68 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         return dir
     }
 
-    func makeRecordingBaseName(forSign signName: String) -> String {
-        let normalized = signName
-            .lowercased()
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: " ", with: "_")
-
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-
-        return "\(normalized)_\(df.string(from: Date()))"
-    }
-
-    func beginVideoRecording(forSign signName: String) throws {
-        guard !movieOutput.isRecording else { return }
-
-        let baseName = makeRecordingBaseName(forSign: signName)
-        let dir = try recordingsDirectoryURL()
-        let url = dir.appendingPathComponent("\(baseName).mov")
-
-        if FileManager.default.fileExists(atPath: url.path) {
-            try? FileManager.default.removeItem(at: url)
-        }
-
-        currentRecordingBaseName = baseName
-        lastFinishedVideoURL = nil
-        movieOutput.startRecording(to: url, recordingDelegate: self)
-    }
-
-    func stopVideoRecording() {
-        guard movieOutput.isRecording else { return }
-        movieOutput.stopRecording()
-    }
-
+    /// Saves the given frames to Application Support/Recordings/*.json and returns the file URL.
     func saveRecordingFramesToJSON(_ frames: [SignFrame], baseName: String? = nil) throws -> URL {
         let dir = try recordingsDirectoryURL()
-        let resolvedBaseName = baseName ?? "recording_\(Int(Date().timeIntervalSince1970))"
-        let url = dir.appendingPathComponent("\(resolvedBaseName).json")
+
+        let finalName: String = {
+            if let baseName, !baseName.isEmpty {
+                return baseName.hasSuffix(".json") ? baseName : "\(baseName).json"
+            }
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+            return "recording_\(df.string(from: Date())).json"
+        }()
+
+        let url = dir.appendingPathComponent(finalName)
         let data = try SignFrame.encodeArray(frames, pretty: true)
         try data.write(to: url, options: [.atomic])
         return url
     }
-    
+
+    func makeRecordingBaseName(forSign signName: String) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        return "\(signName)_\(df.string(from: Date()))"
+    }
+
+    /// Sets up AVAssetWriter to record video alongside the frame JSON.
+    func beginVideoRecording(forSign signName: String) throws {
+        let base = makeRecordingBaseName(forSign: signName)
+        currentRecordingBaseName = base
+
+        let dir = try recordingsDirectoryURL()
+        let videoURL = dir.appendingPathComponent("\(base).mov")
+
+        let writer = try AVAssetWriter(outputURL: videoURL, fileType: .mov)
+        let settings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: 1080,
+            AVVideoHeightKey: 1920
+        ]
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        input.expectsMediaDataInRealTime = true
+        writer.add(input)
+        writer.startWriting()
+        writer.startSession(atSourceTime: .zero)
+
+        assetWriter = writer
+        assetWriterInput = input
+        isWritingVideo = true
+    }
+
+    /// Stops the asset writer and resets video recording state.
+    func stopVideoRecording() {
+        guard isWritingVideo else { return }
+        isWritingVideo = false
+        assetWriterInput?.markAsFinished()
+        assetWriter?.finishWriting { [weak self] in
+            self?.assetWriter = nil
+            self?.assetWriterInput = nil
+        }
+    }
+
     func trimFramesByVelocity(_ frames: [SignFrame]) -> [SignFrame] {
         guard frames.count > 1 else { return frames }
         
@@ -652,10 +841,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
             let dy = a.y - b.y
             return sqrt(dx * dx + dy * dy)
         }
-        
-        // Raw per-frame motion values.
-        // rawMotion[i] describes motion from frames[i - 1] -> frames[i]
-        var rawMotion = Array(repeating: 0.0, count: frames.count)
         
         // Marks whether each frame contains meaningful motion.
         // active[i] describes motion from frames[i - 1] -> frames[i]
@@ -679,34 +864,12 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
                 maxMotion = max(maxMotion, motion)
             }
             
-            rawMotion[i] = maxMotion
             active[i] = maxMotion >= velocityThreshold
         }
         
         guard let firstActive = active.firstIndex(of: true) else {
             return []
         }
-        
-        // 3-frame moving average to smooth out single-frame jitters/spikes.
-        // Keep this window very small so we don't interfere with actual sign motion.
-        var smoothedMotion = Array(repeating: 0.0, count: frames.count)
-        for i in 0..<frames.count {
-            let start = max(0, i - 1)
-            let end = min(frames.count - 1, i + 1)
-            
-            var sum = 0.0
-            var count = 0
-            
-            for j in start...end {
-                sum += rawMotion[j]
-                count += 1
-            }
-            
-            smoothedMotion[i] = sum / Double(count)
-        }
-        
-        // Only use smoothed activity for the backward quiet-gap detection.
-        let smoothedActive = smoothedMotion.map { $0 >= velocityThreshold }
         
         // Scan backwards to find the first quiet gap >= 1 second.
         // This discards trailing motion from reaching to press stop.
@@ -715,9 +878,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         
         var i = frames.count - 1
         while i >= firstActive {
-            if !smoothedActive[i] {
+            if !active[i] {
                 let quietEnd = i
-                while i >= firstActive && !smoothedActive[i] {
+                while i >= firstActive && !active[i] {
                     i -= 1
                 }
                 let quietStart = i + 1
@@ -739,106 +902,74 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptur
         
         return Array(frames[startIndex...endIndex])
     }
+
     /// Loads SignFrames from a local recording JSON.
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
         try SignFrame.decodeArray(from: url)
     }
 
+    // MARK: - Listing & deleting recorded takes
+
+    private static let datePattern = /(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})/
+    private static let dateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        return df
+    }()
+
     func listRecordedTakes() throws -> [RecordedSignTake] {
         let dir = try recordingsDirectoryURL()
-        let urls = try FileManager.default.contentsOfDirectory(
-            at: dir,
-            includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        )
+        let fm = FileManager.default
+        let contents = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])
 
-        var grouped: [String: (jsonURL: URL?, videoURL: URL?, createdAt: Date)] = [:]
+        var grouped: [String: (json: URL?, video: URL?)] = [:]
 
-        for url in urls {
+        for url in contents {
+            let name = url.deletingPathExtension().lastPathComponent
             let ext = url.pathExtension.lowercased()
-            guard ext == "json" || ext == "mov" else { continue }
-
-            let baseName = url.deletingPathExtension().lastPathComponent
-            let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
-            let createdAt = (attrs?[.creationDate] as? Date) ?? (attrs?[.modificationDate] as? Date) ?? Date()
-
-            if grouped[baseName] == nil {
-                grouped[baseName] = (nil, nil, createdAt)
-            }
-
-            if ext == "json" {
-                grouped[baseName]?.jsonURL = url
-            } else if ext == "mov" {
-                grouped[baseName]?.videoURL = url
-            }
-
-            if let existing = grouped[baseName], createdAt < existing.createdAt {
-                grouped[baseName]?.createdAt = createdAt
+            switch ext {
+            case "json":
+                grouped[name, default: (nil, nil)].json = url
+            case "mov", "mp4":
+                grouped[name, default: (nil, nil)].video = url
+            default:
+                continue
             }
         }
 
-        return grouped.map { baseName, item in
-            RecordedSignTake(
+        return grouped.compactMap { baseName, files -> RecordedSignTake? in
+            var signName = baseName
+            var createdAt = Date.distantPast
+
+            if let match = baseName.firstMatch(of: Self.datePattern) {
+                let dateString = "\(match.1)_\(match.2)"
+                if let date = Self.dateFormatter.date(from: dateString) {
+                    createdAt = date
+                }
+                let prefix = baseName[baseName.startIndex..<match.range.lowerBound]
+                let trimmed = prefix.hasSuffix("_") ? String(prefix.dropLast()) : String(prefix)
+                if !trimmed.isEmpty { signName = trimmed }
+            }
+
+            return RecordedSignTake(
                 baseName: baseName,
-                signName: Self.extractSignName(from: baseName),
-                createdAt: item.createdAt,
-                jsonURL: item.jsonURL,
-                videoURL: item.videoURL
+                signName: signName,
+                createdAt: createdAt,
+                jsonURL: files.json,
+                videoURL: files.video
             )
         }
-        .sorted { lhs, rhs in
-            if lhs.signName.localizedCaseInsensitiveCompare(rhs.signName) == .orderedSame {
-                return lhs.createdAt > rhs.createdAt
-            }
-            return lhs.signName.localizedCaseInsensitiveCompare(rhs.signName) == .orderedAscending
-        }
+        .sorted { $0.createdAt > $1.createdAt }
     }
 
     func deleteTake(_ take: RecordedSignTake) throws {
-        if let jsonURL = take.jsonURL, FileManager.default.fileExists(atPath: jsonURL.path) {
-            try FileManager.default.removeItem(at: jsonURL)
+        let fm = FileManager.default
+        if let url = take.jsonURL, fm.fileExists(atPath: url.path) {
+            try fm.removeItem(at: url)
         }
-        if let videoURL = take.videoURL, FileManager.default.fileExists(atPath: videoURL.path) {
-            try FileManager.default.removeItem(at: videoURL)
-        }
-    }
-
-    private static func extractSignName(from baseName: String) -> String {
-        let pieces = baseName.split(separator: "_")
-        guard pieces.count >= 3 else {
-            return baseName.replacingOccurrences(of: "_", with: " ")
-        }
-
-        let tail = pieces.suffix(2).joined(separator: "_")
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-
-        if df.date(from: tail) != nil {
-            return pieces.dropLast(2).joined(separator: " ")
-        }
-
-        return baseName.replacingOccurrences(of: "_", with: " ")
-    }
-
-    // MARK: - AVCaptureFileOutputRecordingDelegate
-
-    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        DispatchQueue.main.async {
-            self.lastFinishedVideoURL = nil
-        }
-    }
-
-    func fileOutput(_ output: AVCaptureFileOutput,
-                    didFinishRecordingTo outputFileURL: URL,
-                    from connections: [AVCaptureConnection],
-                    error: Error?) {
-        DispatchQueue.main.async {
-            if let error {
-                print("Video recording error: \(error)")
-            } else {
-                self.lastFinishedVideoURL = outputFileURL
-                print("Saved video recording: \(outputFileURL.path)")
-            }
+        if let url = take.videoURL, fm.fileExists(atPath: url.path) {
+            try fm.removeItem(at: url)
         }
     }
 }
