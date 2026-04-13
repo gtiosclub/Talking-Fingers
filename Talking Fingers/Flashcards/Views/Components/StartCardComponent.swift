@@ -1,9 +1,9 @@
-//
 //  StartCardComponent.swift
 //  Talking Fingers
 //
 //  Created by Na Hua on 3/2/26.
 //
+
 import SwiftUI
 
 struct StartCardComponent: View {
@@ -22,6 +22,12 @@ struct StartCardComponent: View {
     @State private var showDashboard = false
     @State private var showLearn = false
 
+    enum Screen {
+        case start
+        case exercise
+    }
+    @State private var screen: Screen = .start
+
     // Provide a VM for MultipleChoice spaced repetition and nextCard()
     @State private var flashcardVM = FlashcardVM()
 
@@ -30,72 +36,92 @@ struct StartCardComponent: View {
     }
 
     var body: some View {
-        VStack {
-            HStack {
-                Button(action: closeAction) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 22, weight: .regular))
-                        .foregroundStyle(.black)
-                }
-                Spacer()
-            }
-            .padding(.top, 12)
+        switch screen {
+        case .start:
+            startView
 
-            VStack(spacing: 28) {
-                Image(imageName)
+        case .exercise:
+            MultipleChoiceFlow(
+                initialCard: learnFlashcard,
+                imageName: imageName,
+                targetCount: 7,
+                vm: flashcardVM
+            ) {
+                screen = .start
+            }
+            .environment(flashcardVM)
+        }
+    }
+
+    // MARK: - Start Screen (original UI)
+    private var startView: some View {
+        ZStack {
+            #if os(macOS)
+            Color(NSColor.windowBackgroundColor)
+            #else
+            Color(.systemGray6)
+            #endif
+
+            VStack(spacing: 24) {
+                
+                Image("greetingsIllustration")
                     .resizable()
                     .scaledToFit()
-                    .frame(height: 250)
+                    .frame(height: 180)
 
-                VStack(spacing: 6) {
-                    Text("\(modeTitle):")
-                        .font(.system(size: 34, weight: .bold))
+                Text("Exercise")
+                    .font(.title2)
+                    .foregroundColor(.gray)
 
-                    Text(topic)
-                        .font(.system(size: 34, weight: .bold))
+                Text("Greetings!")
+                    .font(.title)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color.blue.opacity(0.7))
 
-                    Text("\(completed)/\(total) Words Completed")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(.primary)
+                Text("0/12 Words Completed")
+                    .foregroundColor(.gray)
+
+                ProgressView(value: 0.0)
+                    .tint(.blue)
+                    .scaleEffect(y: 1.5)
+
+                Button(action: {
+                    screen = .exercise 
+                }) {
+                    Text("Begin Learn")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.green.opacity(0.7))
+                        )
                 }
+                .buttonStyle(.plain)
 
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.25))
-                            .frame(height: 12)
-
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.6))
-                            .frame(width: geo.size.width * progress, height: 12)
-                    }
+                Button(action: {
+                    closeAction()
+                }) {
+                    Text("Go Home")
+                        .font(.headline)
+                        .foregroundColor(Color.green)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.green.opacity(0.2))
+                        )
                 }
-                .frame(height: 12)
-                .padding(.horizontal, 24)
+                .buttonStyle(.plain)
             }
-            .padding(.top, 16)
-
-            Spacer()
-
-            VStack(spacing: 18) {
-                ActionButton(
-                    title: "Let's Go!",
-                    style: .primary,
-                    action: {
-                        showLearn = true
-                    }
-                )
-
-                ActionButton(
-                    title: "Go Home",
-                    style: .secondary,
-                    action: {
-                        showDashboard = true
-                    }
-                )
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+            .padding(32)
+            .frame(maxWidth: 700)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.05), radius: 10)
+            )
         }
         .padding(.horizontal, 16)
         .onAppear {
@@ -104,26 +130,11 @@ struct StartCardComponent: View {
                 flashcardVM.flashcards = makeMultipleChoiceDummyFlashcards()
             }
         }
-        .universalFullScreenCover(isPresented: $showDashboard) {
-            DashboardView()
-        }
-        .universalFullScreenCover(isPresented: $showLearn) {
-            MultipleChoiceFlow(
-                initialCard: learnFlashcard,
-                imageName: imageName,
-                targetCount: 7,
-                vm: flashcardVM
-            ) {
-                // Flow finished or user exited — dismiss cover
-                showLearn = false
-            }
-            .environment(flashcardVM)
-        }
     }
 
     // Simple duplicate of the helper in MultipleChoice.swift (since that one is file-private)
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-        var distractors = pool
+        let distractors = pool
             .filter { $0.id != card.id }
             .map { $0.term.displayName }
             .shuffled()
@@ -168,7 +179,7 @@ struct StartCardComponent: View {
             FlashcardModel(term: .ten, id: UUID(), lastSucceeded: daysAgo(30), starred: false, progress: .learning, category: .numbers),
         ]
 
-        // Feelings / Emotions (replacing Colors, which has no Term enum equivalent)
+        // Feelings / Emotions
         cards += [
             FlashcardModel(term: .happy, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .mastered, category: .feelingsEmotions),
             FlashcardModel(term: .sad, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .mastered, category: .feelingsEmotions),
@@ -204,7 +215,6 @@ struct StartCardComponent: View {
         return cards
     }
 }
-
 // MARK: - Flow wrapper that keeps asking until N questions are completed
 private struct MultipleChoiceFlow: View {
     @Environment(\.dismiss) private var dismiss
@@ -258,7 +268,7 @@ private struct MultipleChoiceFlow: View {
     }
 
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-        var distractors = pool
+        let distractors = pool
             .filter { $0.id != card.id }
             .map { $0.term.displayName }
             .shuffled()

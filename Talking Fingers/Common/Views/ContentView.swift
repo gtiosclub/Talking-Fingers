@@ -63,9 +63,7 @@ struct MainNavigationView: View {
     private func detailView(for section: NavigationSection) -> some View {
         switch section {
         case .home:
-            NavigationStack {
-                Text("home")
-            }
+            DashboardView()
             
         case .flashcards:
             NavigationStack {
@@ -83,7 +81,9 @@ struct MainNavigationView: View {
                     imageName: "greetingsIllustration",
                     primaryAction: {},
                     secondaryAction: {},
-                    closeAction: {},
+                    closeAction: {
+                        selectedSection = .home
+                    },
                     learnFlashcard: dummyCard,
                     learnProgress: 0.25
                 )
