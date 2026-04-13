@@ -8,28 +8,14 @@
 import SwiftUI
 import AVFoundation
 import Vision
-
-enum CameraMode: String, CaseIterable {
-    case `static`
-    case dynamic
-    case compare
-}
-
 struct CameraView: View {
-
-    /// Called when a recording is stopped.
-    /// Provides decoded SignFrames and the saved JSON file URL.
     var onRecordingFinished: (([SignFrame], URL) -> Void)? = nil
-
     @State private var showJointsSheet: Bool = false
+    @State private var showRecordedSigns: Bool = false
     @State private var cameraVM: CameraVM = CameraVM()
-
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
-
     @Environment(AuthenticationViewModel.self) var authVM
-
-    /// Tracks which hand joints the user wants visible on the overlay.
     @State private var jointVisibility: [VNHumanHandPoseObservation.JointName: Bool] = {
         var dict: [VNHumanHandPoseObservation.JointName: Bool] = [:]
         for joint in JointsSheetView.handJointLabels {
@@ -37,8 +23,6 @@ struct CameraView: View {
         }
         return dict
     }()
-
-    /// Tracks which body joints the user wants visible on the overlay.
     @State private var bodyJointVisibility: [VNHumanBodyPoseObservation.JointName: Bool] = {
         var dict: [VNHumanBodyPoseObservation.JointName: Bool] = [:]
         for joint in JointsSheetView.bodyJointLabels {
@@ -46,50 +30,32 @@ struct CameraView: View {
         }
         return dict
     }()
-
     @State private var dotsVisibility: Bool = true
     @State private var jointNamesVisibility: Bool = true
     @State private var handOutlineVisibility: Bool = false
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
-
     @State private var signName: String = ""
     @State private var cameraMode: CameraMode = .static
-
     private var signType: SignType {
         cameraMode == .dynamic ? .dynamic : .static
     }
-
     @State private var countdown: Int = 0
     @State private var countdownTask: Task<Void, Never>?
-
-    /// Tracks when both hands were last visible during a recording.
-    /// `nil` means hands haven't appeared yet this recording session.
     @State private var handsLastSeenDate: Date?
     @State private var handsLastSeenPTS: CMTime?
     private let autoStopGracePeriod: TimeInterval = 1.5
-
-    // Store all hand joint connections for drawing lines
     let handConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
-        // Thumb
         (.wrist, .thumbCMC), (.thumbCMC, .thumbMP), (.thumbMP, .thumbIP), (.thumbIP, .thumbTip),
-        // Index
         (.wrist, .indexMCP), (.indexMCP, .indexPIP), (.indexPIP, .indexDIP), (.indexDIP, .indexTip),
-        // Middle
         (.wrist, .middleMCP), (.middleMCP, .middlePIP), (.middlePIP, .middleDIP), (.middleDIP, .middleTip),
-        // Ring
         (.wrist, .ringMCP), (.ringMCP, .ringPIP), (.ringPIP, .ringDIP), (.ringDIP, .ringTip),
-        // Little
         (.wrist, .littleMCP), (.littleMCP, .littlePIP), (.littlePIP, .littleDIP), (.littleDIP, .littleTip)
     ]
-
-    // Store body joint connections for upper body (shoulders to elbows only)
     let bodyConnections: [(VNHumanBodyPoseObservation.JointName, VNHumanBodyPoseObservation.JointName)] = [
         (.leftShoulder, .leftElbow),
         (.rightShoulder, .rightElbow)
     ]
-
-    // Store points to create polygon for hand (edges)
     let perimeterJoints: [VNHumanHandPoseObservation.JointName] = [
         .wrist,
         .thumbCMC, .thumbMP, .thumbIP, .thumbTip,
@@ -100,7 +66,6 @@ struct CameraView: View {
         .littleDIP, .littlePIP, .littleMCP,
         .wrist
     ]
-
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -116,7 +81,6 @@ struct CameraView: View {
                         }
                         .padding(10)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
                         Picker("", selection: $cameraMode) {
                             Text("Static").tag(CameraMode.static)
                             Text("Dynamic").tag(CameraMode.dynamic)
@@ -126,11 +90,9 @@ struct CameraView: View {
                         .frame(width: 240)
                     }
                     .padding(.horizontal)
-
                     ZStack {
                         CameraPreviewView(session: cameraVM.session)
                             .ignoresSafeArea()
-
                         GeometryReader { geo in
                             handOutlineOverlay(in: geo.size)
                             handJointLabelsOverlay(in: geo.size)
@@ -138,11 +100,9 @@ struct CameraView: View {
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
                         }
-
                         if countdown > 0 {
                             Color.black.opacity(0.35)
                                 .allowsHitTesting(false)
-
                             Text("\(countdown)")
                                 .font(.system(size: 120, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
@@ -150,16 +110,15 @@ struct CameraView: View {
                                 .contentTransition(.numericText())
                                 .animation(.easeInOut(duration: 0.3), value: countdown)
                         }
-
                         if cameraMode == .compare && cameraVM.isComparing {
                             VStack {
                                 Spacer()
-                                Text("\(Int(cameraVM.confidenceScore))%")
+                                Text(confidenceLabel)
                                     .font(.system(size: 56, weight: .bold, design: .rounded))
                                     .foregroundStyle(confidenceColor)
                                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                                    .contentTransition(.numericText())
-                                    .animation(.easeInOut(duration: 0.15), value: Int(cameraVM.confidenceScore))
+                                    .contentTransition(.opacity)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 12)
                                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -185,9 +144,23 @@ struct CameraView: View {
                     .padding(.horizontal)
                     .padding(.top, 24)
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    // future UI elements
+                VStack(alignment: .leading, spacing: 12) {
+                    Button {
+                        showRecordedSigns = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "play.rectangle.on.rectangle")
+                            Text("Browse Recorded Signs")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.headline)
+                        .padding()
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
@@ -195,14 +168,12 @@ struct CameraView: View {
             }
             .padding(.top, 12)
         }
+        .navigationTitle("Camera")
         .onAppear {
             cameraVM.checkPermission()
-
             cameraVM.onPoseDetected = { handObservations, pts in
                 hands = handObservations
-
                 guard cameraVM.isRecording else { return }
-
                 if !handObservations.isEmpty {
                     handsLastSeenDate = Date()
                     handsLastSeenPTS = pts
@@ -211,7 +182,6 @@ struct CameraView: View {
                     toggleRecording()
                 }
             }
-
             cameraVM.onBodyPoseDetected = { bodyObservations, _ in
                 bodies = bodyObservations
             }
@@ -246,8 +216,13 @@ struct CameraView: View {
                 bodySkeletonVisibility: $bodySkeletonVisibility
             )
         }
+        .sheet(isPresented: $showRecordedSigns) {
+            NavigationStack {
+                RecordedSignsView()
+            }
+        }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItemGroup(placement: .topBarLeading) {
                 Button(action: { toggleRecording() }) {
                     Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
@@ -255,6 +230,12 @@ struct CameraView: View {
                         .accessibilityLabel(cameraVM.isRecording ? "Stop Recording" : "Start Recording")
                 }
                 .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty || cameraMode == .compare)
+                Button {
+                    showRecordedSigns = true
+                } label: {
+                    Image(systemName: "film.stack")
+                }
+                .accessibilityLabel("Browse Recorded Signs")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { showJointsSheet = true }) {
@@ -263,7 +244,6 @@ struct CameraView: View {
             }
         }
     }
-
     @ViewBuilder
     private func handOutlineOverlay(in size: CGSize) -> some View {
         if handOutlineVisibility {
@@ -287,7 +267,6 @@ struct CameraView: View {
             }
         }
     }
-
     @ViewBuilder
     private func handJointLabelsOverlay(in size: CGSize) -> some View {
         ForEach(hands, id: \.uuid) { hand in
@@ -298,11 +277,9 @@ struct CameraView: View {
                         visionPoint: point.location,
                         viewSize: size
                     )
-
                     let handSide = (cameraVM.isMirrored
                                     ? (hand.chirality == .left ? "R" : "L")
                                     : (hand.chirality == .left ? "L" : "R"))
-
                     ZStack {
                         if jointNamesVisibility {
                             Text("\(handSide) \(joint.label)")
@@ -311,7 +288,6 @@ struct CameraView: View {
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
                         }
-
                         if dotsVisibility {
                             Circle()
                                 .fill(Color.white)
@@ -323,7 +299,6 @@ struct CameraView: View {
             }
         }
     }
-
     @ViewBuilder
     private func bodyJointLabelsOverlay(in size: CGSize) -> some View {
         ForEach(bodies, id: \.uuid) { body in
@@ -342,7 +317,6 @@ struct CameraView: View {
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
                         }
-
                         if dotsVisibility {
                             Circle()
                                 .fill(Color.orange)
@@ -354,7 +328,6 @@ struct CameraView: View {
             }
         }
     }
-
     @ViewBuilder
     private func handSkeletonOverlay(in size: CGSize) -> some View {
         if handSkeletonVisibility {
@@ -362,7 +335,6 @@ struct CameraView: View {
                 let handSkeletonColor = (cameraVM.isMirrored
                                          ? (hand.chirality == .left ? Color.purple : Color.blue)
                                          : (hand.chirality == .left ? Color.blue : Color.purple))
-
                 Path { path in
                     for connection in handConnections {
                         if let p1 = try? hand.recognizedPoint(connection.0),
@@ -370,7 +342,6 @@ struct CameraView: View {
                            p1.confidence > 0.5, p2.confidence > 0.5,
                            jointVisibility[connection.0] == true,
                            jointVisibility[connection.1] == true {
-
                             let start = cameraVM.convertVisionPointToScreenPosition(
                                 visionPoint: p1.location,
                                 viewSize: size
@@ -388,7 +359,6 @@ struct CameraView: View {
             }
         }
     }
-
     @ViewBuilder
     private func bodySkeletonOverlay(in size: CGSize) -> some View {
         if bodySkeletonVisibility {
@@ -400,7 +370,6 @@ struct CameraView: View {
                            p1.confidence > 0.3, p2.confidence > 0.3,
                            bodyJointVisibility[connection.0] == true,
                            bodyJointVisibility[connection.1] == true {
-
                             let start = cameraVM.convertVisionPointToScreenPosition(
                                 visionPoint: p1.location,
                                 viewSize: size
@@ -418,54 +387,59 @@ struct CameraView: View {
             }
         }
     }
-
     private func toggleRecording() {
         if cameraVM.isRecording {
             if let cutoff = handsLastSeenPTS {
                 cameraVM.trimFrames(after: cutoff)
             }
-
             cameraVM.toggleRecording()
             handsLastSeenDate = nil
             handsLastSeenPTS = nil
-
             let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
-
             let filteredFrames = cameraVM.recordedFrames
-
             guard !filteredFrames.isEmpty else {
                 print("Recording for '\(normalizedName)' produced 0 frames after filtering — not saved.")
                 cameraVM.clearBuffer()
                 return
             }
-
             do {
-                let signRef = SignReference(signName: normalizedName, signType: signType, frames: filteredFrames)
+                let trimmedSignFrames = cameraVM.trimFramesByVelocity(filteredFrames)
+                guard !trimmedSignFrames.isEmpty else {
+                    print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
+                    cameraVM.clearBuffer()
+                    return
+                }
+                let signRef = SignReference(signName: normalizedName, signType: signType, frames: trimmedSignFrames)
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
-
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(filteredFrames)
+                let baseName = cameraVM.currentRecordingBaseName ?? cameraVM.makeRecordingBaseName(forSign: normalizedName)
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(trimmedSignFrames, baseName: baseName)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
-
                 onRecordingFinished?(decodedFrames, fileURL)
-                print("Saved '\(normalizedName)' recording: \(fileURL.path) (\(decodedFrames.count) frames)")
+                print("Saved '\(normalizedName)' recording JSON: \(fileURL.path) (\(decodedFrames.count) frames)")
             } catch {
                 print("Recording save/load error: \(error)")
             }
-
             cameraVM.clearBuffer()
         } else {
             startCountdownThenRecord()
         }
     }
-
-    private var confidenceColor: Color {
-        switch cameraVM.confidenceScore {
-        case 75...100: return .green
-        case 40..<75: return .yellow
-        default: return .red
-        }
+    // MARK: - Confidence helpers
+    // Handles both 0–1 and 0–100 score ranges from cameraVM
+    private var confidenceLabel: String {
+        let score = cameraVM.confidenceScore
+        let normalized = score > 1.0 ? score / 100.0 : score
+        if normalized >= 0.76 { return "Great" }
+        if normalized >= 0.51 { return "Okay" }
+        return "Bad"
     }
-
+    private var confidenceColor: Color {
+        let score = cameraVM.confidenceScore
+        let normalized = score > 1.0 ? score / 100.0 : score
+        if normalized >= 0.76 { return .green }
+        if normalized >= 0.51 { return .yellow }
+        return .red
+    }
     private func startCountdownThenRecord() {
         countdown = 3
         handsLastSeenDate = nil
@@ -474,38 +448,44 @@ struct CameraView: View {
             for tick in stride(from: 3, through: 1, by: -1) {
                 countdown = tick
                 try? await Task.sleep(for: .seconds(1))
-                if Task.isCancelled { countdown = 0; return }
+                if Task.isCancelled {
+                    countdown = 0
+                    return
+                }
             }
             countdown = 0
+            let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
+            do {
+                try cameraVM.beginVideoRecording(forSign: normalizedName)
+            } catch {
+                print("Failed to start video recording: \(error)")
+            }
             cameraVM.toggleRecording()
         }
     }
 }
-
 struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
-
     class VideoPreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
-
     func makeUIView(context: Context) -> VideoPreviewView {
         let view = VideoPreviewView()
         view.previewLayer.session = session
         view.previewLayer.videoGravity = .resizeAspectFill
         return view
     }
-
     func updateUIView(_ uiView: VideoPreviewView, context: Context) {}
 }
-
 #Preview {
-    CameraView(onRecordingFinished: { frames, url in
-        print("Preview received \(frames.count) frames")
-        print("Saved at: \(url.path)")
-        print(frames.prefix(3))
-    })
-    .environment(AuthenticationViewModel())
+    NavigationStack {
+        CameraView(onRecordingFinished: { frames, url in
+            print("Preview received \(frames.count) frames")
+            print("Saved at: \(url.path)")
+            print(frames.prefix(3))
+        })
+        .environment(AuthenticationViewModel())
+    }
 }
-#endif
+#endif  os(iOS)

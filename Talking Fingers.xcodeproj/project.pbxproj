@@ -442,7 +442,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Talking Fingers/Talking Fingers.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 22NU6KTAK7;
+				DEVELOPMENT_TEAM = B47335DT66;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
@@ -478,9 +478,9 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.kkp-talking-fingers";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = "com.ruihuan.talking-fingers";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = "com.ruihuan.talking-fingers";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sk-talking-fingers";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = "com.sk.talking-fingers";
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = "com.sk.talking-fingers";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -505,7 +505,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Talking Fingers/Talking Fingers.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 22NU6KTAK7;
+				DEVELOPMENT_TEAM = B47335DT66;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
@@ -541,7 +541,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.nikolacao.talking-fingers.app";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sk.talking-fingers.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
