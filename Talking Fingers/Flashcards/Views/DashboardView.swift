@@ -44,7 +44,8 @@ struct DashboardView: View {
                     HStack {
                         Spacer()
                         NavigationLink {
-                            Text("Search Page") // replace later
+                            SearchView()
+                                .navigationBarBackButtonHidden(true)
                         } label: {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 22))
