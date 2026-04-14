@@ -113,7 +113,6 @@ struct DashboardView: View {
                         .padding(.horizontal)
                     
                     let columns = [
-                        GridItem(.flexible(), spacing: 12),
                         GridItem(.flexible(), spacing: 12)
                     ]
                     LazyVGrid(columns: columns, spacing: 12) {
