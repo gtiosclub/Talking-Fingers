@@ -7,6 +7,7 @@
 import Foundation
 import Combine
 import SwiftData
+import NaturalLanguage
 
 @Observable
 class FlashcardVM {
@@ -60,8 +61,35 @@ class FlashcardVM {
             if card.term.rawValue.lowercased().contains(input.lowercased()) {
                 results.append(card.term.rawValue)
             }
-        }   
+        }
         return results
+    }
+
+    static func ideaSearch(query: String) -> [Term] {
+        let lemmas = lemmatize(query)
+        guard !lemmas.isEmpty else { return [] }
+
+        return Term.allCases.filter { term in
+            let termWords = term.rawValue
+                .lowercased()
+                .replacingOccurrences(of: "-", with: " ")
+                .components(separatedBy: " ")
+            return termWords.contains { lemmas.contains($0) }
+        }
+    }
+
+    private static func lemmatize(_ text: String) -> Set<String> {
+        let tagger = NLTagger(tagSchemes: [.lemma])
+        tagger.string = text
+        var lemmas = Set<String>()
+        let range = text.startIndex..<text.endIndex
+        tagger.enumerateTags(in: range, unit: .word, scheme: .lemma, options: [.omitPunctuation, .omitWhitespace]) { tag, tokenRange in
+            let token = String(text[tokenRange]).lowercased()
+            lemmas.insert(tag?.rawValue.lowercased() ?? token)
+            lemmas.insert(token)
+            return true
+        }
+        return lemmas
     }
     
     func filterByCategory(from flashcards: [FlashcardModel], category: TermCategory) -> [FlashcardModel] {
