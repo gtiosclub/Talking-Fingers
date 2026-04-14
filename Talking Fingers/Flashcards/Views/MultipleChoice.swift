@@ -55,37 +55,30 @@ struct MultipleChoice: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         questionCard
-                        Spacer(minLength: 24)
                     }
+                    .frame(maxWidth: 1100)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
-                    // Ensure content can scroll above the bottom button area
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 24)
                 }
 
                 // ── Submit (bottom area) + private tiny level badge ───────
                 VStack(spacing: 6) {
                     submitButton
+                        .frame(maxWidth: 1100)
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
 
-                    // Tiny, muted badge bottom-left so only you notice it
                     HStack {
                         tinyProgressBadge
                         Spacer()
                     }
+                    .frame(maxWidth: 1100)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 10)
                 }
-                .background(
-                    Color(hex: 0xFFFFFF)
-                        .overlay(
-                            Rectangle()
-                                .fill(Color.black.opacity(0.05))
-                                .frame(height: 0.5)
-                                .frame(maxHeight: .infinity, alignment: .top)
-                        )
-                )
+                .frame(maxWidth: .infinity)
             }
             .background(Color(hex: 0xFFFFFF))
             #if os(iOS)
@@ -122,138 +115,102 @@ struct MultipleChoice: View {
 
     // MARK: - Top Bar
     private var topBar: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             HStack {
                 Button {
                     dismiss()
                 } label: {
-                    Label("Leave", systemImage: "rectangle.portrait.and.arrow.right")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 16, weight: .medium))
+
+                        Text("Leave")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .foregroundColor(.gray)
                 }
+                .buttonStyle(.plain)
+
                 Spacer()
             }
-            
             .padding(.horizontal, 20)
             .padding(.top, 12)
+            
+            HStack(spacing: 12) {
 
-            // Progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(hex: 0xE5E5EA))
-                        .frame(height: 6)
-                    Capsule()
-                        .fill(Color.blue)
-                        .frame(width: geo.size.width * CGFloat(progress), height: 6)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+
+                        Capsule()
+                            .fill(Color(red: 0.88, green: 0.92, blue: 0.96))
+
+                        Capsule()
+                            .fill(Color(red: 0.30, green: 0.55, blue: 0.85))
+                            .frame(width: geo.size.width * CGFloat(progress))
+                    }
                 }
+                .frame(height: 10)
+
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.black)
             }
-            .frame(height: 6)
             .padding(.horizontal, 20)
-            .padding(.bottom, 8)
+
         }
+        .padding(.top, 10)
     }
 
     // MARK: - Question Card
     private var questionCard: some View {
         VStack(spacing: 16) {
 
-            // Save / Hint row
+            // Save + Hint
             HStack {
                 Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        isSaved.toggle()
-                    }
+                    isSaved.toggle()
                 } label: {
-                    Label(isSaved ? "Saved" : "Save",
-                          systemImage: isSaved ? "bookmark.fill" : "bookmark")
-                        .font(.subheadline.weight(.semibold))
+                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                         .foregroundColor(tfGreenText)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(tfGreen)
-                        )
+                        .padding(14)
+                        .background(Circle().fill(tfGreen.opacity(0.25)))
+                        .scaleEffect(1.1)
                 }
+                .buttonStyle(.plain)
 
                 Spacer()
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        showHintPopup = true
-                    }
+                    showHintPopup = true
                 } label: {
                     Image(systemName: "lightbulb")
-                        .font(.title3)
-                        .foregroundColor(Color(red: 239/255, green: 190/255, blue: 85/255))
-                        .padding(10)
-                        .background(
-                            Circle()
-                                .fill(Color.orange.opacity(0.15))
-                        )
+                        .foregroundColor(.orange)
+                        .padding(14)
+                        .background(Circle().fill(Color.orange.opacity(0.2)))
+                        .scaleEffect(1.1)
                 }
+                .buttonStyle(.plain)
             }
+            GIFView(gifFileName: "helloGIF.gif")
+                .scaledToFit()
+                .frame(height: 160)
 
-            // Sign illustration placeholder
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(hex: 0xFFFFFF))
-                    .frame(height: 180)
-                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-
-                /*if imageName.isEmpty {
-                    // Fallback sketch-style placeholder
-                    Image(systemName: "hand.wave.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 100)
-                        .foregroundColor(.black.opacity(0.8))
-                } else {
-                    Image(imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 160)
-                        .padding(12)
-                }*/
-                let gifFileName: String? = "helloGIF.gif"
-
-                if let gifFileName = gifFileName {
-                    GIFView(gifFileName: gifFileName)
-                        .frame(width: 200, height: 150)
-                } else {
-                    Text("No GIF available")
-                }
-            }
-            
-            
-            // Question text (if desired)
-            if !question.isEmpty {
-                Text(question)
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            // Answer options
-            VStack(spacing: 10) {
+            VStack(spacing: 12) {
                 ForEach(options, id: \.self) { option in
-                    optionRow(option)
+                    optionRow(option, isSelected: selectedAnswer == option)
                 }
             }
-
-            // Add a little spacing at the end of the card
-            Spacer(minLength: 8)
         }
-        .padding(16)
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color(hex: 0xFFFFFF))
+                .fill(Color.white)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(Color.blue.opacity(0.25), lineWidth: 1.5)
                 )
         )
-        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.05), radius: 8)
     }
 
     // Tiny, subtle badge for internal use only (bottom-left under submit)
@@ -297,33 +254,34 @@ struct MultipleChoice: View {
         case .polishing: return .blue
         case .mastered: return .green
         }
-        }
+    }
     // MARK: - Option Row
     @ViewBuilder
-    private func optionRow(_ option: String) -> some View {
-        let isSelected = selectedAnswer == option
-        let isCorrectOption = option == correctAnswer
-
+    func optionRow(_ text: String, isSelected: Bool) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.15)) {
-                selectedAnswer = option
+                selectedAnswer = text
             }
         } label: {
             HStack {
-                Text(isCorrectOption ? "\(option) *" : option)
+                Text(text)
                     .font(.body.weight(isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .black : .primary)
+                    .foregroundColor(.primary)
                 Spacer()
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? Color(red: 1, green: 0.85, blue: 0.5) : Color(hex: 0xF2F2F7))
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        isSelected
+                        ? Color(red: 0.93, green: 0.78, blue: 0.50)
+                        : Color.white
+                    )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.orange.opacity(0.6) : Color.clear, lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.gray.opacity(0.5), lineWidth: 1.2)
             )
         }
         .buttonStyle(.plain)
@@ -346,6 +304,7 @@ struct MultipleChoice: View {
         }
         .disabled(selectedAnswer == nil)
         .animation(.easeInOut(duration: 0.2), value: selectedAnswer)
+        .buttonStyle(.plain)
     }
 
     private func handleSubmission() {
@@ -396,9 +355,8 @@ private struct CorrectResultPopUpComponent: View {
     var body: some View {
         ResultCard(
             title: "Great Job!",
-            titleColor: Color(red: 239/255, green: 190/255, blue: 85/255),
+            isCorrect: true,
             message: message,
-            buttonTitle: "Next Question",
             onNext: onNext
         )
     }
@@ -411,9 +369,8 @@ private struct IncorrectResultPopUpComponent: View {
     var body: some View {
         ResultCard(
             title: "Not Quite...",
-            titleColor: Color(red: 239/255, green: 190/255, blue: 85/255),
+            isCorrect: false,
             message: message,
-            buttonTitle: "Next Question",
             onNext: onNext
         )
     }
@@ -421,51 +378,56 @@ private struct IncorrectResultPopUpComponent: View {
 
 private struct ResultCard: View {
     let title: String
-    let titleColor: Color
+    let isCorrect: Bool
     let message: String
-    let buttonTitle: String
     let onNext: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text(title)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(titleColor)
-                .padding(.top, 8)
+        VStack(alignment: .leading, spacing: 16) {
 
-            Text(message)
-                .font(.system(size: 16, weight: .regular))
-                .multilineTextAlignment(.center)
-                .foregroundColor(.primary)
-                .padding(.horizontal, 8)
+            // TITLE ROW
+            HStack {
+                Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(isCorrect ? .green : .red)
 
+                Text(isCorrect ? "Amazing!" : "Not quite!")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(isCorrect ? Color.green : Color.red)
+            }
+
+            Text(isCorrect ? "Answer: the correct answer" : "Your accuracy: 25%")
+                .foregroundColor(isCorrect ? Color.green : Color.red)
+                .font(.system(size: 16, weight: .medium))
+
+            // BUTTON
             Button {
                 onNext()
             } label: {
-                Text(buttonTitle)
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(red: 159/255, green: 192/255, blue: 122/255))
+                Text("Continue")
+                    .font(.headline)
                     .foregroundColor(.white)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(isCorrect
+                                  ? Color(red: 0.56, green: 0.72, blue: 0.44)
+                                  : Color.red.opacity(0.8))
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(.top, 4)
+            .buttonStyle(.plain)
         }
         .padding(24)
-        .frame(maxWidth: 560)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(radius: 20)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 32)
+        .frame(maxWidth: 1100)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(isCorrect
+                      ? Color(red: 0.90, green: 0.95, blue: 0.85)
+                      : Color(red: 0.95, green: 0.85, blue: 0.85))
+        )
+        .padding(.horizontal, 20)
     }
 }
-
 // MARK: - Dummy data + SR helpers (unchanged)
 
 private func daysAgo(_ days: Int) -> Date {
@@ -533,7 +495,7 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
 }
 
 private func optionsFor(card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-    var distractors = pool
+    let distractors = pool
         .filter { $0.id != card.id }
         .map { $0.term.displayName }
         .shuffled()
