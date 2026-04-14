@@ -78,9 +78,10 @@ struct DashboardView: View {
                                             mode: item.mode,
                                             progress: item.progress,
                                             backgroundColor: index == 0
-                                            ? Color(red: 0.78, green: 0.85, blue: 0.93)
-                                            : Color(red: 0.96, green: 0.92, blue: 0.80)
+                                                ? Color.blue.opacity(0.2)
+                                                : Color.green.opacity(0.2)
                                         )
+                                        .frame(width: 180)
                                     }
                                     .buttonStyle(.plain)
                                 }
