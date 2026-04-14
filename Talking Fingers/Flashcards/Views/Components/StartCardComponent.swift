@@ -56,13 +56,8 @@ struct StartCardComponent: View {
     // MARK: - Start Screen (original UI)
     private var startView: some View {
         ZStack {
-            #if os(macOS)
-            Color(NSColor.windowBackgroundColor)
-            #else
-            Color(.systemGray6)
-            #endif
 
-            VStack(spacing: 24) {
+            VStack(spacing: 16){
                 
                 Image("greetingsIllustration")
                     .resizable()
@@ -70,20 +65,20 @@ struct StartCardComponent: View {
                     .frame(height: 180)
 
                 Text("Exercise")
-                    .font(.title2)
-                    .foregroundColor(.gray)
+                    .font(.system(size: 40))
+                    .foregroundColor(.black.opacity(0.7))
 
                 Text("Greetings!")
-                    .font(.title)
-                    .fontWeight(.semibold)
-                    .foregroundColor(Color.blue.opacity(0.7))
+                    .font(.system(size: 42, weight: .bold))
+                    .foregroundColor(Color(red: 0.58, green: 0.72, blue: 0.85))
 
                 Text("0/12 Words Completed")
                     .foregroundColor(.gray)
 
                 ProgressView(value: 0.0)
-                    .tint(.blue)
+                    .tint(Color(red: 0.70, green: 0.80, blue: 0.90))
                     .scaleEffect(y: 1.5)
+                    .padding(.horizontal, 60)
 
                 Button(action: {
                     screen = .exercise 
@@ -92,36 +87,31 @@ struct StartCardComponent: View {
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 14)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.green.opacity(0.7))
+                                .fill(Color(red: 0.56, green: 0.72, blue: 0.44))
                         )
                 }
                 .buttonStyle(.plain)
+                .padding(.horizontal, 40)
 
                 Button(action: {
                     closeAction()
                 }) {
                     Text("Go Home")
                         .font(.headline)
-                        .foregroundColor(Color.green)
+                        .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.30))
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 14)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.green.opacity(0.2))
+                                .fill(Color(red: 0.56, green: 0.72, blue: 0.44).opacity(0.25))
                         )
                 }
                 .buttonStyle(.plain)
+                .padding(.horizontal, 40)
             }
-            .padding(32)
-            .frame(maxWidth: 700)
-            .background(
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.05), radius: 10)
-            )
         }
         .padding(.horizontal, 16)
         .onAppear {

@@ -148,16 +148,6 @@ struct DashboardView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            
-            // RIGHT SIDE (Widgets)
-            VStack {
-                Text("Widgets")
-                    .font(.headline)
-                
-                Spacer()
-            }
-            .frame(width: 220)
-            .padding()
         }
     }
     

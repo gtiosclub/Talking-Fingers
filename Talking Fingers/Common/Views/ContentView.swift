@@ -53,9 +53,28 @@ struct MainNavigationView: View {
             }
             .navigationTitle("Talking Fingers")
         } detail: {
-            // Detail view based on selection
+            #if os(macOS)
+            HStack(spacing: 0) {
+    
+                detailView(for: selectedSection ?? .home)
+                    .environment(authVM)
+                    .frame(maxWidth: .infinity)
+                
+                // RIGHT SIDE WIDGETS (macOS ONLY)
+                VStack(spacing: 16) {
+                    Text("Widgets")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                        .padding(.leading, 4)
+                }
+                .frame(width: 240)
+                .padding(.top, 20)
+                .padding(.horizontal, 16)
+            }
+            #else
             detailView(for: selectedSection ?? .home)
                 .environment(authVM)
+            #endif
         }
     }
     
