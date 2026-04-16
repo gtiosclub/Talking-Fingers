@@ -17,9 +17,9 @@ struct GradedSigningCameraView: View {
         ZStack {
             // Camera Feed
             CameraPreviewView(
-                session: cameraVM.session,
-                isMirrored: cameraVM.isMirrored
+                session: cameraVM.session
             )
+            .scaleEffect(x: cameraVM.isMirrored ? -1 : 1, y: 1)
             .clipShape(RoundedRectangle(cornerRadius: 16))
 
             // Confidence Overlay
