@@ -30,22 +30,18 @@ class SearchViewModel: ObservableObject {
     
     func performSearch() {
         let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
-        
+
         guard !query.isEmpty else {
             results = []
             return
         }
-        
-        // category match
+
         if let category = TermCategory(rawValue: query) {
             results = Term.words(for: category)
             return
         }
-        
-        // specific word search
-        results = Term.allCases.filter {
-            $0.rawValue.lowercased().contains(query)
-        }
+
+        results = FlashcardVM.ideaSearch(query: query)
     }
     
     func selectCategory(_ category: TermCategory) {

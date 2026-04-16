@@ -7,6 +7,7 @@
 import Foundation
 import Combine
 import SwiftData
+import NaturalLanguage
 
 @Observable
 class FlashcardVM {
@@ -60,8 +61,74 @@ class FlashcardVM {
             if card.term.rawValue.lowercased().contains(input.lowercased()) {
                 results.append(card.term.rawValue)
             }
-        }   
+        }
         return results
+    }
+
+    private static let wordEmbedding: NLEmbedding? = NLEmbedding.wordEmbedding(for: .english)
+
+    static func ideaSearch(query: String, maxResults: Int = 20) -> [Term] {
+        let queryWords = query
+            .lowercased()
+            .components(separatedBy: .whitespacesAndNewlines)
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .filter { !$0.isEmpty && $0.count > 1 }
+
+        guard !queryWords.isEmpty else { return [] }
+
+        guard let embedding = wordEmbedding else {
+            return lemmatizationFallback(query: query)
+        }
+
+        var scored: [(term: Term, distance: Double)] = []
+
+        for term in Term.allCases {
+            let termWords = term.rawValue
+                .lowercased()
+                .components(separatedBy: CharacterSet(charactersIn: "-' "))
+                .filter { !$0.isEmpty && $0.count > 1 }
+
+            guard !termWords.isEmpty else { continue }
+
+            var minDistance = Double(1.0)
+            for qWord in queryWords {
+                for tWord in termWords {
+                    let dist = embedding.distance(between: qWord, and: tWord, distanceType: .cosine)
+                    if dist.isFinite {
+                        minDistance = min(minDistance, dist)
+                    }
+                }
+            }
+
+            scored.append((term: term, distance: minDistance))
+        }
+
+        return scored
+            .filter { $0.distance < 0.5 }
+            .sorted { $0.distance < $1.distance }
+            .prefix(maxResults)
+            .map { $0.term }
+    }
+
+    private static func lemmatizationFallback(query: String) -> [Term] {
+        let tagger = NLTagger(tagSchemes: [.lemma])
+        tagger.string = query
+        var lemmas = Set<String>()
+        let range = query.startIndex..<query.endIndex
+        tagger.enumerateTags(in: range, unit: .word, scheme: .lemma, options: [.omitPunctuation, .omitWhitespace]) { tag, tokenRange in
+            let token = String(query[tokenRange]).lowercased()
+            lemmas.insert(tag?.rawValue.lowercased() ?? token)
+            lemmas.insert(token)
+            return true
+        }
+        guard !lemmas.isEmpty else { return [] }
+        return Term.allCases.filter { term in
+            let termWords = term.rawValue
+                .lowercased()
+                .replacingOccurrences(of: "-", with: " ")
+                .components(separatedBy: " ")
+            return termWords.contains { lemmas.contains($0) }
+        }
     }
     
     func filterByCategory(from flashcards: [FlashcardModel], category: TermCategory) -> [FlashcardModel] {
