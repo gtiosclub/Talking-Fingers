@@ -17,6 +17,8 @@ class LearnModeVM: ObservableObject {
     }
 
     @Published var state: LearnState = .initial
+    
+    var onNextCard: (() -> Void)? = nil
 
     let flashcard: FlashcardModel
 
@@ -84,5 +86,6 @@ class LearnModeVM: ObservableObject {
         print("next word")
         // reset for next flashcard later
         state = .initial
+        onNextCard?()
     }
 }
