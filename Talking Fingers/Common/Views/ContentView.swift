@@ -53,9 +53,28 @@ struct MainNavigationView: View {
             }
             .navigationTitle("Talking Fingers")
         } detail: {
-            // Detail view based on selection
+            #if os(macOS)
+            HStack(spacing: 0) {
+    
+                detailView(for: selectedSection ?? .home)
+                    .environment(authVM)
+                    .frame(maxWidth: .infinity)
+                
+                // RIGHT SIDE WIDGETS (macOS ONLY)
+                VStack(spacing: 16) {
+                    Text("Widgets")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                        .padding(.leading, 4)
+                }
+                .frame(width: 240)
+                .padding(.top, 20)
+                .padding(.horizontal, 16)
+            }
+            #else
             detailView(for: selectedSection ?? .home)
                 .environment(authVM)
+            #endif
         }
     }
     
@@ -63,9 +82,7 @@ struct MainNavigationView: View {
     private func detailView(for section: NavigationSection) -> some View {
         switch section {
         case .home:
-            NavigationStack {
-                Text("home")
-            }
+            DashboardView()
             
         case .flashcards:
             NavigationStack {
@@ -83,7 +100,9 @@ struct MainNavigationView: View {
                     imageName: "greetingsIllustration",
                     primaryAction: {},
                     secondaryAction: {},
-                    closeAction: {},
+                    closeAction: {
+                        selectedSection = .home
+                    },
                     learnFlashcard: dummyCard,
                     learnProgress: 0.25
                 )

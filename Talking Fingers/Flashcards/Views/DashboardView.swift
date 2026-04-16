@@ -9,7 +9,8 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var flashcardVM = FlashcardVM()
-
+    @State private var currentView: String = "Home"
+    
     // Compute categories that are in progress (have at least one non-new and non-mastered card)
     private var inProgressCategories: [(category: TermCategory, progress: Float, mode: String)] {
         let grouped = Dictionary(grouping: flashcardVM.fakeFlashcards) { $0.category }
@@ -17,7 +18,7 @@ struct DashboardView: View {
             let progress = flashcardVM.returnProgress(flashcards: cards)
             // Only show categories that are actually in progress (not 0% and not 100%)
             guard progress > 0 && progress < 100 else { return nil }
-
+            
             // Decide mode based on average progress
             let mode = progress < 50 ? "Learn" : "Exercise"
             return (category: category, progress: progress, mode: mode)
@@ -26,16 +27,23 @@ struct DashboardView: View {
         .prefix(2)
         .map { $0 }
     }
-
+    
     private var allCategories: [String] {
         TermCategory.allCases.map { $0.rawValue.capitalized }
     }
-
+    
     private var dailyQueue: DailyReviewQueue {
         flashcardVM.generateDailyReviewQueue(limit: 5)
     }
-
+    
     var body: some View {
+#if os(macOS)
+        macLayout
+#else
+        iosLayout
+#endif
+    }
+    var iosLayout: some View {
         NavigationStack{
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -71,9 +79,10 @@ struct DashboardView: View {
                                             mode: item.mode,
                                             progress: item.progress,
                                             backgroundColor: index == 0
-                                                ? Color(red: 0.78, green: 0.85, blue: 0.93)
-                                                : Color(red: 0.96, green: 0.92, blue: 0.80)
+                                                ? Color.blue.opacity(0.2)
+                                                : Color.green.opacity(0.2)
                                         )
+                                        .frame(width: 180)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -105,7 +114,6 @@ struct DashboardView: View {
                         .padding(.horizontal)
                     
                     let columns = [
-                        GridItem(.flexible(), spacing: 12),
                         GridItem(.flexible(), spacing: 12)
                     ]
                     LazyVGrid(columns: columns, spacing: 12) {
@@ -127,8 +135,113 @@ struct DashboardView: View {
             .background(Color.categoryComponentColor)
         }
     }
-}
+    
+    // MARK: - Mac Layout
+    var macLayout: some View {
+        HStack(spacing: 0) {
+            
+            // MAIN CONTENT
+            Group {
+                if currentView == "Home" {
+                    dashboardContent
+                } else {
+                    categoryDetailView(currentView)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+    
+    var dashboardContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                
+                HStack {
+                    TextField("Search for a word or phrase...", text: .constant(""))
+                        .textFieldStyle(.roundedBorder)
+                    Image(systemName: "magnifyingglass")
+                }
+                
+                Text("In Progress")
+                    .font(.title)
+                
+                HStack(spacing: 16) {
+                    ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
+                        Button {
+                            currentView = item.category.rawValue
+                        } label: {
+                            InProgressCard(
+                                category: item.category,
+                                mode: item.mode,
+                                progress: item.progress,
+                                backgroundColor: index == 0
+                                ? Color.green.opacity(0.2)
+                                : Color.blue.opacity(0.2)
+                            )
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                
+                // MARK: - Daily Challenge
+                Text("Daily Challenge")
+                    .font(.title)
 
+                Button {
+                    currentView = "DailyChallenge"
+                } label: {
+                    DailyChallengeCard(
+                        streak: 3,
+                        completed: dailyQueue.cards.count,
+                        total: dailyQueue.requestedLimit
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                Text("Categories")
+                    .font(.title)
+                
+                VStack(spacing: 12) {
+                    ForEach(allCategories, id: \.self) { category in
+                        Button {
+                            currentView = category
+                        } label: {
+                            CategoryComponent(title: category)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: 900)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    func categoryDetailView(_ category: String) -> some View {
+        VStack {
+            HStack {
+                Button {
+                    currentView = "Home"
+                } label: {
+                    Image(systemName: "arrow.left")
+                }
+                
+                Spacer()
+            }
+            
+            Text(category)
+                .font(.largeTitle)
+            
+            Spacer()
+        }
+        .padding()
+    }
+}
+    
 // MARK: - In Progress Card
 
 private struct InProgressCard: View {
@@ -138,18 +251,16 @@ private struct InProgressCard: View {
     let backgroundColor: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Illustration placeholder using the asset if available, else SF Symbol
-            ZStack {
-                Image(category == .greetings ? "greetingsIllustration" : "dummySign")
-                    .resizable()
-                    .scaledToFit()
-                    .padding(10)
-            }
-            .frame(height: 100)
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 12) {
+            
+            Spacer(minLength: 0)
 
-            VStack(alignment: .center, spacing: 4) {
+            Image(category == .greetings ? "greetingsIllustration" : "dummySign")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 70)
+
+            VStack(spacing: 4) {
                 Text("Continue \(mode)")
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
@@ -157,21 +268,19 @@ private struct InProgressCard: View {
                 Text(category.rawValue)
                     .font(.system(size: 18, weight: .bold))
                     .multilineTextAlignment(.center)
-                    .frame(height: 44)
             }
-            .frame(maxWidth: .infinity)
 
-            // Progress bar
+            Spacer(minLength: 0)
+
             HStack(spacing: 6) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(Color.white.opacity(0.6))
-                            .frame(height: 8)
 
                         RoundedRectangle(cornerRadius: 4)
                             .fill(Color(red: 0.45, green: 0.65, blue: 0.25))
-                            .frame(width: geo.size.width * CGFloat(progress / 100), height: 8)
+                            .frame(width: geo.size.width * CGFloat(progress / 100))
                     }
                 }
                 .frame(height: 8)
@@ -181,8 +290,9 @@ private struct InProgressCard: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .frame(width: 180)
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .frame(height: 220)
         .background(backgroundColor)
         .cornerRadius(20)
     }
