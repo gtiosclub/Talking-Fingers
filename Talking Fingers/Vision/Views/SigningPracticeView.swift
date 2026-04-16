@@ -589,6 +589,19 @@ struct SigningPracticeView: View {
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
                         }
+                        VStack {
+                            Spacer()
+                            Text(confidenceLabel)
+                                .font(.system(size: 56, weight: .bold, design: .rounded))
+                                .foregroundStyle(confidenceColor)
+                                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                                .contentTransition(.interpolate)
+                                .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .padding(.bottom, 20)
+                        }
                     }
                     .aspectRatio(16.0 / 9.0, contentMode: .fit)
                     .frame(maxWidth: 980)
@@ -786,6 +799,21 @@ struct SigningPracticeView: View {
                 }
                 .stroke(Color.orange.opacity(0.7), lineWidth: 4)
             }
+        }
+    }
+    private var confidenceColor: Color {
+        switch cameraVM.confidenceScore {
+        case 75...100: return .green
+        case 40..<75: return .yellow
+        default: return .red
+        }
+    }
+
+    private var confidenceLabel: String {
+        switch cameraVM.confidenceScore {
+        case 75...100: return "Good"
+        case 40..<75: return "Okay"
+        default: return "Bad"
         }
     }
 }
