@@ -35,6 +35,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private var assetWriter: AVAssetWriter?
     private var assetWriterInput: AVAssetWriterInput?
     private var isWritingVideo = false
+    private var didStartWriterSession = false
 
     // --- Callbacks ---
     // Keep main signature so merge works with main as-is
@@ -377,7 +378,23 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool {
+            
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            
+            if isWritingVideo,
+               let assetWriter,
+               let assetWriterInput,
+               assetWriter.status == .writing {
+
+                if !didStartWriterSession {
+                    assetWriter.startSession(atSourceTime: pts)
+                    didStartWriterSession = true
+                }
+
+                if assetWriterInput.isReadyForMoreMediaData {
+                    assetWriterInput.append(sampleBuffer)
+                }
+            }
 
             let handler = VNImageRequestHandler(
                 cmSampleBuffer: sampleBuffer,
@@ -803,13 +820,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         ]
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
         input.expectsMediaDataInRealTime = true
-        writer.add(input)
-        writer.startWriting()
-        writer.startSession(atSourceTime: .zero)
 
+        if writer.canAdd(input) {
+            writer.add(input)
+        }
+        
+        writer.startWriting()
+        
         assetWriter = writer
         assetWriterInput = input
         isWritingVideo = true
+        didStartWriterSession = false
     }
 
     /// Stops the asset writer and resets video recording state.
@@ -820,6 +841,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         assetWriter?.finishWriting { [weak self] in
             self?.assetWriter = nil
             self?.assetWriterInput = nil
+            self?.didStartWriterSession = false
         }
     }
 
