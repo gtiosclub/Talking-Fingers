@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum TermCategory: String, CaseIterable, Codable {
+enum TermCategory: String, CaseIterable, Codable, Hashable {
     case alphabet = "alphabet"
     case numbers = "numbers"
     case greetings = "greetings"
@@ -19,6 +19,10 @@ enum TermCategory: String, CaseIterable, Codable {
     case locations = "locations"
     case commonDescriptors = "common descriptors"
     case commonObjects = "common objects"
+    
+    var displayName: String {
+        self.rawValue.capitalized
+    }
 }
 
 enum Term: String, CaseIterable, Codable {

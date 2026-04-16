@@ -136,12 +136,12 @@ struct CameraView: View {
                         if cameraMode == .compare && cameraVM.isComparing {
                             VStack {
                                 Spacer()
-                                Text("\(Int(cameraVM.confidenceScore))%")
+                                Text(confidenceLabel)
                                     .font(.system(size: 56, weight: .bold, design: .rounded))
                                     .foregroundStyle(confidenceColor)
                                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                                    .contentTransition(.numericText())
-                                    .animation(.easeInOut(duration: 0.15), value: Int(cameraVM.confidenceScore))
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 12)
                                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -485,6 +485,14 @@ struct CameraView: View {
         case 75...100: return .green
         case 40..<75: return .yellow
         default: return .red
+        }
+    }
+
+    private var confidenceLabel: String {
+        switch cameraVM.confidenceScore {
+        case 75...100: return "Good"
+        case 40..<75: return "Okay"
+        default: return "Bad"
         }
     }
 
