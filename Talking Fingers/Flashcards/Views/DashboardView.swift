@@ -104,9 +104,7 @@ struct DashboardView: View {
                                             category: item.category,
                                             mode: item.mode,
                                             progress: item.progress,
-                                            backgroundColor: index == 0
-                                            ? Color.blue.opacity(0.2)
-                                            : Color.green.opacity(0.2)
+                                            backgroundColor: Color.blue.opacity(0.15)
                                         )
                                         .frame(width: 180)
                                     }
@@ -236,9 +234,7 @@ struct DashboardView: View {
                                 category: item.category,
                                 mode: item.mode,
                                 progress: item.progress,
-                                backgroundColor: index == 0
-                                ? Color.green.opacity(0.2)
-                                : Color.blue.opacity(0.2)
+                                backgroundColor: Color.blue.opacity(0.15)
                             )
                             .frame(maxWidth: .infinity)
                         }
@@ -311,24 +307,39 @@ private struct InProgressCard: View {
     let mode: String
     let progress: Float
     let backgroundColor: Color
-
+    var iconName: String {
+        switch category {
+        case .alphabet:             return "a.square"
+        case .numbers:              return "number"
+        case .greetings:            return "hand.wave"
+        case .personalInformation:  return "person.text.rectangle"
+        case .family:               return "figure.2.and.child.holdinghands"
+        case .verbs:                return "bolt"
+        case .dateTime:             return "calendar"
+        case .feelingsEmotions:     return "heart"
+        case .locations:            return "mappin.and.ellipse"
+        case .commonDescriptors:    return "text.magnifyingglass"
+        case .commonObjects:        return "cube"
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 12) {
             
             Spacer(minLength: 0)
 
-            Image(category == .greetings ? "greetingsIllustration" : "dummySign")
+            Image(systemName: iconName)
                 .resizable()
                 .scaledToFit()
                 .frame(height: 70)
 
             VStack(spacing: 4) {
                 Text("Continue \(mode)")
-                    .font(.system(size: 14))
+                    .font(.system(size: 15))
                     .foregroundStyle(.secondary)
 
-                Text(category.rawValue)
-                    .font(.system(size: 18, weight: .bold))
+                Text(category.displayName.capitalized)
+                    .font(.system(size: 20, weight: .bold))
                     .multilineTextAlignment(.center)
             }
 

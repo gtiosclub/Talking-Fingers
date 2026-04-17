@@ -4,8 +4,6 @@
 //
 //  Created by Sanvi Adusumilli on 4/16/26.
 //
-//  Builds on StartCardComponent - works for Learn, Exercise, or Daily Challenge
-//
 
 import SwiftUI
 
@@ -60,13 +58,14 @@ enum StartContext {
 }
 
 struct FlexibleStartCardComponent: View {
-    let context: StartContext
+    @State var context: StartContext
     let completed: Int
     let total: Int
     let closeAction: () -> Void
     
     @State private var flashcardVM = FlashcardVM()
     @State private var isActive: Bool = false
+    @State private var showEndScreen: Bool = false
     
     @Environment(SwiftDataVM.self) private var dataVM
 
@@ -76,7 +75,20 @@ struct FlexibleStartCardComponent: View {
 
     var body: some View {
         Group {
-            if isActive {
+            if showEndScreen {
+                EndCardComponent(
+                    context: context,
+                    total: total,
+                    onGoHome: closeAction,
+                    onGoToExercise: {
+                        if case .learn(let cat) = context {
+                            context = .exercise(cat)
+                            showEndScreen = false
+                            isActive = false
+                        }
+                    }
+                )
+            } else if isActive {
                 switch context {
                 case .learn(let category):
                     LearnFlow(
@@ -84,7 +96,7 @@ struct FlexibleStartCardComponent: View {
                         targetCount: total,
                         vm: flashcardVM
                     ) {
-                        isActive = false
+                        showEndScreen = true
                     }
                     
                 case .exercise, .dailyChallenge:
@@ -94,7 +106,7 @@ struct FlexibleStartCardComponent: View {
                         targetCount: total,
                         vm: flashcardVM
                     ) {
-                        isActive = false
+                        showEndScreen = true
                     }
                     .environment(flashcardVM)
                     .environment(dataVM)
@@ -105,7 +117,6 @@ struct FlexibleStartCardComponent: View {
         }
     }
 
-    // MARK: - Start View UI
     private var startView: some View {
         ZStack {
             VStack(spacing: 16) {
@@ -129,8 +140,7 @@ struct FlexibleStartCardComponent: View {
                     
                     Text(context.subtitle)
                         .font(.system(size: 42, weight: .bold))
-                        .foregroundColor(Color(red: 0.58, green: 0.72, blue: 0.85))
-                }
+                        .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))                }
 
                 Text("\(completed)/\(total) Words Completed")
                     .foregroundColor(.black)
@@ -185,8 +195,6 @@ struct FlexibleStartCardComponent: View {
 }
 
 private struct MultipleChoiceFlow: View {
-    @Environment(\.dismiss) private var dismiss
-
     @State private var currentCard: FlashcardModel
     @State private var options: [String] = []
     @State private var completedCount: Int = 0
@@ -212,22 +220,18 @@ private struct MultipleChoiceFlow: View {
             correctAnswer: currentCard.term.displayName,
             explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
             currentCard: currentCard,
-            onNext: { next in
-                advance(to: next)
-            },
+            onNext: { next in advance(to: next) },
             progress: Double(completedCount) / Double(targetCount)
         )
         .onAppear {
             options = buildOptions(for: currentCard, from: vm.flashcards)
         }
-        .environment(vm)
     }
 
     private func advance(to next: FlashcardModel) {
         completedCount += 1
         if completedCount >= targetCount {
             onFinished()
-            dismiss()
             return
         }
         let nextCard = next
@@ -236,12 +240,7 @@ private struct MultipleChoiceFlow: View {
     }
 
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-        let distractors = pool
-            .filter { $0.id != card.id }
-            .map { $0.term.displayName }
-            .shuffled()
-            .prefix(max(0, count - 1))
-
+        let distractors = pool.filter { $0.id != card.id }.map { $0.term.displayName }.shuffled().prefix(max(0, count - 1))
         var opts = Array(distractors)
         opts.append(card.term.displayName)
         return Array(Set(opts)).shuffled()
@@ -282,9 +281,9 @@ private struct LearnFlow: View {
 
 #Preview {
     FlexibleStartCardComponent(
-        context: .learn(.greetings),
+        context: .dailyChallenge,
         completed: 0,
-        total: 12,
+        total: 5,
         closeAction: {}
     )
     .environment(SwiftDataVM())
