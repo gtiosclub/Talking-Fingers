@@ -514,10 +514,6 @@ import Vision
 struct SigningPracticeView: View {
     @Environment(\.dismiss) private var dismiss
 
-    let words: [String] = ["A", "B", "C"]
-
-    @State private var currentWordIndex: Int = 0
-    @State private var pass: Bool = false
     @State private var cameraVM: CameraVM = CameraVM()
 
     @State private var hands: [VNHumanHandPoseObservation] = []
@@ -545,9 +541,6 @@ struct SigningPracticeView: View {
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
-    @State private var signName: String = "a"
-    @State private var cameraMode: CameraMode = .compare
-
     let handConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
         (.wrist, .thumbCMC), (.thumbCMC, .thumbMP), (.thumbMP, .thumbIP), (.thumbIP, .thumbTip),
         (.wrist, .indexMCP), (.indexMCP, .indexPIP), (.indexPIP, .indexDIP), (.indexDIP, .indexTip),
@@ -573,7 +566,7 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             HStack {
                 Button(action: { dismiss() }) {
                     HStack(spacing: 6) {
@@ -586,16 +579,7 @@ struct SigningPracticeView: View {
                 Spacer()
             }
             .padding(.horizontal)
-
-            MacPracticeProgressBar(
-                total: words.count,
-                current: currentWordIndex
-            )
-            .padding(.horizontal)
-
-            Text(signName.capitalized)
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundColor(.primary)
+            .padding(.top, 20)
 
             VStack(spacing: 16) {
                 if cameraVM.isAuthorized {
@@ -613,7 +597,6 @@ struct SigningPracticeView: View {
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
                         }
-
                         VStack {
                             Spacer()
                             Text(confidenceLabel)
@@ -648,35 +631,11 @@ struct SigningPracticeView: View {
                     .padding(.top, 24)
                 }
             }
-            .padding(.top, 8)
 
             Spacer(minLength: 0)
-
-            Button(action: {
-                if currentWordIndex < words.count - 1 {
-                    nextWord()
-                } else {
-                    dismiss()
-                }
-            }) {
-                Text(currentWordIndex < words.count - 1 ? "Next Word" : "Done")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(pass ? Color.green : Color.gray.opacity(0.45))
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(!pass)
-            .padding(.horizontal, 32)
-            .padding(.bottom, 24)
         }
-        .padding(.top, 20)
         .onAppear {
             cameraVM.isMirrored = true
-            signName = words[currentWordIndex].lowercased()
-
             cameraVM.checkPermission()
 
             cameraVM.onPoseDetected = { handObservations, _ in
@@ -686,8 +645,6 @@ struct SigningPracticeView: View {
             cameraVM.onBodyPoseDetected = { bodyObservations, _ in
                 bodies = bodyObservations
             }
-
-            cameraVM.startComparing(forSign: signName)
         }
         .task {
             try? await Task.sleep(for: .milliseconds(300))
@@ -696,31 +653,6 @@ struct SigningPracticeView: View {
         .onDisappear {
             cameraVM.stop()
         }
-        .onChange(of: cameraMode) { _, newValue in
-            if newValue == .compare {
-                cameraVM.startComparing(forSign: signName)
-            } else {
-                cameraVM.stopComparing()
-            }
-        }
-        .onChange(of: signName) { _, newValue in
-            if cameraMode == .compare {
-                cameraVM.startComparing(forSign: newValue)
-                pass = false
-            }
-        }
-        .onChange(of: cameraVM.confidenceScore) { _, newValue in
-            if Int(newValue) > 70 {
-                pass = true
-            }
-        }
-    }
-
-    private func nextWord() {
-        guard currentWordIndex < words.count - 1 else { return }
-        currentWordIndex += 1
-        signName = words[currentWordIndex].lowercased()
-        pass = false
     }
 
     @ViewBuilder
@@ -877,7 +809,6 @@ struct SigningPracticeView: View {
             }
         }
     }
-
     private var confidenceColor: Color {
         switch cameraVM.confidenceScore {
         case 75...100: return .green
@@ -892,31 +823,6 @@ struct SigningPracticeView: View {
         case 40..<75: return "Okay"
         default: return "Bad"
         }
-    }
-}
-
-private struct MacPracticeProgressBar: View {
-    let total: Int
-    let current: Int
-
-    var body: some View {
-        let height: CGFloat = 12
-        let progress = max(0, min(1, Double(current + 1) / Double(total)))
-
-        GeometryReader { proxy in
-            let availableWidth = proxy.size.width
-
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: height / 2, style: .continuous)
-                    .fill(.quaternary)
-                    .frame(height: height)
-
-                RoundedRectangle(cornerRadius: height / 2, style: .continuous)
-                    .fill(Color.accentColor)
-                    .frame(width: max(0, availableWidth * progress), height: height)
-            }
-        }
-        .frame(height: height)
     }
 }
 #endif
