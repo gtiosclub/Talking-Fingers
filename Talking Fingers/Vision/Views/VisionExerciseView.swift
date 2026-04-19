@@ -3,7 +3,6 @@
 //  Talking Fingers
 //
 
-#if os(iOS)
 import SwiftUI
 import SwiftData
 
@@ -15,6 +14,8 @@ struct VisionExerciseView: View {
     let currentCard: FlashcardModel
     var progress: Double
     @Binding var inputMode: ExerciseInputMode
+    /// Called when the user taps Leave; on macOS (inline) this replaces dismiss().
+    var onLeave: (() -> Void)? = nil
     var onNext: (FlashcardModel) -> Void = { _ in }
 
     // MARK: - Environment
@@ -60,7 +61,9 @@ struct VisionExerciseView: View {
                 }
             }
             .background(Color(hex: 0xFFFFFF))
+            #if os(iOS)
             .toolbar(.hidden, for: .navigationBar)
+            #endif
         }
         // Hint popup
         .popupHost(isPresented: $showHintPopup) {
@@ -95,7 +98,11 @@ struct VisionExerciseView: View {
         VStack(spacing: 12) {
             HStack {
                 Button {
+                    #if os(macOS)
+                    onLeave?()
+                    #else
                     dismiss()
+                    #endif
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -196,7 +203,7 @@ struct VisionExerciseView: View {
                     }
                 }
             )
-            .frame(height: 380)
+            .frame(height: 650)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -258,7 +265,11 @@ struct VisionExerciseView: View {
         if let next = flashcardVM.nextCard() {
             onNext(next)
         } else {
+            #if os(macOS)
+            onLeave?()
+            #else
             dismiss()
+            #endif
         }
     }
 }
@@ -341,4 +352,3 @@ private struct StuckPopUpComponent: View {
     .environment(vm)
     .environment(SwiftDataVM())
 }
-#endif

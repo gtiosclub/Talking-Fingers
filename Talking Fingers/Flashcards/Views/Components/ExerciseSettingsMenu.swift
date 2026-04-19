@@ -29,7 +29,6 @@ struct ExerciseSettingsMenu: View {
                 )
             }
 
-            #if os(iOS)
             Button {
                 toggleCamera()
             } label: {
@@ -38,7 +37,6 @@ struct ExerciseSettingsMenu: View {
                     systemImage: cameraSelected ? "checkmark" : "camera"
                 )
             }
-            #endif
         } label: {
             HStack(spacing: 6) {
                 Text("Exercise Settings")

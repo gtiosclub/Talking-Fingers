@@ -104,7 +104,8 @@ struct FlexibleStartCardComponent: View {
                         initialCard: flashcardVM.flashcards.first ?? FlashcardModel(term: .hello, id: UUID(), category: .greetings),
                         imageName: context.iconName,
                         targetCount: total,
-                        vm: flashcardVM
+                        vm: flashcardVM,
+                        onLeave: closeAction
                     ) {
                         showEndScreen = true
                     }
@@ -207,35 +208,34 @@ private struct ExerciseSessionFlow: View {
     let imageName: String
     let targetCount: Int
     let vm: FlashcardVM
+    let onLeave: () -> Void
     let onFinished: () -> Void
 
     @Environment(SwiftDataVM.self) private var dataVM
 
-    init(initialCard: FlashcardModel, imageName: String, targetCount: Int, vm: FlashcardVM, onFinished: @escaping () -> Void) {
+    init(initialCard: FlashcardModel, imageName: String, targetCount: Int, vm: FlashcardVM, onLeave: @escaping () -> Void, onFinished: @escaping () -> Void) {
         _currentCard = State(initialValue: initialCard)
         self.imageName = imageName
         self.targetCount = targetCount
         self.vm = vm
+        self.onLeave = onLeave
         self.onFinished = onFinished
     }
 
     var body: some View {
         Group {
-            #if os(iOS)
             if currentSlotMode == .camera {
                 VisionExerciseView(
                     currentCard: currentCard,
                     progress: Double(completedCount) / Double(targetCount),
                     inputMode: $mode,
+                    onLeave: onLeave,
                     onNext: { next in advance(to: next) }
                 )
                 .id(currentCard.id)
             } else {
                 flashcardsView
             }
-            #else
-            flashcardsView
-            #endif
         }
         .onAppear {
             options = buildOptions(for: currentCard, from: vm.flashcards)
@@ -255,6 +255,7 @@ private struct ExerciseSessionFlow: View {
             explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
             currentCard: currentCard,
             inputMode: $mode,
+            onLeave: onLeave,
             onNext: { next in advance(to: next) },
             progress: Double(completedCount) / Double(targetCount)
         )

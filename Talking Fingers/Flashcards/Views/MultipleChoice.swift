@@ -27,6 +27,9 @@ struct MultipleChoice: View {
     // Mode binding — lets the user toggle Camera vs Flashcards mid-session
     @Binding var inputMode: ExerciseInputMode
 
+    // Called when the user taps Leave; on macOS (inline) this replaces dismiss().
+    var onLeave: (() -> Void)? = nil
+
     // MARK: - Environment (Observation framework)
     @Environment(FlashcardVM.self) private var flashcardVM
     @Environment(\.dismiss) private var dismiss
@@ -53,6 +56,7 @@ struct MultipleChoice: View {
         explanationText: String = "People often confuse this sign with Goodbye because...",
         currentCard: FlashcardModel,
         inputMode: Binding<ExerciseInputMode> = .constant(.flashcards),
+        onLeave: (() -> Void)? = nil,
         onNext: @escaping (FlashcardModel) -> Void = { _ in },
         progress: Double
     ) {
@@ -63,6 +67,7 @@ struct MultipleChoice: View {
         self.explanationText = explanationText
         self.currentCard = currentCard
         self._inputMode = inputMode
+        self.onLeave = onLeave
         self.onNext = onNext
         self.progress = progress
     }
@@ -144,7 +149,11 @@ struct MultipleChoice: View {
         VStack(spacing: 12) {
             HStack {
                 Button {
+                    #if os(macOS)
+                    onLeave?()
+                    #else
                     dismiss()
+                    #endif
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -217,7 +226,7 @@ struct MultipleChoice: View {
             }
             GIFView(gifFileName: "helloGIF.gif")
                 .scaledToFit()
-                .frame(height: 160)
+                .frame(height: 400)
 
             VStack(spacing: 12) {
                 ForEach(options, id: \.self) { option in
@@ -364,8 +373,12 @@ struct MultipleChoice: View {
             // Delegate navigation/presentation to parent
             onNext(next)
         } else {
-            // No more cards — dismiss or keep current view
+            // No more cards — return to parent
+            #if os(macOS)
+            onLeave?()
+            #else
             dismiss()
+            #endif
         }
     }
 }
