@@ -49,7 +49,16 @@ struct DTWService {
     /// 1. Handshape: centroid + scale normalized hand joints (finger configuration)
     /// 2. Trajectory: wrist/elbow positions relative to shoulder midpoint,
     ///    normalized by shoulder width (where the hand is in signing space)
+    ///
+    /// Both components first map each frame's Vision-normalized (0..1) joint
+    /// positions back into pixel-equivalent space using the frame's
+    /// `sourceWidth` / `sourceHeight`. This makes the distance aspect-ratio
+    /// invariant, so iPhone-recorded references compare correctly against
+    /// macOS landscape live frames (and vice versa).
     private func frameDistance(_ f1: SignFrame, _ f2: SignFrame) -> Double {
+        let w1 = f1.sourceWidth, h1 = f1.sourceHeight
+        let w2 = f2.sourceWidth, h2 = f2.sourceHeight
+
         // --- Handshape: centroid+scale normalized hand joints ---
         var matched1: [(x: Double, y: Double)] = []
         var matched2: [(x: Double, y: Double)] = []
@@ -58,8 +67,8 @@ struct DTWService {
             guard key.contains("VNHLK") else { continue }
             guard let j2 = f2.joints[key] else { continue }
             guard j1.confidence > 0.3, j2.confidence > 0.3 else { continue }
-            matched1.append((x: j1.x, y: j1.y))
-            matched2.append((x: j2.x, y: j2.y))
+            matched1.append((x: j1.x * w1, y: j1.y * h1))
+            matched2.append((x: j2.x * w2, y: j2.y * h2))
         }
 
         guard matched1.count >= 5 else { return .infinity }
@@ -94,11 +103,16 @@ struct DTWService {
             return handshapeDist
         }
 
-        let bodyCx1 = (ls1.x + rs1.x) / 2, bodyCy1 = (ls1.y + rs1.y) / 2
-        let bodyCx2 = (ls2.x + rs2.x) / 2, bodyCy2 = (ls2.y + rs2.y) / 2
+        let lsx1 = ls1.x * w1, lsy1 = ls1.y * h1
+        let rsx1 = rs1.x * w1, rsy1 = rs1.y * h1
+        let lsx2 = ls2.x * w2, lsy2 = ls2.y * h2
+        let rsx2 = rs2.x * w2, rsy2 = rs2.y * h2
 
-        let shoulderW1 = max(hypot(ls1.x - rs1.x, ls1.y - rs1.y), 1e-6)
-        let shoulderW2 = max(hypot(ls2.x - rs2.x, ls2.y - rs2.y), 1e-6)
+        let bodyCx1 = (lsx1 + rsx1) / 2, bodyCy1 = (lsy1 + rsy1) / 2
+        let bodyCx2 = (lsx2 + rsx2) / 2, bodyCy2 = (lsy2 + rsy2) / 2
+
+        let shoulderW1 = max(hypot(lsx1 - rsx1, lsy1 - rsy1), 1e-6)
+        let shoulderW2 = max(hypot(lsx2 - rsx2, lsy2 - rsy2), 1e-6)
 
         let trajectoryJoints = ["leftVNHLKWRI", "rightVNHLKWRI",
                                 "left_forearm_joint", "right_forearm_joint"]
@@ -108,10 +122,10 @@ struct DTWService {
         for key in trajectoryJoints {
             guard let j1 = f1.joints[key], let j2 = f2.joints[key],
                   j1.confidence > 0.3, j2.confidence > 0.3 else { continue }
-            let tx1 = (j1.x - bodyCx1) / shoulderW1
-            let ty1 = (j1.y - bodyCy1) / shoulderW1
-            let tx2 = (j2.x - bodyCx2) / shoulderW2
-            let ty2 = (j2.y - bodyCy2) / shoulderW2
+            let tx1 = (j1.x * w1 - bodyCx1) / shoulderW1
+            let ty1 = (j1.y * h1 - bodyCy1) / shoulderW1
+            let tx2 = (j2.x * w2 - bodyCx2) / shoulderW2
+            let ty2 = (j2.y * h2 - bodyCy2) / shoulderW2
             trajectoryDist += hypot(tx1 - tx2, ty1 - ty2)
             trajectoryCount += 1
         }
