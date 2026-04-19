@@ -432,12 +432,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     self.onBodyPoseDetected?(bodyObservations, pts)
 
                     if self.isRecording {
-                        if self.recordingStartTime == nil { self.recordingStartTime = pts }
+                        if self.recordingStartTime == nil {
+                            self.recordingStartTime = pts
+                        }
+
+                        let relativeTimestamp = pts - (self.recordingStartTime ?? pts)
 
                         let frame = SignFrame(
                             body: primaryBody,
                             hands: handObservations,
-                            at: pts
+                            at: relativeTimestamp
                         )
 
                         self.recordedFrames.append(frame)
@@ -587,7 +591,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     /// Call this before `filterFrames` / `filterReferences` to discard the
     /// trailing grace-period where hands were no longer visible.
     func trimFrames(after cutoff: CMTime) {
-        recordedFrames.removeAll { $0.timestamp > cutoff }
+        guard let start = recordingStartTime else { return }
+            let relativeCutoff = cutoff - start
+            recordedFrames.removeAll { $0.timestamp > relativeCutoff }
     }
 
     // Filter frames (SignFrame-based)
