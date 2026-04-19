@@ -203,7 +203,7 @@ struct SigningPracticeView: View {
             ForEach(hands, id: \.uuid) { hand in
                 let points = perimeterJoints.compactMap { jointName -> CGPoint? in
                     guard let point = try? hand.recognizedPoint(jointName),
-                          point.confidence > 0.7 else { return nil }
+                          point.confidence > 0.5 else { return nil }
                     return cameraVM.convertVisionPointToScreenPosition(
                         visionPoint: point.location,
                         viewSize: size
@@ -227,7 +227,7 @@ struct SigningPracticeView: View {
         ForEach(hands, id: \.uuid) { hand in
             let visibleJoints = JointsSheetView.handJointLabels.filter { jointVisibility[$0.name] == true }
             ForEach(visibleJoints, id: \.name) { joint in
-                if let point = try? hand.recognizedPoint(joint.name), point.confidence > 0.7 {
+                if let point = try? hand.recognizedPoint(joint.name), point.confidence > 0.5 {
                     let pos = cameraVM.convertVisionPointToScreenPosition(
                         visionPoint: point.location,
                         viewSize: size
