@@ -53,7 +53,11 @@ struct SigningPracticeView: View {
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
-    @State var signName: String? = nil
+    let signName: String?
+
+    init(signName: String? = nil) {
+        self.signName = signName
+    }
     @State private var cameraMode: CameraMode = .compare
 
     @State private var countdown: Int = 0
@@ -109,36 +113,39 @@ struct SigningPracticeView: View {
                                 .ignoresSafeArea()
                             GeometryReader { geo in
                                 handOutlineOverlay(in: geo.size)
-                                    .ignoresSafeArea()
                                 handJointLabelsOverlay(in: geo.size)
-                                    .ignoresSafeArea()
                                 bodyJointLabelsOverlay(in: geo.size)
-                                    .ignoresSafeArea()
                                 handSkeletonOverlay(in: geo.size)
-                                    .ignoresSafeArea()
                                 bodySkeletonOverlay(in: geo.size)
-                                    .ignoresSafeArea()
                             }
-                            .ignoresSafeArea()
-                            VStack {
-                                Spacer()
-                                if  hands.count > 0  && signName != nil {
-                                    Text(confidenceLabel)
-                                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                                        .foregroundStyle(confidenceColor)
-                                        .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                                        .contentTransition(.interpolate)
-                                        .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                        .padding(.horizontal, 24)
-                                        .padding(.vertical, 12)
-                                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                        .padding(.bottom, 20)
+                            if signName != nil && hands.count > 0{
+                                VStack {
+                                    HStack {
+                                        Spacer()
+                                        Text(confidenceLabel)
+                                            .foregroundStyle(confidenceColor)
+                                            .contentTransition(.interpolate)
+                                            .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                            .font(.system(size: 18, weight: .bold))
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(.ultraThinMaterial)
+                                            .clipShape(Capsule())
+                                            .padding(10)
+                                    }
+                                    Spacer()
                                 }
                             }
-                            .ignoresSafeArea()
                         }
+                        .aspectRatio(9.0 / 16.0, contentMode: .fit)
                         .frame(maxWidth: .infinity)
-                        .ignoresSafeArea()
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(.white.opacity(0.15), lineWidth: 1)
+                        )
+                        .shadow(radius: 12)
+                        .padding(.horizontal)
                     } else {
                         ContentUnavailableView(
                             "Camera Access Required",
@@ -149,9 +156,7 @@ struct SigningPracticeView: View {
                         .padding(.top, 24)
                     }
                 }
-                .ignoresSafeArea()
                 .onAppear {
-                    print(signName)
                     cameraVM.checkPermission()
 
                     cameraVM.onPoseDetected = { handObservations, pts in
@@ -216,7 +221,6 @@ struct SigningPracticeView: View {
                     }
                     .fill(Color.green.opacity(0.3))
                     .stroke(Color.green, lineWidth: 2)
-                    .ignoresSafeArea()
                 }
             }
         }
@@ -244,7 +248,6 @@ struct SigningPracticeView: View {
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
-                                .ignoresSafeArea()
                         }
 
                         if dotsVisibility {
@@ -252,7 +255,6 @@ struct SigningPracticeView: View {
                                 .fill(Color.white)
                                 .frame(width: 7, height: 7)
                                 .position(pos)
-                                .ignoresSafeArea()
                         }
                     }
                 }
@@ -517,19 +519,22 @@ struct SigningPracticeView: View {
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
                         }
-                        if signName != nil {
+                        if signName != nil && hands.count > 0 {
                             VStack {
+                                HStack {
+                                    Spacer()
+                                    Text(confidenceLabel)
+                                        .foregroundStyle(confidenceColor)
+                                        .contentTransition(.interpolate)
+                                        .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Capsule())
+                                        .padding(10)
+                                }
                                 Spacer()
-                                Text(confidenceLabel)
-                                    .font(.system(size: 56, weight: .bold, design: .rounded))
-                                    .foregroundStyle(confidenceColor)
-                                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                                    .contentTransition(.interpolate)
-                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 12)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                    .padding(.bottom, 20)
                             }
                         }
                     }
