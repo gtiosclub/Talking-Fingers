@@ -17,9 +17,13 @@ class LearnModeVM: ObservableObject {
     }
 
     @Published var state: LearnState = .initial
+    
+    var onNextCard: (() -> Void)? = nil
 
     let flashcard: FlashcardModel
-
+    
+    private let tfGreen = Color(red: 159/255, green: 192/255, blue: 122/255)
+    
     init(flashcard: FlashcardModel) {
         self.flashcard = flashcard
     }
@@ -38,15 +42,15 @@ class LearnModeVM: ObservableObject {
     }
 
     var buttonText: String {
-        state == .initial ? "Try" : "Next Word"
+        state == .initial ? "Try Signing" : "Next Word"
     }
 
     var buttonColor: Color {
-        state == .initial ? .gray : .blue
+        tfGreen
     }
 
     var bulbColor: Color {
-        state == .showingHint ? .yellow : .gray
+        state == .showingHint ? .orange : .gray.opacity(0.5)
     }
 
     var showHintButton: Bool {
@@ -54,7 +58,7 @@ class LearnModeVM: ObservableObject {
     }
 
     var showingCamera: Bool {
-        state == .practicing
+        state == .practicing || state == .showingHint
     }
 
     var showingHint: Bool {
@@ -84,5 +88,6 @@ class LearnModeVM: ObservableObject {
         print("next word")
         // reset for next flashcard later
         state = .initial
+        onNextCard?()
     }
 }
