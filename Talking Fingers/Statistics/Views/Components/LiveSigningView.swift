@@ -79,7 +79,7 @@ struct LiveSigningView: View {
             HStack(spacing: 6) {
                 ForEach(Array(glossWords.enumerated()), id: \.offset) { index, term in
                     Text(term.rawValue)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 28, weight: .bold))
                         .foregroundColor(colorForWord(at: index))
                         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
                 }

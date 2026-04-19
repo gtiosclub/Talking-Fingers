@@ -34,7 +34,7 @@ struct AISentenceSigningView: View {
                 .padding(.top, 20)
 
             Text(subtitle)
-                .font(.title3)
+                .font(currentPage == 2 ? .title2 : .title3)
                 .fontWeight(.medium)
                 .foregroundColor(subtitleColor)
                 .animation(.easeInOut, value: currentPage)
@@ -99,7 +99,7 @@ struct PageOneContent: View {
 
                     if showGloss {
                         Text(glossLineString)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 40, weight: .semibold))
                             .foregroundColor(Color(white: 0.58))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .multilineTextAlignment(.leading)
