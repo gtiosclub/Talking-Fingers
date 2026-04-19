@@ -514,6 +514,15 @@ import Vision
 struct SigningPracticeView: View {
     @Environment(\.dismiss) private var dismiss
 
+    /// Optional sign reference name to compare the user's pose against.
+    /// When `nil`, the comparison overlay (Bad/Okay/Good label) is hidden
+    /// and no reference is loaded.
+    let signName: String?
+
+    init(signName: String? = nil) {
+        self.signName = signName
+    }
+
     @State private var cameraVM: CameraVM = CameraVM()
 
     @State private var hands: [VNHumanHandPoseObservation] = []
@@ -597,18 +606,20 @@ struct SigningPracticeView: View {
                             handSkeletonOverlay(in: geo.size)
                             bodySkeletonOverlay(in: geo.size)
                         }
-                        VStack {
-                            Spacer()
-                            Text(confidenceLabel)
-                                .font(.system(size: 56, weight: .bold, design: .rounded))
-                                .foregroundStyle(confidenceColor)
-                                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                                .contentTransition(.interpolate)
-                                .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .padding(.bottom, 20)
+                        if signName != nil {
+                            VStack {
+                                Spacer()
+                                Text(confidenceLabel)
+                                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                                    .foregroundStyle(confidenceColor)
+                                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .padding(.bottom, 20)
+                            }
                         }
                     }
                     .aspectRatio(16.0 / 9.0, contentMode: .fit)
@@ -645,6 +656,10 @@ struct SigningPracticeView: View {
             cameraVM.onBodyPoseDetected = { bodyObservations, _ in
                 bodies = bodyObservations
             }
+
+            if let signName {
+                cameraVM.startComparing(forSign: signName)
+            }
         }
         .task {
             try? await Task.sleep(for: .milliseconds(300))
@@ -652,6 +667,13 @@ struct SigningPracticeView: View {
         }
         .onDisappear {
             cameraVM.stop()
+        }
+        .onChange(of: signName) { _, newValue in
+            if let newValue {
+                cameraVM.startComparing(forSign: newValue)
+            } else {
+                cameraVM.stopComparing()
+            }
         }
     }
 
