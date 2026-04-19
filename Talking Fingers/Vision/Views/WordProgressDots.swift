@@ -24,3 +24,4 @@ struct WordProgressDots: View {
 #Preview {
     WordProgressDots(total: 3, current: 1)
 }
+
