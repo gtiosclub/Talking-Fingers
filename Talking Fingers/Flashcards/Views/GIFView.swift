@@ -20,7 +20,9 @@ struct GIFView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        if let url = Bundle.main.url(forResource: gifFileName, withExtension: nil) {
+        if let remoteURL = URL(string: gifFileName), remoteURL.scheme?.hasPrefix("http") == true {
+            uiView.load(URLRequest(url: remoteURL))
+        } else if let url = Bundle.main.url(forResource: gifFileName, withExtension: nil) {
             print("GIF found at: \(url)")
             if let data = try? Data(contentsOf: url) {
                 uiView.load(data, mimeType: "image/gif", characterEncodingName: "", baseURL: url)
@@ -41,7 +43,9 @@ struct GIFView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        if let url = Bundle.main.url(forResource: gifFileName, withExtension: nil) {
+        if let remoteURL = URL(string: gifFileName), remoteURL.scheme?.hasPrefix("http") == true {
+            nsView.load(URLRequest(url: remoteURL))
+        } else if let url = Bundle.main.url(forResource: gifFileName, withExtension: nil) {
             print("GIF found at: \(url)")
             if let data = try? Data(contentsOf: url) {
                 nsView.load(data, mimeType: "image/gif", characterEncodingName: "", baseURL: url)
@@ -52,3 +56,9 @@ struct GIFView: NSViewRepresentable {
     }
 }
 #endif
+
+#Preview("Zero GIF Only") {
+    GIFView(gifFileName: "zero.gif")
+        .frame(width: 200, height: 150)
+        .padding()
+}

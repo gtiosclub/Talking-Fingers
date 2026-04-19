@@ -239,11 +239,46 @@ struct MultipleChoice: View {
                 }
                 .buttonStyle(.plain)
             }
-            GIFView(gifFileName: "helloGIF.gif")
-                .scaledToFit()
-                .frame(height: gifHeight)
 
-            VStack(spacing: 12) {
+            // Sign illustration placeholder
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(hex: 0xFFFFFF))
+                    .frame(height: 180)
+                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+
+                /*if imageName.isEmpty {
+                    // Fallback sketch-style placeholder
+                    Image(systemName: "hand.wave.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 100)
+                        .foregroundColor(.black.opacity(0.8))
+                } else {
+                    Image(imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 160)
+                        .padding(12)
+                }*/
+                if let gifFileName = currentCard.gifFileName ?? currentCard.term.defaultGifFileName {
+                    GIFView(gifFileName: gifFileName)
+                        .frame(width: 200, height: 150)
+                } else {
+                    Text("No GIF available")
+                }
+            }
+            
+            
+            // Question text (if desired)
+            if !question.isEmpty {
+                Text(question)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Answer options
+            VStack(spacing: 10) {
                 ForEach(options, id: \.self) { option in
                     optionRow(option, isSelected: selectedAnswer == option)
                 }
@@ -501,6 +536,7 @@ private func makeDummyFlashcards() -> [FlashcardModel] {
     ]
 
     cards += [
+        FlashcardModel(term: .zero, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .numbers),
         FlashcardModel(term: .one, id: UUID(), lastSucceeded: daysAgo(8), starred: false, progress: .learning, category: .numbers),
         FlashcardModel(term: .two, id: UUID(), lastSucceeded: daysAgo(2), starred: false, progress: .polishing, category: .numbers),
         FlashcardModel(term: .three, id: UUID(), lastSucceeded: daysAgo(5), starred: true, progress: .polishing, category: .numbers),
@@ -625,6 +661,30 @@ struct MultipleChoiceSRTester: View {
         progress: 0.0
     )
     .environment(vm)
+    .environment(SwiftDataVM())
+    .modelContainer(for: [FlashcardModel.self, User.self], inMemory: true)
+}
+
+#Preview("Zero GIF") {
+    let vm = FlashcardVM()
+    let card = FlashcardModel(
+        term: .zero,
+        id: UUID(),
+        category: .numbers
+    )
+    return MultipleChoice(
+        question: "What sign is being shown?",
+        imageName: "greetingsIllustration",
+        options: ["0", "1", "2", "3"],
+        correctAnswer: "0",
+        explanationText: "This card verifies that the zero flashcard loads zero.gif.",
+        currentCard: card,
+        onNext: { _ in },
+        progress: 0.0
+    )
+    .environment(vm)
+    .environment(SwiftDataVM())
+    .modelContainer(for: [FlashcardModel.self, User.self], inMemory: true)
 }
 
 #Preview("Spaced Repetition Tester") {

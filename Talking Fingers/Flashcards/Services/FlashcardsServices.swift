@@ -21,14 +21,16 @@ final class FlashcardsServices {
         let collectionRef = db.collection(collectionName)
 
         for card in flashcards {
-            try await collectionRef.document(card.id.uuidString).setData([
+            var data: [String: Any] = [
                 "id": card.id.uuidString,
                 "term": card.term.rawValue,
                 "category": card.category.rawValue,
                 "starred": card.starred,
-                "progress": String(describing: card.progress),
-                "lastSucceeded": card.lastSucceeded as Any
-            ])
+                "progress": String(describing: card.progress)
+            ]
+            data["lastSucceeded"] = card.lastSucceeded
+            data["gifFileName"] = card.gifFileName ?? card.term.defaultGifFileName
+            try await collectionRef.document(card.id.uuidString).setData(data)
         }
     }
     
@@ -67,7 +69,8 @@ final class FlashcardsServices {
                 lastSucceeded: date,
                 starred: starred,
                 progress: progress,
-                category: category
+                category: category,
+                gifFileName: data["gifFileName"] as? String
             )
             flashcards.append(card)
         }
@@ -107,11 +110,11 @@ final class FlashcardsServices {
                 lastSucceeded: lastSucceeded,
                 starred: starred,
                 progress: progress,
-                category: category
+                category: category,
+                gifFileName: data["gifFileName"] as? String
             )
             flashcards.append(card)
         }
         return flashcards
     }
 }
-
