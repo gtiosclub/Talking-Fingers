@@ -174,6 +174,7 @@ struct DashboardView: View {
                     }
                 )
             }
+#if os(iOS)
             .fullScreenCover(item: $activeFlow) { flow in
                 switch flow {
                 case .learn(let category):
@@ -193,6 +194,30 @@ struct DashboardView: View {
                     .environment(dataVM)
                 }
             }
+#else
+            .sheet(item: $activeFlow) { flow in
+                switch flow {
+                case .learn(let category):
+                    FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
+                        activeFlow = nil
+                    }
+                    .environment(dataVM)
+                    .frame(minWidth: 700, minHeight: 600)
+                case .exercise(let category):
+                    FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
+                        activeFlow = nil
+                    }
+                    .environment(dataVM)
+                    .frame(minWidth: 700, minHeight: 600)
+                case .dailyChallenge:
+                    FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
+                        activeFlow = nil
+                    }
+                    .environment(dataVM)
+                    .frame(minWidth: 700, minHeight: 600)
+                }
+            }
+#endif
         }
     }
     
@@ -209,6 +234,44 @@ struct DashboardView: View {
                 }
             }
             .frame(maxWidth: .infinity)
+        }
+        .background(Color.categoryComponentColor)
+        .popupHost(isPresented: $showModePopup) {
+            ModePopupView(
+                isPresented: $showModePopup,
+                onLearn: {
+                    if let cat = selectedCategoryForPopup {
+                        activeFlow = .learn(cat)
+                    }
+                },
+                onExercise: {
+                    if let cat = selectedCategoryForPopup {
+                        activeFlow = .exercise(cat)
+                    }
+                }
+            )
+        }
+        .sheet(item: $activeFlow) { flow in
+            switch flow {
+            case .learn(let category):
+                FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
+                    activeFlow = nil
+                }
+                .environment(dataVM)
+                .frame(minWidth: 700, minHeight: 600)
+            case .exercise(let category):
+                FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
+                    activeFlow = nil
+                }
+                .environment(dataVM)
+                .frame(minWidth: 700, minHeight: 600)
+            case .dailyChallenge:
+                FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
+                    activeFlow = nil
+                }
+                .environment(dataVM)
+                .frame(minWidth: 700, minHeight: 600)
+            }
         }
     }
     
@@ -228,7 +291,11 @@ struct DashboardView: View {
                 HStack(spacing: 16) {
                     ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
                         Button {
-                            currentView = item.category.rawValue
+                            if item.mode == "Learn" {
+                                activeFlow = .learn(item.category)
+                            } else {
+                                activeFlow = .exercise(item.category)
+                            }
                         } label: {
                             InProgressCard(
                                 category: item.category,
@@ -247,7 +314,7 @@ struct DashboardView: View {
                     .font(.title)
 
                 Button {
-                    currentView = "DailyChallenge"
+                    activeFlow = .dailyChallenge
                 } label: {
                     DailyChallengeCard(
                         streak: 3,
@@ -263,7 +330,11 @@ struct DashboardView: View {
                 VStack(spacing: 12) {
                     ForEach(allCategories, id: \.self) { category in
                         Button {
-                            currentView = category
+                            let normalized = category.lowercased()
+                            if let cat = TermCategory.allCases.first(where: { $0.rawValue.lowercased() == normalized }) {
+                                selectedCategoryForPopup = cat
+                                showModePopup = true
+                            }
                         } label: {
                             CategoryComponent(title: category)
                                 .frame(maxWidth: .infinity)
