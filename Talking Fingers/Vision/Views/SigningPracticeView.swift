@@ -18,8 +18,7 @@ struct SigningPracticeView: View {
     @Environment(\.dismiss) var dismiss
     @State var passed: Bool = false
     // Example sentence
-    let words: [String] = ["A", "B", "C"]
-
+    
     @State private var currentWordIndex: Int = 0
     @State var pass: Bool = false
     @State private var showJointsSheet: Bool = false
@@ -54,7 +53,7 @@ struct SigningPracticeView: View {
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
 
-    @State var signName: String = "a"
+    @State var signName: String? = nil
     @State private var cameraMode: CameraMode = .compare
 
     @State private var countdown: Int = 0
@@ -101,32 +100,6 @@ struct SigningPracticeView: View {
     var body: some View {
 
         VStack(spacing: 20) {
-
-            // MARK: Back Button
-            HStack {
-                Button(action: {
-                    dismiss()
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "door.left.hand.open")
-                        Text("Leave")
-                    }
-                }
-                .foregroundColor(.gray)
-
-                Spacer()
-            }
-            // MARK: Progress Line
-            ProgressBar(
-                total: words.count,
-                current: currentWordIndex
-            )
-
-            // MARK: Phrase Header
-            Text(signName.capitalized)
-                .font(.title2)
-                .foregroundColor(.primary)
-
             // MARK: Camera Window (replaces cartoon)
                 VStack(spacing: 16) {
                     if cameraVM.isAuthorized {
@@ -134,18 +107,22 @@ struct SigningPracticeView: View {
                         ZStack {
                             CameraPreviewView(session: cameraVM.session)
                                 .ignoresSafeArea()
-
                             GeometryReader { geo in
                                 handOutlineOverlay(in: geo.size)
+                                    .ignoresSafeArea()
                                 handJointLabelsOverlay(in: geo.size)
+                                    .ignoresSafeArea()
                                 bodyJointLabelsOverlay(in: geo.size)
+                                    .ignoresSafeArea()
                                 handSkeletonOverlay(in: geo.size)
+                                    .ignoresSafeArea()
                                 bodySkeletonOverlay(in: geo.size)
+                                    .ignoresSafeArea()
                             }
-
-
-                                VStack {
-                                    Spacer()
+                            .ignoresSafeArea()
+                            VStack {
+                                Spacer()
+                                if  hands.count > 0  && signName != nil {
                                     Text(confidenceLabel)
                                         .font(.system(size: 56, weight: .bold, design: .rounded))
                                         .foregroundStyle(confidenceColor)
@@ -157,16 +134,11 @@ struct SigningPracticeView: View {
                                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                                         .padding(.bottom, 20)
                                 }
+                            }
+                            .ignoresSafeArea()
                         }
-                        .aspectRatio(9.0 / 16.0, contentMode: .fit)
                         .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(.white.opacity(0.15), lineWidth: 1)
-                        )
-                        .shadow(radius: 12)
-                        .padding(.horizontal)
+                        .ignoresSafeArea()
                     } else {
                         ContentUnavailableView(
                             "Camera Access Required",
@@ -176,120 +148,53 @@ struct SigningPracticeView: View {
                         .padding(.horizontal)
                         .padding(.top, 24)
                     }
+                }
+                .ignoresSafeArea()
+                .onAppear {
+                    print(signName)
+                    cameraVM.checkPermission()
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        // future UI elements
+                    cameraVM.onPoseDetected = { handObservations, pts in
+                        hands = handObservations
+
+                        guard cameraVM.isRecording else { return }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.bottom, 24)
-                }
-                .padding(.top, 12)
-            .onAppear {
-                cameraVM.checkPermission()
 
-                cameraVM.onPoseDetected = { handObservations, pts in
-                    hands = handObservations
-
-                    guard cameraVM.isRecording else { return }
+                    cameraVM.onBodyPoseDetected = { bodyObservations, _ in
+                        bodies = bodyObservations
+                    }
+                    cameraVM.startComparing(forSign: signName ?? "")
                 }
-
-                cameraVM.onBodyPoseDetected = { bodyObservations, _ in
-                    bodies = bodyObservations
+                .task {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    cameraVM.start()
                 }
-                cameraVM.startComparing(forSign: signName)
-            }
-            .task {
-                try? await Task.sleep(for: .milliseconds(300))
-                cameraVM.start()
-            }
-            .onDisappear {
-                cameraVM.stop()
-            }
-            .onChange(of: cameraMode) { _, newValue in
-                if newValue == .compare {
-                    cameraVM.startComparing(forSign: signName)
-                } else {
-                    cameraVM.stopComparing()
+                .onDisappear {
+                    cameraVM.stop()
                 }
-            }
-            .onChange(of: signName) { _, newValue in
-                print("Current word is \(newValue)")
-                if cameraMode == .compare {
-                    cameraVM.startComparing(forSign: newValue)
-                    pass = false
+                .onChange(of: cameraMode) { _, newValue in
+                    if newValue == .compare {
+                        cameraVM.startComparing(forSign: signName ?? "")
+                    } else {
+                        cameraVM.stopComparing()
+                    }
                 }
-            }
             .onChange(of: cameraVM.confidenceScore) { _, newValue in
                 let passThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 70
                 if cameraVM.confidenceScore >= passThreshold {
                     pass = true
                 }
             }
-            .sheet(isPresented: $showJointsSheet) {
-                JointsSheetView(
-                    jointVisibility: $jointVisibility,
-                    bodyJointVisibility: $bodyJointVisibility,
-                    dotsVisibility: $dotsVisibility,
-                    jointNamesVisibility: $jointNamesVisibility,
-                    handOutlineVisibility: $handOutlineVisibility,
-                    handSkeletonVisibility: $handSkeletonVisibility,
-                    bodySkeletonVisibility: $bodySkeletonVisibility
-                )
-            }
-
-
-            // MARK: Navigation Buttons
-            if pass && (currentWordIndex < words.count - 1) {
-                HStack(spacing: 40) {
-                    Button (action: {
-                        nextWord()
-                        signName = words[currentWordIndex]
-                        pass = false
-                    }) {
-                        Text("Next Word")
-                            .foregroundStyle(Color.white)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(111)
-                }
-            } else if pass && (currentWordIndex == words.count - 1) {
-                HStack(spacing: 40) {
-                    Button (action: {
-                        dismiss()
-                    }) {
-                        Text("Finish")
-                            .foregroundStyle(Color.white)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(111)
+            .onChange(of: signName ?? "") { _, newValue in
+                print("Current word is \(newValue)")
+                if cameraMode == .compare {
+                    cameraVM.startComparing(forSign: newValue)
+                    pass = false
                 }
             }
-
-            Spacer()
+                    
         }
-        .padding()
         .navigationBarBackButtonHidden(true)
-    }
-
-    // MARK: Navigation Logic
-
-    func nextWord() {
-        if currentWordIndex < words.count - 1 {
-            currentWordIndex += 1
-        }
-    }
-
-    func previousWord() {
-        if currentWordIndex > 0 {
-            currentWordIndex -= 1
-        }
     }
     
     @ViewBuilder
@@ -311,6 +216,7 @@ struct SigningPracticeView: View {
                     }
                     .fill(Color.green.opacity(0.3))
                     .stroke(Color.green, lineWidth: 2)
+                    .ignoresSafeArea()
                 }
             }
         }
@@ -338,6 +244,7 @@ struct SigningPracticeView: View {
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
+                                .ignoresSafeArea()
                         }
 
                         if dotsVisibility {
@@ -345,6 +252,7 @@ struct SigningPracticeView: View {
                                 .fill(Color.white)
                                 .frame(width: 7, height: 7)
                                 .position(pos)
+                                .ignoresSafeArea()
                         }
                     }
                 }
