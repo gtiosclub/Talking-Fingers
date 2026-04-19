@@ -79,7 +79,7 @@ struct LiveSigningView: View {
             HStack(spacing: 6) {
                 ForEach(Array(glossWords.enumerated()), id: \.offset) { index, term in
                     Text(term.rawValue)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 28, weight: .bold))
                         .foregroundColor(colorForWord(at: index))
                         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
                 }
@@ -104,7 +104,15 @@ struct LiveSigningView: View {
 
         ZStack {
             Circle()
-                .fill(isCompleted ? Color.black : (isCurrent ? Color.gray.opacity(0.25) : Color.gray.opacity(0.12)))
+                .fill(isCompleted ? Color.black : (isCurrent ? Color(hex: "#FDF2D8") : Color.gray.opacity(0.12)))
+                .overlay(
+                    Group {
+                        if isCurrent {
+                            Circle()
+                                .strokeBorder(Color(hex: "#F8BC3A"), lineWidth: 1.5)
+                        }
+                    }
+                )
                 .frame(width: 44, height: 44)
 
             if isCompleted {
@@ -112,12 +120,10 @@ struct LiveSigningView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
             } else if isCurrent {
-                // Eye icon: currently active
-                Image(systemName: "eye")
-                    .font(.system(size: 14))
-                    .foregroundColor(.black)
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color(hex: "#F8BC3A"))
             } else {
-                // Locked
                 Image(systemName: "lock.fill")
                     .font(.system(size: 14))
                     .foregroundColor(.gray.opacity(0.5))

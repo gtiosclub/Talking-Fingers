@@ -53,14 +53,26 @@ struct Talking_FingersApp: App {
             Item.self,
             StatsWidget.self,
             FlashcardModel.self,
-            User.self
+            User.self,
+            SavedPracticeModel.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Last resort after schema/store issues (e.g. failed lightweight migration): wipe local store once.
+            let storeURL = modelConfiguration.url
+            let fm = FileManager.default
+            try? fm.removeItem(at: storeURL)
+            let path = storeURL.path
+            try? fm.removeItem(at: URL(fileURLWithPath: path + "-shm"))
+            try? fm.removeItem(at: URL(fileURLWithPath: path + "-wal"))
+            do {
+                return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            } catch {
+                fatalError("Could not create ModelContainer: \(error)")
+            }
         }
     }()
         

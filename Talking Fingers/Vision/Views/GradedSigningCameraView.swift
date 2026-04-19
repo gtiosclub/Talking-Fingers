@@ -10,6 +10,8 @@ import SwiftUI
 
 struct GradedSigningCameraView: View {
     let targetWord: String
+    /// Called whenever the live confidence score changes. Use this to detect a passing threshold.
+    var onConfidenceChange: ((Double) -> Void)? = nil
 
     @State private var cameraVM = CameraVM()
 
@@ -48,6 +50,9 @@ struct GradedSigningCameraView: View {
         }
         .onChange(of: targetWord) { _, _ in
             startComparing()
+        }
+        .onChange(of: cameraVM.confidenceScore) { _, newValue in
+            onConfidenceChange?(newValue)
         }
         .onDisappear {
             cameraVM.stop()
