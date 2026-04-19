@@ -42,10 +42,17 @@ struct MultipleChoice: View {
     @State private var showHintPopup: Bool = false
     @State private var showCorrectPopup: Bool = false
     @State private var showIncorrectPopup: Bool = false
+    /// Captured at runtime so the GIF scales to the available window/screen height.
+    @State private var viewHeight: CGFloat = 500
 
     // MARK: - Brand Colors
     private let tfGreen = Color(red: 159/255, green: 192/255, blue: 122/255)
     private let tfGreenText = Color(red: 82/255, green: 106/255, blue: 54/255)
+
+    /// 28 % of the view height, clamped between 140 pt (small phones) and 280 pt (large displays).
+    private var gifHeight: CGFloat {
+        min(max(viewHeight * 0.28, 140), 280)
+    }
 
     // MARK: - Init
     init(
@@ -116,6 +123,14 @@ struct MultipleChoice: View {
             .toolbar(.hidden, for: .navigationBar)
             #endif
         }
+        // Capture the runtime view height so gifHeight can adapt.
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { viewHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, h in viewHeight = h }
+            }
+        )
         // Hint popup like LearnModeView
         .popupHost(isPresented: $showHintPopup) {
             HintPopUpComponent(
@@ -226,7 +241,7 @@ struct MultipleChoice: View {
             }
             GIFView(gifFileName: "helloGIF.gif")
                 .scaledToFit()
-                .frame(height: 400)
+                .frame(height: gifHeight)
 
             VStack(spacing: 12) {
                 ForEach(options, id: \.self) { option in

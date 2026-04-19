@@ -30,11 +30,19 @@ struct VisionExerciseView: View {
     @State private var showStuckPopup: Bool = false
     @State private var isPassed: Bool = false
     @State private var confidenceScore: Double = 0
+    /// Captured at runtime so the camera card scales to the available window/screen height.
+    @State private var viewHeight: CGFloat = 600
 
     // MARK: - Constants
     private let passThreshold: Double = 70
     private let tfGreen      = Color(red: 159/255, green: 192/255, blue: 122/255)
     private let tfGreenText  = Color(red: 82/255,  green: 106/255, blue: 54/255)
+
+    /// 58 % of the view height, clamped so it never looks tiny on small phones or
+    /// absurdly tall on large displays / macOS windows.
+    private var cameraHeight: CGFloat {
+        min(max(viewHeight * 0.58, 280), 560)
+    }
 
     // MARK: - Body
     var body: some View {
@@ -65,6 +73,14 @@ struct VisionExerciseView: View {
             .toolbar(.hidden, for: .navigationBar)
             #endif
         }
+        // Capture the runtime view height so cameraHeight can adapt.
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { viewHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, h in viewHeight = h }
+            }
+        )
         // Hint popup
         .popupHost(isPresented: $showHintPopup) {
             HintPopUpComponent(
@@ -203,7 +219,7 @@ struct VisionExerciseView: View {
                     }
                 }
             )
-            .frame(height: 650)
+            .frame(height: cameraHeight)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
