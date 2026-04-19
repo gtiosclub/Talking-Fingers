@@ -32,9 +32,10 @@ struct ContentView: View {
 }
 struct MainNavigationView: View {
     @Environment(AuthenticationViewModel.self) var authVM
-    @State private var selectedSection: NavigationSection? = .home
+    @State private var selectedSection: NavigationSection = .home
     
     var body: some View {
+        #if os(macOS)
         NavigationSplitView {
             // Sidebar
             List(selection: $selectedSection) {
@@ -44,7 +45,7 @@ struct MainNavigationView: View {
                     .tag(NavigationSection.flashcards)
                 Label("Sentences", systemImage: "text.bubble")
                     .tag(NavigationSection.sentences)
-                Label("Stats", systemImage: "chart.bar.fill")
+                Label("Profile", systemImage: "person.circle")
                     .tag(NavigationSection.stats)
                 Label("Vision", systemImage: "eyeglasses")
                     .tag(NavigationSection.camera)
@@ -55,29 +56,50 @@ struct MainNavigationView: View {
             }
             .navigationTitle("Talking Fingers")
         } detail: {
-            #if os(macOS)
-            HStack(spacing: 0) {
-    
-                detailView(for: selectedSection ?? .home)
-                    .environment(authVM)
-                    .frame(maxWidth: .infinity)
-                
-                // RIGHT SIDE WIDGETS (macOS ONLY)
-                VStack(spacing: 16) {
-                    Text("Widgets")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                        .padding(.leading, 4)
-                }
-                .frame(width: 240)
-                .padding(.top, 20)
-                .padding(.horizontal, 16)
-            }
-            #else
-            detailView(for: selectedSection ?? .home)
+            detailView(for: selectedSection)
                 .environment(authVM)
-            #endif
+                .frame(maxWidth: .infinity)
         }
+        #else
+        TabView(selection: $selectedSection) {
+            detailView(for: .home)
+                .tabItem {
+                    Label("Home", systemImage: "house")
+                }
+                .tag(NavigationSection.home)
+            detailView(for: .flashcards)
+                .tabItem {
+                    Label("Flashcards", systemImage: "rectangle.stack.fill")
+                }
+                .tag(NavigationSection.flashcards)
+            detailView(for: .sentences)
+                .tabItem {
+                    Label("Sentences", systemImage: "text.bubble")
+                }
+                .tag(NavigationSection.sentences)
+            detailView(for: .stats)
+                .tabItem {
+                    Label("Profile", systemImage: "person.circle")
+                }
+                .tag(NavigationSection.stats)
+            detailView(for: .camera)
+                .tabItem {
+                    Label("Vision", systemImage: "eyeglasses")
+                }
+                .tag(NavigationSection.camera)
+            detailView(for: .review)
+                .tabItem {
+                    Label("Review", systemImage: "film.stack")
+                }
+                .tag(NavigationSection.review)
+            detailView(for: .practice)
+                .tabItem {
+                    Label("Practice", systemImage: "pencil.and.scribble")
+                }
+                .tag(NavigationSection.practice)
+        }
+        .environment(authVM)
+        #endif
     }
     
     @ViewBuilder
@@ -114,9 +136,7 @@ struct MainNavigationView: View {
                 SavedPracticeView()
             }
         case .stats:
-            NavigationStack {
-                StatsView()
-            }
+            StatsView()
             
         case .camera:
             NavigationStack {
@@ -135,20 +155,15 @@ struct MainNavigationView: View {
                     .environment(authVM)
             }
         }
-        
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, sentences, stats, camera,review, practice
+        case home, flashcards, sentences, stats, camera, review, practice
     }
 }
 struct StatsView: View {
     var body: some View {
-        VStack {
-            Text("Stats View")
-            Text("Coming soon!")
-        }
-        .navigationTitle("Stats")
+        ProfileWidgetsView(presentation: .embedded)
     }
 }
 #Preview {
