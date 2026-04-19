@@ -17,26 +17,22 @@ struct GenerateSentencesView: View {
     
     /// Called with generated sentences and the categories used (so Extend can generate more).
     /// Parent should dismiss the sheet and start the session.
-    var onSentencesGenerated: ([AISentenceModel], Set<TermCategory>) -> Void
+    var onSentencesGenerated: ([AISentenceModel], Set<TermCategory>, String) -> Void
+
+    private var canGenerate: Bool {
+        !trainingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text("New Training")
+            Text("New Practice")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.top, 20)
             
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Select categories or specific words you want to practice!")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .padding()
-                    .background(Color(hex: 0xF2F2F7))
-                    .cornerRadius(12)
-            }
             
             VStack(alignment: .leading, spacing: 16) {
-                Text("Filter Categories")
+                Text("Categories")
                     .font(.headline)
                 
                 FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
@@ -88,7 +84,7 @@ struct GenerateSentencesView: View {
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(hex: 0xF2F2F7))
+                            .fill(Color.white)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
@@ -106,42 +102,28 @@ struct GenerateSentencesView: View {
             
             Spacer()
             
-            // Action Buttons
-            HStack(spacing: 16) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    Text("Cancel")
-                        .font(.headline)
+            Button(action: {
+                startTraining()
+            }) {
+                if isGenerating {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color(.white))
-                        .cornerRadius(12)
+                        .padding(.vertical, 10)
+                } else {
+                    Text("Start")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
                 }
-                
-                Button(action: {
-                    startTraining()
-                }) {
-                    if isGenerating {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                    } else {
-                        Text("Start")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                    }
-                }
-                .background(isGenerating ? Color.gray : Color.black)
-                .cornerRadius(12)
-                .disabled(isGenerating)
             }
-            .padding(.bottom, 20)
+            .background(Color(hex: "#97C171").opacity(canGenerate ? 1.0 : 0.5))
+            .cornerRadius(20)
+            .disabled(!canGenerate)
         }
         .padding(.horizontal, 24)
+        .padding(.bottom, 20)
     }
     
     private var selectedGlossTerms: [Term] {
@@ -169,7 +151,7 @@ struct GenerateSentencesView: View {
                 let sentences = try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
                 
                 await MainActor.run {
-                    onSentencesGenerated(sentences, effectiveCategories)
+                    onSentencesGenerated(sentences, effectiveCategories, trainingName.trimmingCharacters(in: .whitespacesAndNewlines))
                 }
             } catch {
                 await MainActor.run {
@@ -199,16 +181,16 @@ struct CategoryButton: View {
             Text(category.rawValue.capitalized)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(Color(hex: "#737373") ?? Color.gray)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(isSelected ? (Color(hex: "#EBEBEB") ?? Color(white: 0.92)) : Color.white)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(isSelected ? Color(hex: "#FDF2D8") : .white)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.black, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
                 )
         }
     }
@@ -227,21 +209,21 @@ struct ModeToggleButton: View {
                 Text(label)
                     .font(.subheadline)
                     .fontWeight(.medium)
+                    .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
 
                 Circle()
-                    .fill(isSelected ? Color(hex: "#D4A843") ?? .yellow : Color.gray.opacity(0.3))
+                    .fill(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"))
                     .frame(width: 10, height: 10)
             }
-            .foregroundColor(Color(hex: "#737373") ?? Color.gray)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(isSelected ? (Color(hex: "#EBEBEB") ?? Color(white: 0.92)) : Color.white)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(isSelected ? Color(hex: "#FDF2D8") : .white)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.black, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
             )
         }
     }
@@ -353,7 +335,7 @@ struct TestGenerateSentencesView: View {
             }
         }
         .sheet(isPresented: $showSheet) {
-            GenerateSentencesView { sentences, _ in
+            GenerateSentencesView { sentences, _, _ in
                 generatedSentences = sentences
                 showSheet = false
             }

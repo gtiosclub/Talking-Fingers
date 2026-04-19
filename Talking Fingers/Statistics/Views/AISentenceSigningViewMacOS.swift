@@ -22,6 +22,10 @@ struct AISentenceSigningViewMacOS: View {
         }
     }
 
+    private var subtitleColor: Color {
+        currentPage == 1 ? Color(hex: "#58A0DA") : Color.secondary
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 32) {
             CustomProgressBarMacOS(progress: progress)
@@ -29,7 +33,7 @@ struct AISentenceSigningViewMacOS: View {
 
             Text(subtitle)
                 .font(.system(size: 24, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(subtitleColor)
                 .animation(.easeInOut, value: currentPage)
 
             if currentPage == 1 {
@@ -63,6 +67,16 @@ struct PageOneContentMacOS: View {
     @Binding var showGloss: Bool
     var onContinue: () -> Void
 
+    private let glossGold = Color(hex: "#F8BC3A")
+    private let glossCream = Color(hex: "#FDF2D8")
+
+    private var glossLineString: String {
+        sentenceModel.gloss
+            .map(\.rawValue)
+            .joined(separator: " ")
+            .uppercased()
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 48) {
             Spacer()
@@ -74,33 +88,27 @@ struct PageOneContentMacOS: View {
                 .lineSpacing(8)
 
             Button(action: { withAnimation { showGloss.toggle() } }) {
-                HStack(spacing: 8) {
-                    Image(systemName: showGloss ? "eye.slash" : "eye")
-                        .font(.system(size: 16))
-                    Text(showGloss ? "Hide gloss" : "Tap to reveal gloss!")
-                        .font(.system(size: 16))
-                }
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .buttonStyle(.plain)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .center, spacing: 14) {
+                        glossBulbBadge
+                        Text(showGloss ? "Hide gloss" : "Gloss")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(glossGold)
+                        Spacer(minLength: 0)
+                    }
 
-            if showGloss {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(sentenceModel.gloss, id: \.self) { term in
-                            Text(term.rawValue)
-                                .font(.system(size: 18, weight: .semibold))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(10)
-                        }
+                    if showGloss {
+                        Text(glossLineString)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(white: 0.58))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .multilineTextAlignment(.leading)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -130,6 +138,22 @@ struct PageOneContentMacOS: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private var glossBulbBadge: some View {
+        ZStack {
+            Circle()
+                .fill(glossCream)
+                .frame(width: 48, height: 48)
+            Circle()
+                .strokeBorder(glossGold.opacity(0.55), lineWidth: 1)
+                .frame(width: 48, height: 48)
+            Image(systemName: showGloss ? "eye.slash" : "lightbulb")
+                .font(.system(size: 22, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundColor(glossGold)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -242,7 +266,15 @@ struct LiveSigningViewMacOS: View {
 
         ZStack {
             Circle()
-                .fill(isCompleted ? Color.primary : (isCurrent ? Color.gray.opacity(0.25) : Color.gray.opacity(0.12)))
+                .fill(isCompleted ? Color.primary : (isCurrent ? Color(hex: "#FDF2D8") : Color.gray.opacity(0.12)))
+                .overlay(
+                    Group {
+                        if isCurrent {
+                            Circle()
+                                .strokeBorder(Color(hex: "#F8BC3A"), lineWidth: 1.5)
+                        }
+                    }
+                )
                 .frame(width: 52, height: 52)
 
             if isCompleted {
@@ -250,9 +282,9 @@ struct LiveSigningViewMacOS: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
             } else if isCurrent {
-                Image(systemName: "eye")
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(Color(hex: "#F8BC3A"))
             } else {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 16))
@@ -291,20 +323,28 @@ struct LiveSigningViewMacOS: View {
 
 struct CustomProgressBarMacOS: View {
     var progress: Double
+    private let trackColor = Color(hex: "#A9CEEC26")
+    private let fillColor = Color(hex: "#58A0DA")
+    private let barHeight: CGFloat = 10
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 8)
-                    .frame(width: geometry.size.width, height: 12)
-                    .foregroundColor(.gray.opacity(0.2))
+            let w = geometry.size.width
+            let h = barHeight
+            let rawFill = CGFloat(progress) * w
+            let fillW = progress <= 0 ? 0 : max(h * 0.5, min(rawFill, w))
 
-                RoundedRectangle(cornerRadius: 8)
-                    .frame(width: min(CGFloat(progress) * geometry.size.width, geometry.size.width), height: 12)
-                    .foregroundColor(.accentColor)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(trackColor)
+
+                Capsule()
+                    .fill(fillColor)
+                    .frame(width: fillW)
             }
+            .frame(width: w, height: h)
         }
-        .frame(height: 12)
+        .frame(height: barHeight)
     }
 }
 

@@ -10,15 +10,20 @@ import SwiftUI
 extension Color {
     /// Creates a `Color` from a hex string (e.g. `"#FF5733"`, `"FF5733"`, `"#FF5733AA"`).
     /// - Parameter hex: Hex string with optional leading `#`. Supports 6-digit RGB and 8-digit RGBA.
-    /// - Returns: A `Color`, or `nil` if the string is invalid.
-    init?(hex: String) {
+    init(hex: String) {
         let cleaned = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
         let length = cleaned.count
 
-        guard length == 6 || length == 8 else { return nil }
+        guard length == 6 || length == 8 else {
+            self = .clear
+            return
+        }
 
         var hexNumber: UInt64 = 0
-        guard Scanner(string: cleaned).scanHexInt64(&hexNumber) else { return nil }
+        guard Scanner(string: cleaned).scanHexInt64(&hexNumber) else {
+            self = .clear
+            return
+        }
 
         let r, g, b, a: Double
         if length == 8 {

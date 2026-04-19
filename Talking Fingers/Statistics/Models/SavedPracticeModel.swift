@@ -14,12 +14,15 @@ class SavedPracticeModel {
     var date: Date
     var sentencesData: Data
     var categories: [String]
+    /// User-visible practice name from the New Practice sheet (`nil` for legacy rows).
+    var title: String?
 
-    init(sentences: [AISentenceModel], categories: [String]) {
+    init(sentences: [AISentenceModel], categories: [String], title: String? = nil) {
         self.id = UUID()
         self.date = Date()
         self.sentencesData = (try? JSONEncoder().encode(sentences)) ?? Data()
         self.categories = categories
+        self.title = title
     }
 
     var sentences: [AISentenceModel] {
