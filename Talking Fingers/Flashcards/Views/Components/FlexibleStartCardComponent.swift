@@ -100,11 +100,12 @@ struct FlexibleStartCardComponent: View {
                     }
                     
                 case .exercise, .dailyChallenge:
-                    MultipleChoiceFlow(
+                    ExerciseSessionFlow(
                         initialCard: flashcardVM.flashcards.first ?? FlashcardModel(term: .hello, id: UUID(), category: .greetings),
                         imageName: context.iconName,
                         targetCount: total,
-                        vm: flashcardVM
+                        vm: flashcardVM,
+                        onLeave: closeAction
                     ) {
                         showEndScreen = true
                     }
@@ -194,25 +195,58 @@ struct FlexibleStartCardComponent: View {
     }
 }
 
-private struct MultipleChoiceFlow: View {
+private struct ExerciseSessionFlow: View {
     @State private var currentCard: FlashcardModel
     @State private var options: [String] = []
     @State private var completedCount: Int = 0
+    /// Overall session setting chosen by the user via the menu.
+    @State private var mode: ExerciseInputMode = .mixed
+    /// Resolved modality for the *current* card — never `.mixed`.
+    /// Re-resolved on each card advance and whenever the user changes `mode`.
+    @State private var currentSlotMode: ExerciseInputMode = Bool.random() ? .camera : .flashcards
 
     let imageName: String
     let targetCount: Int
     let vm: FlashcardVM
+    let onLeave: () -> Void
     let onFinished: () -> Void
 
-    init(initialCard: FlashcardModel, imageName: String, targetCount: Int, vm: FlashcardVM, onFinished: @escaping () -> Void) {
+    @Environment(SwiftDataVM.self) private var dataVM
+
+    init(initialCard: FlashcardModel, imageName: String, targetCount: Int, vm: FlashcardVM, onLeave: @escaping () -> Void, onFinished: @escaping () -> Void) {
         _currentCard = State(initialValue: initialCard)
         self.imageName = imageName
         self.targetCount = targetCount
         self.vm = vm
+        self.onLeave = onLeave
         self.onFinished = onFinished
     }
 
     var body: some View {
+        Group {
+            if currentSlotMode == .camera {
+                VisionExerciseView(
+                    currentCard: currentCard,
+                    progress: Double(completedCount) / Double(targetCount),
+                    inputMode: $mode,
+                    onLeave: onLeave,
+                    onNext: { next in advance(to: next) }
+                )
+                .id(currentCard.id)
+            } else {
+                flashcardsView
+            }
+        }
+        .onAppear {
+            options = buildOptions(for: currentCard, from: vm.flashcards)
+        }
+        // When the user changes the session mode mid-card, re-resolve the current slot immediately.
+        .onChange(of: mode) { _, newMode in
+            currentSlotMode = resolvedSlotMode(for: newMode)
+        }
+    }
+
+    private var flashcardsView: some View {
         MultipleChoice(
             question: "What sign is being shown?",
             imageName: imageName,
@@ -220,11 +254,25 @@ private struct MultipleChoiceFlow: View {
             correctAnswer: currentCard.term.displayName,
             explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
             currentCard: currentCard,
+            inputMode: $mode,
+            onLeave: onLeave,
             onNext: { next in advance(to: next) },
             progress: Double(completedCount) / Double(targetCount)
         )
         .onAppear {
             options = buildOptions(for: currentCard, from: vm.flashcards)
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Resolves `.mixed` into either `.flashcards` or `.camera` at random.
+    /// `.flashcards` and `.camera` pass through unchanged.
+    private func resolvedSlotMode(for overallMode: ExerciseInputMode) -> ExerciseInputMode {
+        switch overallMode {
+        case .flashcards: return .flashcards
+        case .camera:     return .camera
+        case .mixed:      return Bool.random() ? .camera : .flashcards
         }
     }
 
@@ -234,13 +282,17 @@ private struct MultipleChoiceFlow: View {
             onFinished()
             return
         }
-        let nextCard = next
-        currentCard = nextCard
-        options = buildOptions(for: nextCard, from: vm.flashcards)
+        currentCard = next
+        options = buildOptions(for: next, from: vm.flashcards)
+        currentSlotMode = resolvedSlotMode(for: mode)
     }
 
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-        let distractors = pool.filter { $0.id != card.id }.map { $0.term.displayName }.shuffled().prefix(max(0, count - 1))
+        let distractors = pool
+            .filter { $0.id != card.id }
+            .map { $0.term.displayName }
+            .shuffled()
+            .prefix(max(0, count - 1))
         var opts = Array(distractors)
         opts.append(card.term.displayName)
         return Array(Set(opts)).shuffled()

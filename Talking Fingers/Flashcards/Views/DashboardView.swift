@@ -227,7 +227,9 @@ struct DashboardView: View {
             
             // MAIN CONTENT
             Group {
-                if currentView == "Home" {
+                if let flow = activeFlow {
+                    macFlowView(for: flow)
+                } else if currentView == "Home" {
                     dashboardContent
                 } else {
                     categoryDetailView(currentView)
@@ -251,27 +253,26 @@ struct DashboardView: View {
                 }
             )
         }
-        .sheet(item: $activeFlow) { flow in
-            switch flow {
-            case .learn(let category):
-                FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
-                    activeFlow = nil
-                }
-                .environment(dataVM)
-                .frame(minWidth: 700, minHeight: 600)
-            case .exercise(let category):
-                FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
-                    activeFlow = nil
-                }
-                .environment(dataVM)
-                .frame(minWidth: 700, minHeight: 600)
-            case .dailyChallenge:
-                FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
-                    activeFlow = nil
-                }
-                .environment(dataVM)
-                .frame(minWidth: 700, minHeight: 600)
+    }
+
+    @ViewBuilder
+    private func macFlowView(for flow: ActiveFlow) -> some View {
+        switch flow {
+        case .learn(let category):
+            FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
+                activeFlow = nil
             }
+            .environment(dataVM)
+        case .exercise(let category):
+            FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
+                activeFlow = nil
+            }
+            .environment(dataVM)
+        case .dailyChallenge:
+            FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
+                activeFlow = nil
+            }
+            .environment(dataVM)
         }
     }
     

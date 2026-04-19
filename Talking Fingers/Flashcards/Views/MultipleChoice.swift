@@ -24,6 +24,12 @@ struct MultipleChoice: View {
     // Progress (0.0 – 1.0) — passed in by the caller to reflect real progress
     var progress: Double
 
+    // Mode binding — lets the user toggle Camera vs Flashcards mid-session
+    @Binding var inputMode: ExerciseInputMode
+
+    // Called when the user taps Leave; on macOS (inline) this replaces dismiss().
+    var onLeave: (() -> Void)? = nil
+
     // MARK: - Environment (Observation framework)
     @Environment(FlashcardVM.self) private var flashcardVM
     @Environment(\.dismiss) private var dismiss
@@ -36,10 +42,42 @@ struct MultipleChoice: View {
     @State private var showHintPopup: Bool = false
     @State private var showCorrectPopup: Bool = false
     @State private var showIncorrectPopup: Bool = false
+    /// Captured at runtime so the GIF scales to the available window/screen height.
+    @State private var viewHeight: CGFloat = 500
 
     // MARK: - Brand Colors
     private let tfGreen = Color(red: 159/255, green: 192/255, blue: 122/255)
     private let tfGreenText = Color(red: 82/255, green: 106/255, blue: 54/255)
+
+    /// 28 % of the view height, clamped between 140 pt (small phones) and 280 pt (large displays).
+    private var gifHeight: CGFloat {
+        min(max(viewHeight * 0.28, 140), 280)
+    }
+
+    // MARK: - Init
+    init(
+        question: String,
+        imageName: String,
+        options: [String],
+        correctAnswer: String,
+        explanationText: String = "People often confuse this sign with Goodbye because...",
+        currentCard: FlashcardModel,
+        inputMode: Binding<ExerciseInputMode> = .constant(.flashcards),
+        onLeave: (() -> Void)? = nil,
+        onNext: @escaping (FlashcardModel) -> Void = { _ in },
+        progress: Double
+    ) {
+        self.question = question
+        self.imageName = imageName
+        self.options = options
+        self.correctAnswer = correctAnswer
+        self.explanationText = explanationText
+        self.currentCard = currentCard
+        self._inputMode = inputMode
+        self.onLeave = onLeave
+        self.onNext = onNext
+        self.progress = progress
+    }
 
     // MARK: - Body
     var body: some View {
@@ -85,6 +123,14 @@ struct MultipleChoice: View {
             .toolbar(.hidden, for: .navigationBar)
             #endif
         }
+        // Capture the runtime view height so gifHeight can adapt.
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { viewHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, h in viewHeight = h }
+            }
+        )
         // Hint popup like LearnModeView
         .popupHost(isPresented: $showHintPopup) {
             HintPopUpComponent(
@@ -118,7 +164,11 @@ struct MultipleChoice: View {
         VStack(spacing: 12) {
             HStack {
                 Button {
+                    #if os(macOS)
+                    onLeave?()
+                    #else
                     dismiss()
+                    #endif
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -151,9 +201,7 @@ struct MultipleChoice: View {
                 }
                 .frame(height: 10)
 
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.black)
+                ExerciseSettingsMenu(mode: $inputMode)
             }
             .padding(.horizontal, 20)
 
@@ -193,7 +241,7 @@ struct MultipleChoice: View {
             }
             GIFView(gifFileName: "helloGIF.gif")
                 .scaledToFit()
-                .frame(height: 160)
+                .frame(height: gifHeight)
 
             VStack(spacing: 12) {
                 ForEach(options, id: \.self) { option in
@@ -340,8 +388,12 @@ struct MultipleChoice: View {
             // Delegate navigation/presentation to parent
             onNext(next)
         } else {
-            // No more cards — dismiss or keep current view
+            // No more cards — return to parent
+            #if os(macOS)
+            onLeave?()
+            #else
             dismiss()
+            #endif
         }
     }
 }
@@ -524,6 +576,7 @@ struct MultipleChoiceSRTester: View {
                     correctAnswer: current.term.displayName,
                     explanationText: "People often confuse this sign with similar motions. Focus on handshape and movement.",
                     currentCard: current,
+                    inputMode: .constant(.flashcards),
                     onNext: { next in
                         completed += 1
                         self.current = next
@@ -560,13 +613,14 @@ struct MultipleChoiceSRTester: View {
         id: UUID(),
         category: .greetings
     )
-    return MultipleChoice(
+    MultipleChoice(
         question: "What sign is being shown?",
         imageName: "greetingsIllustration",
         options: ["Hello", "Goodbye", "Wassup", "See you"],
         correctAnswer: "Hello",
         explanationText: "People often confuse this sign with 'Goodbye' because the hand motion looks similar at a glance.",
         currentCard: card,
+        inputMode: .constant(.flashcards),
         onNext: { _ in },
         progress: 0.0
     )
