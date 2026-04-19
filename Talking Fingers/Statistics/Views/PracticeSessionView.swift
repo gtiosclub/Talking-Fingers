@@ -13,21 +13,86 @@ struct PracticeSessionView: View {
     var onFinish: () -> Void
     var onExtend: () async -> Void
 
-    @State private var currentSentenceIndex: Int = 0
+    @State private var currentSentenceIndex: Int
     @State private var isExtending: Bool = false
+
+    private let completionBlue = Color(hex: "#3A5A9C")
+    private let scoreRing = Color(hex: "#F0DEB0")
+    private let scoreNumber = Color(hex: "#E8A317")
+    private let accentYellow = Color(hex: "#E8A317")
+    private let barBlue = Color(hex: "#58A0DA")
+    private let barTrack = Color(hex: "#A9CEEC26")
+    private let extendFill = Color(hex: "#D6ECC4")
+    private let extendText = Color(hex: "#3D6B2A")
+    private let finishGreen = Color(hex: "#97C171")
+
+    init(
+        sentences: Binding<[AISentenceModel]>,
+        initialSentenceIndex: Int = 0,
+        onFinish: @escaping () -> Void,
+        onExtend: @escaping () async -> Void
+    ) {
+        self._sentences = sentences
+        self.onFinish = onFinish
+        self.onExtend = onExtend
+        let count = sentences.wrappedValue.count
+        let clamped = min(max(0, initialSentenceIndex), count)
+        self._currentSentenceIndex = State(initialValue: clamped)
+    }
 
     private var sessionProgress: Double {
         guard !sentences.isEmpty else { return 0 }
         return Double(currentSentenceIndex + 1) / Double(sentences.count)
     }
 
+    /// Categories touched by gloss in this session (stable order).
+    private var sessionCategories: [TermCategory] {
+        let present = Set(sentences.flatMap { $0.gloss.map(\.category) })
+        return TermCategory.allCases.filter { present.contains($0) }
+    }
+
+    private func progressInCategory(_ category: TermCategory) -> Double {
+        let relevant = sentences.filter { sentence in
+            sentence.gloss.contains { $0.category == category }
+        }
+        guard !relevant.isEmpty else { return 0 }
+        return Double(relevant.filter(\.completed).count) / Double(relevant.count)
+    }
+
+    private var overallSessionProgress: Double {
+        guard !sentences.isEmpty else { return 0 }
+        return Double(sentences.filter(\.completed).count) / Double(sentences.count)
+    }
+
+    private var encouragementHeadline: String {
+        let ratio = overallSessionProgress
+        if ratio >= 1.0 {
+            return "🔥 You're heating up!"
+        }
+        if ratio >= 0.5 {
+            return "🔥 Great momentum!"
+        }
+        return "💪 Keep practicing!"
+    }
+
+    private func markCurrentSentenceCompletedAndAdvance() {
+        withAnimation {
+            if sentences.indices.contains(currentSentenceIndex) {
+                var updated = sentences
+                updated[currentSentenceIndex].completed = true
+                sentences = updated
+            }
+            currentSentenceIndex += 1
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Top: Leave only (single progress bar is inside AISentenceSigningView, above subtitle)
             HStack {
                 Button(action: onFinish) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
+                    HStack(spacing: 6) {
+                        Image(systemName: "door.left.hand.open")
+                            .font(.body.weight(.medium))
                         Text("Leave")
                     }
                     .font(.body)
@@ -48,9 +113,7 @@ struct PracticeSessionView: View {
                         sentenceModel: currentSentence,
                         sessionProgress: sessionProgress,
                         onSentenceComplete: {
-                            withAnimation {
-                                currentSentenceIndex += 1
-                            }
+                            markCurrentSentenceCompletedAndAdvance()
                         }
                     )
                     .id(currentSentenceIndex)
@@ -59,9 +122,7 @@ struct PracticeSessionView: View {
                         sentenceModel: currentSentence,
                         sessionProgress: sessionProgress,
                         onSentenceComplete: {
-                            withAnimation {
-                                currentSentenceIndex += 1
-                            }
+                            markCurrentSentenceCompletedAndAdvance()
                         }
                     )
                     .id(currentSentenceIndex)
@@ -83,47 +144,123 @@ struct PracticeSessionView: View {
     }
 
     private var completionContent: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(spacing: 0) {
+            CustomProgressBar(
+                progress: 1.0,
+                trackColor: barTrack,
+                trackOpacity: 1.0,
+                fillColor: barBlue,
+                barHeight: 10
+            )
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+
+            Spacer(minLength: 12)
 
             Text("Practice completed!")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .font(.system(size: 28, weight: .bold))
+                .foregroundColor(completionBlue)
                 .multilineTextAlignment(.center)
+                .padding(.top, 8)
 
-            Text("Completed")
-                .font(.title3)
-                .foregroundColor(.secondary)
+            Spacer(minLength: 20)
+
+            ZStack {
+                Circle()
+                    .stroke(scoreRing, lineWidth: 14)
+                    .frame(width: 196, height: 196)
+                Text("100")
+                    .font(.system(size: 56, weight: .bold))
+                    .foregroundColor(scoreNumber)
+            }
+
+            Spacer(minLength: 24)
+
+            performanceCard
+                .padding(.horizontal, 24)
 
             Spacer()
 
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
                 Button(action: extendTapped) {
                     Text("Extend")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(extendText)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color(hex: 0xE5E5EA))
-                        .cornerRadius(12)
+                        .padding(.vertical, 12)
+                        .background(extendFill)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(isExtending)
 
                 Button(action: onFinish) {
                     Text("Finish")
-                        .font(.headline)
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.gray)
-                        .cornerRadius(12)
+                        .padding(.vertical, 12)
+                        .background(finishGreen)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 32)
+            .padding(.bottom, 28)
+        }
+    }
+
+    private var performanceCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(encouragementHeadline)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(accentYellow)
+
+            if sessionCategories.isEmpty {
+                categoryRow(title: "Practice", progress: overallSessionProgress)
+            } else {
+                ForEach(sessionCategories, id: \.self) { category in
+                    categoryRow(title: category.displayName, progress: progressInCategory(category))
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.gray.opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    private func categoryRow(title: String, progress: Double) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.black)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(barTrack)
+                            .frame(height: 8)
+                        Capsule()
+                            .fill(barBlue)
+                            .frame(width: max(8, CGFloat(progress) * geo.size.width), height: 8)
+                    }
+                }
+                .frame(height: 8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "medal.fill")
+                .font(.system(size: 22))
+                .foregroundColor(barBlue.opacity(0.85))
+                .frame(width: 28, alignment: .center)
         }
     }
 

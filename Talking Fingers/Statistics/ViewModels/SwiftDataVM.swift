@@ -77,16 +77,27 @@ class SwiftDataVM {
     }
     
     // MARK: - Saved Practice Sessions
-    func savePracticeSession(sentences: [AISentenceModel], categories: [String]) {
+    func savePracticeSession(sentences: [AISentenceModel], categories: [String], title: String = "") {
         guard let modelContext = modelContext else { return }
         
-        let savedPractice = SavedPracticeModel(sentences: sentences, categories: categories)
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let savedPractice = SavedPracticeModel(
+            sentences: sentences,
+            categories: categories,
+            title: trimmedTitle.isEmpty ? nil : trimmedTitle
+        )
         modelContext.insert(savedPractice)
         
+        persistModelContext()
+    }
+
+    /// Persists pending changes (e.g. after mutating an existing `SavedPracticeModel`).
+    func persistModelContext() {
+        guard let modelContext = modelContext else { return }
         do {
             try modelContext.save()
         } catch {
-            print("Error saving practice session: \(error)")
+            print("Error saving SwiftData context: \(error)")
         }
     }
     

@@ -24,6 +24,10 @@ struct AISentenceSigningView: View {
         }
     }
 
+    private var subtitleColor: Color {
+        currentPage == 1 ? Color(hex: "#58A0DA") : Color.gray
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             CustomProgressBar(progress: sessionProgress)
@@ -32,7 +36,7 @@ struct AISentenceSigningView: View {
             Text(subtitle)
                 .font(.title3)
                 .fontWeight(.medium)
-                .foregroundColor(.gray)
+                .foregroundColor(subtitleColor)
                 .animation(.easeInOut, value: currentPage)
 
             if currentPage == 1 {
@@ -63,6 +67,17 @@ struct PageOneContent: View {
     @Binding var showGloss: Bool
     var onContinue: () -> Void
 
+    private let glossGold = Color(hex: "#F8BC3A")
+    private let glossCream = Color(hex: "#FDF2D8")
+
+    /// Single-line ASL gloss, uppercase with spaces (matches design reference).
+    private var glossLineString: String {
+        sentenceModel.gloss
+            .map(\.rawValue)
+            .joined(separator: " ")
+            .uppercased()
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 40) {
             Spacer()
@@ -73,43 +88,57 @@ struct PageOneContent: View {
                 .multilineTextAlignment(.leading)
 
             Button(action: { withAnimation { showGloss.toggle() } }) {
-                HStack(spacing: 6) {
-                    Image(systemName: showGloss ? "eye.slash" : "eye")
-                    Text(showGloss ? "Hide gloss" : "Tap to reveal gloss!")
-                }
-                .font(.subheadline)
-                .foregroundColor(.gray)
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .center, spacing: 12) {
+                        glossBulbBadge
+                        Text(showGloss ? "Hide gloss" : "Gloss")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(glossGold)
+                        Spacer(minLength: 0)
+                    }
 
-            if showGloss {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(sentenceModel.gloss, id: \.self) { term in
-                            Text(term.rawValue)
-                                .font(.headline)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.15))
-                                .cornerRadius(8)
-                        }
+                    if showGloss {
+                        Text(glossLineString)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color(white: 0.58))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .multilineTextAlignment(.leading)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
-                .transition(.opacity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
             Button(action: onContinue) {
                 Text("Continue")
-                    .font(.headline)
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.gray)
-                    .cornerRadius(8)
+                    .padding(.vertical, 10)
+                    .background(Color(hex: "#97C171"))
+                    .cornerRadius(20)
             }
         }
+    }
+
+    /// Cream circle with golden outline-style bulb (or eye when hiding).
+    private var glossBulbBadge: some View {
+        ZStack {
+            Circle()
+                .fill(glossCream)
+                .frame(width: 40, height: 40)
+            Circle()
+                .strokeBorder(glossGold.opacity(0.55), lineWidth: 1)
+                .frame(width: 40, height: 40)
+            Image(systemName: showGloss ? "eye.slash" : "lightbulb")
+                .font(.system(size: 19, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundColor(glossGold)
+        }
+        .accessibilityHidden(true)
     }
 }
 

@@ -19,8 +19,8 @@ struct AISentenceComprehensionView: View {
     @State private var allChips: [CompWordChip] = []
     @State private var lineChips: [CompWordChip] = []
     @State private var submitState: CompSubmitState = .idle
-    @State private var attemptNumber: Int = 0          // 0 = hasn't submitted yet
-    private let maxAttempts: Int = 2
+    @State private var wrongAttemptCount: Int = 0
+    @State private var solutionRevealed: Bool = false
 
     private var glossTerms: [Term] { sentenceModel.gloss }
 
@@ -84,7 +84,7 @@ struct AISentenceComprehensionView: View {
         .padding(.bottom, 4)
     }
 
-    // MARK: - Status Label Row (INCORRECT 1/2  or  CORRECT)
+    // MARK: - Status Label Row (INCORRECT / CORRECT)
 
     @ViewBuilder
     private var statusLabelRow: some View {
@@ -96,7 +96,7 @@ struct AISentenceComprehensionView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.red)
                 Spacer()
-                Text("\(attemptNumber)/\(maxAttempts)")
+                Text("Attempt \(wrongAttemptCount)")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.red.opacity(0.7))
@@ -208,25 +208,18 @@ struct AISentenceComprehensionView: View {
     private var bottomArea: some View {
         switch submitState {
         case .idle:
-            Button(action: submit) {
-                Text("Submit")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        lineChips.count == correctOrder.count
-                            ? Color(red: 0.30, green: 0.69, blue: 0.31)
-                            : Color.gray
-                    )
-                    .cornerRadius(12)
-            }
-            .disabled(lineChips.count != correctOrder.count)
+            let canSubmit = lineChips.count == correctOrder.count
+            actionButton(
+                title: "Submit",
+                foreground: .white,
+                background: Color(hex: "#97C171")
+            ) { submit() }
+            .opacity(canSubmit ? 1.0 : 0.5)
+            .disabled(!canSubmit)
 
         case .incorrect:
             VStack(spacing: 10) {
-                // Show solution only on final attempt (attempt 2 of 2)
-                if attemptNumber >= maxAttempts {
+                if solutionRevealed {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("SOLUTION:")
                             .font(.caption)
@@ -241,119 +234,35 @@ struct AISentenceComprehensionView: View {
                     .background(Color.red.opacity(0.05))
                     .cornerRadius(8)
 
-                    // Final attempt: "Take a break" + "Continue"
-                    HStack(spacing: 16) {
-                        Button(action: { onSentenceComplete?() }) {
-                            Text("Take a break")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
-
-                        Button(action: { onSentenceComplete?() }) {
-                            Text("Continue")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
-                    }
+                    actionButton(
+                        title: "Continue",
+                        foreground: .white,
+                        background: Color(hex: "#97C171")
+                    ) { onSentenceComplete?() }
                 } else {
-                    // First attempt incorrect: "End attempt" + "Try again"
                     HStack(spacing: 16) {
-                        Button(action: { onSentenceComplete?() }) {
-                            Text("End attempt")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
+                        actionButton(
+                            title: "Reveal Solution",
+                            foreground: Color(red: 0.34, green: 0.50, blue: 0.27),
+                            background: Color(red: 0.92, green: 0.96, blue: 0.88)
+                        ) { revealSolution() }
 
-                        Button(action: tryAgain) {
-                            Text("Try again")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
+                        actionButton(
+                            title: "Try again",
+                            foreground: .white,
+                            background: Color(red: 0.60, green: 0.76, blue: 0.44)
+                        ) { tryAgain() }
                     }
                 }
             }
             .frame(maxWidth: .infinity)
 
         case .correct:
-            VStack(spacing: 12) {
-                Text("Great job!")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color(red: 0.30, green: 0.69, blue: 0.31))
-
-                if attemptNumber >= maxAttempts {
-                    // Got it right on final attempt: "Take a break" + "Continue"
-                    HStack(spacing: 16) {
-                        Button(action: { onSentenceComplete?() }) {
-                            Text("Take a break")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
-
-                        Button(action: { onSentenceComplete?() }) {
-                            Text("Continue")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
-                    }
-                } else {
-                    // Got it right on first try: "End attempt" + "Try again"
-                    HStack(spacing: 16) {
-                        Button(action: { onSentenceComplete?() }) {
-                            Text("End attempt")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
-
-                        Button(action: tryAgain) {
-                            Text("Try again")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.12))
-                                .cornerRadius(8)
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
+            actionButton(
+                title: "Continue",
+                foreground: .white,
+                background: Color(hex: "#97C171")
+            ) { onSentenceComplete?() }
         }
     }
 
@@ -370,17 +279,22 @@ struct AISentenceComprehensionView: View {
         allChips = allWords.map { CompWordChip(text: $0) }
         lineChips = []
         submitState = .idle
+        wrongAttemptCount = 0
+        solutionRevealed = false
     }
 
     private func submit() {
         guard lineChips.count == correctOrder.count else { return }
-        attemptNumber += 1
 
         let userAnswer = lineChips.map { $0.text }
         if userAnswer == correctOrder {
             withAnimation { submitState = .correct }
         } else {
-            withAnimation { submitState = .incorrect }
+            withAnimation {
+                wrongAttemptCount += 1
+                solutionRevealed = false
+                submitState = .incorrect
+            }
         }
     }
 
@@ -388,6 +302,30 @@ struct AISentenceComprehensionView: View {
         withAnimation {
             lineChips = []
             submitState = .idle
+        }
+    }
+
+    private func revealSolution() {
+        withAnimation {
+            solutionRevealed = true
+        }
+    }
+
+    private func actionButton(
+        title: String,
+        foreground: Color,
+        background: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(foreground)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(background)
+                .cornerRadius(20)
         }
     }
 }
