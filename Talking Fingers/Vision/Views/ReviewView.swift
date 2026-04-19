@@ -118,16 +118,16 @@ struct ReviewView: View {
             }
 
             do {
-                let trimmedFrames = cameraVM.trimFramesByVelocity(filteredFrames)
-
-                guard !trimmedFrames.isEmpty else {
-                    print("Review recording for '\(normalizedName)' produced 0 frames after velocity trimming.")
+                let playbackFrames = filteredFrames
+                guard !playbackFrames.isEmpty else {
+                    print("Review recording for '\(normalizedName)' produced 0 usable frames.")
                     cameraVM.clearBuffer()
                     return
                 }
 
                 let baseName = cameraVM.currentRecordingBaseName ?? cameraVM.makeRecordingBaseName(forSign: normalizedName)
-                let jsonURL = try cameraVM.saveRecordingFramesToJSON(trimmedFrames, baseName: baseName)
+                let jsonURL = try cameraVM.saveRecordingFramesToJSON(playbackFrames, baseName: baseName)
+                
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: jsonURL)
 
                 let videoURL = jsonURL.deletingPathExtension().appendingPathExtension("mov")

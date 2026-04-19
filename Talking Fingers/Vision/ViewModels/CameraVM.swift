@@ -381,6 +381,10 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
             
+            if isRecording && recordingStartTime == nil {
+                recordingStartTime = pts
+            }
+            
             if isWritingVideo,
                let assetWriter,
                let assetWriterInput,
@@ -431,12 +435,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     // New body callback (for overlays/labels)
                     self.onBodyPoseDetected?(bodyObservations, pts)
 
-                    if self.isRecording {
-                        if self.recordingStartTime == nil {
-                            self.recordingStartTime = pts
-                        }
-
-                        let relativeTimestamp = pts - (self.recordingStartTime ?? pts)
+                    if self.isRecording, let start = self.recordingStartTime {
+                        let relativeTimestamp = pts - start
 
                         let frame = SignFrame(
                             body: primaryBody,
