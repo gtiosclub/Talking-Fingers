@@ -8,83 +8,107 @@
 import SwiftUI
 
 struct LearnModeView: View {
-    @StateObject var vm: LearnModeVM
+    @ObservedObject var vm: LearnModeVM
     var progress: Double
-
-    // Add this closure so the presenter can control dismissal.
     var onClose: () -> Void = {}
-
-    @State private var showHint = false
+    
+    @State private var showHintPopup: Bool = false
 
     var body: some View {
         ZStack {
-            // Main content
-            VStack(spacing: 20) {
+            Color.white.ignoresSafeArea()
 
-                header
+            VStack(spacing: 0) {
+                topBar
 
-                Text(vm.word)
-                    .font(.system(size: 45, weight: .bold))
+                VStack(spacing: 20) {
+                    Text(vm.word)
+                        .font(.system(size: 45, weight: .bold))
+                        .padding(.top, 10)
 
-                imageArea
-                    .frame(maxHeight: .infinity)
+                    imageArea
+                        .frame(maxHeight: .infinity)
 
-                Spacer()
+                    Spacer()
 
-                mainButton
+                    mainButton
+                        .padding(.bottom, 20)
+                }
+                .padding(.horizontal, 20)
             }
-            .padding(.top)
-            .padding(.horizontal)
         }
-        .popupHost(isPresented: $showHint) {
+        .popupHost(isPresented: $showHintPopup) {
             HintPopUpComponent(
-                hintText: /* vm.hintText ?? */ "This sign resembles a B shape"
+                hintText: "This sign resembles a B shape"
             ) {
-                showHint = false
+                showHintPopup = false
+                if vm.state == .showingHint {
+                    vm.tapHint()
+                }
             }
         }
     }
 }
 
 extension LearnModeView {
-    var header: some View {
-        HStack {
-            Button {
-                // exit view
-                onClose()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.gray)
+    private var topBar: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Button {
+                    onClose()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("Leave")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .foregroundColor(.gray)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            
+            HStack(spacing: 12) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color(red: 0.88, green: 0.92, blue: 0.96))
 
-            ProgressView(value: progress)
-                .progressViewStyle(.linear)
+                        Capsule()
+                            .fill(Color(red: 0.30, green: 0.55, blue: 0.85))
+                            .frame(width: geo.size.width * CGFloat(progress))
+                    }
+                }
+                .frame(height: 10)
 
-            Spacer()
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.black)
+            }
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal)
+        .padding(.top, 10)
     }
 
     var imageArea: some View {
         ZStack(alignment: .topTrailing) {
-
             displayedImage
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Show hint icon ONLY when camera is showing
             if vm.showingCamera {
                 hintButton
             }
         }
-        .frame(maxHeight: .infinity)
-        .background(.white)
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
-        .padding(.horizontal)
     }
 
     var displayedImage: some View {
@@ -104,7 +128,8 @@ extension LearnModeView {
 
     var hintButton: some View {
         Button {
-            showHint = true
+            vm.tapHint()
+            showHintPopup = true
         } label: {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 30))
@@ -123,11 +148,15 @@ extension LearnModeView {
         } label: {
             Text(vm.buttonText)
                 .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(vm.buttonColor)
+                )
         }
-        .buttonStyle(.borderedProminent)
-        .tint(vm.buttonColor)
-        .padding(.horizontal)
+        .buttonStyle(.plain)
     }
 }
 

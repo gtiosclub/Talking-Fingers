@@ -48,6 +48,10 @@ struct CameraView: View {
     @State private var signName: String = ""
     @State private var cameraMode: CameraMode = .static
 
+    /// When `true`, the comparison overlay shows the raw numeric score
+    /// instead of the Bad/Okay/Good word.
+    @State private var showRawConfidence: Bool = false
+
     private var signType: SignType {
         cameraMode == .dynamic ? .dynamic : .static
     }
@@ -109,6 +113,18 @@ struct CameraView: View {
                     }
                     .padding(.horizontal)
 
+                    if cameraMode == .compare {
+                        Toggle(isOn: $showRawConfidence) {
+                            HStack(spacing: 6) {
+                                Image(systemName: showRawConfidence ? "number" : "textformat")
+                                Text(showRawConfidence ? "Show score" : "Show label")
+                                    .font(.callout)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .padding(.horizontal)
+                    }
+
                     ZStack {
                         CameraPreviewView(session: cameraVM.session)
                             .ignoresSafeArea()
@@ -136,12 +152,12 @@ struct CameraView: View {
                         if cameraMode == .compare && cameraVM.isComparing {
                             VStack {
                                 Spacer()
-                                Text(confidenceLabel)
+                                Text(confidenceDisplay)
                                     .font(.system(size: 56, weight: .bold, design: .rounded))
                                     .foregroundStyle(confidenceColor)
                                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                                     .contentTransition(.interpolate)
-                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceDisplay)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 12)
                                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -481,19 +497,25 @@ struct CameraView: View {
     }
 
     private var confidenceColor: Color {
-        switch cameraVM.confidenceScore {
-        case 75...100: return .green
-        case 40..<75: return .yellow
-        default: return .red
-        }
+        let score = cameraVM.confidenceScore
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        if score >= goodThreshold { return .green }
+        if score >= okayThreshold { return .yellow }
+        return .red
     }
 
     private var confidenceLabel: String {
-        switch cameraVM.confidenceScore {
-        case 75...100: return "Good"
-        case 40..<75: return "Okay"
-        default: return "Bad"
-        }
+        let score = cameraVM.confidenceScore
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        if score >= goodThreshold { return "Good" }
+        if score >= okayThreshold { return "Okay" }
+        return "Bad"
+    }
+
+    private var confidenceDisplay: String {
+        showRawConfidence ? "\(Int(cameraVM.confidenceScore.rounded()))%" : confidenceLabel
     }
 
     private func startCountdownThenRecord() {

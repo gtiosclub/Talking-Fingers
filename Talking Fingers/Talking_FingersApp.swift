@@ -72,6 +72,9 @@ struct Talking_FingersApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+#if os(macOS)
+                .preferredColorScheme(.light)
+#endif
                 .environment(authVM)
                 .environment(dataVM)
                 .onAppear {

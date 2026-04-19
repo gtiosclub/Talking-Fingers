@@ -13,7 +13,7 @@ import AppKit
 import Observation
 
 struct CameraView: View {
-    @State private var cameraVM = VisionCameraFeedVM()
+    @State private var cameraVM = CameraVM()
 
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
@@ -23,6 +23,20 @@ struct CameraView: View {
     @State private var handOutlineVisibility: Bool = false
     @State private var handSkeletonVisibility: Bool = true
     @State private var bodySkeletonVisibility: Bool = true
+
+    /// Live, user-editable name of the sign reference to compare against.
+    /// When blank, no comparison runs and the Bad/Okay/Good label is hidden.
+    @State private var signNameInput: String = ""
+
+    /// When `true`, the comparison overlay shows the raw numeric score
+    /// instead of the Bad/Okay/Good word.
+    @State private var showRawConfidence: Bool = false
+
+    /// Trimmed version of `signNameInput`. `nil` when blank.
+    private var activeSignName: String? {
+        let trimmed = signNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 
     @State private var jointVisibility: [VNHumanHandPoseObservation.JointName: Bool] = {
         var dict: [VNHumanHandPoseObservation.JointName: Bool] = [:]
@@ -70,7 +84,7 @@ struct CameraView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 18) {
-                HStack {
+                HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Vision")
                             .font(.system(size: 28, weight: .semibold))
@@ -78,6 +92,34 @@ struct CameraView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "hand.raised.fingers.spread")
+                            .foregroundStyle(.secondary)
+                        TextField("Sign reference (e.g. a)", text: $signNameInput)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 220)
+                            .disableAutocorrection(true)
+                        if !signNameInput.isEmpty {
+                            Button {
+                                signNameInput = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            .help("Clear comparison reference")
+                        }
+                    }
+
+                    Toggle(isOn: $showRawConfidence) {
+                        HStack(spacing: 6) {
+                            Image(systemName: showRawConfidence ? "number" : "textformat")
+                            Text(showRawConfidence ? "Score" : "Label")
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .help("Toggle between word label and raw confidence score")
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 20)
@@ -96,6 +138,22 @@ struct CameraView: View {
                                 bodyJointLabelsOverlay(in: geo.size)
                                 handSkeletonOverlay(in: geo.size)
                                 bodySkeletonOverlay(in: geo.size)
+                            }
+
+                            if activeSignName != nil {
+                                VStack {
+                                    Spacer()
+                                    Text(confidenceDisplay)
+                                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                                        .foregroundStyle(confidenceColor)
+                                        .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                                        .contentTransition(.interpolate)
+                                        .animation(.easeInOut(duration: 0.15), value: confidenceDisplay)
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                        .padding(.bottom, 20)
+                                }
                             }
                         }
                         .aspectRatio(16.0 / 9.0, contentMode: .fit)
@@ -123,15 +181,19 @@ struct CameraView: View {
         .onAppear {
             cameraVM.isMirrored = true
 
-            cameraVM.onPoseDetected = { handObservations in
+            cameraVM.onPoseDetected = { handObservations, _ in
                 hands = handObservations
             }
 
-            cameraVM.onBodyPoseDetected = { bodyObservations in
+            cameraVM.onBodyPoseDetected = { bodyObservations, _ in
                 bodies = bodyObservations
             }
 
             cameraVM.checkPermission()
+
+            if let activeSignName {
+                cameraVM.startComparing(forSign: activeSignName)
+            }
         }
         .task {
             try? await Task.sleep(for: .milliseconds(250))
@@ -140,6 +202,35 @@ struct CameraView: View {
         .onDisappear {
             cameraVM.stop()
         }
+        .onChange(of: signNameInput) { _, _ in
+            if let activeSignName {
+                cameraVM.startComparing(forSign: activeSignName)
+            } else {
+                cameraVM.stopComparing()
+            }
+        }
+    }
+
+    private var confidenceColor: Color {
+        let score = cameraVM.confidenceScore
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        if score >= goodThreshold { return .green }
+        if score >= okayThreshold { return .yellow }
+        return .red
+    }
+
+    private var confidenceLabel: String {
+        let score = cameraVM.confidenceScore
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        if score >= goodThreshold { return "Good" }
+        if score >= okayThreshold { return "Okay" }
+        return "Bad"
+    }
+
+    private var confidenceDisplay: String {
+        showRawConfidence ? "\(Int(cameraVM.confidenceScore.rounded()))%" : confidenceLabel
     }
 
     @ViewBuilder

@@ -48,6 +48,8 @@ struct MainNavigationView: View {
                     .tag(NavigationSection.stats)
                 Label("Vision", systemImage: "eyeglasses")
                     .tag(NavigationSection.camera)
+                Label("Review", systemImage: "film.stack")
+                    .tag(NavigationSection.review)
                 Label("Practice Test", systemImage: "pencil.and.scribble")
                     .tag(NavigationSection.practice)
             }
@@ -121,6 +123,11 @@ struct MainNavigationView: View {
                 CameraView()
                     .environment(authVM)
             }
+        case .review:
+            NavigationStack {
+                ReviewView(signName: "Review")
+                    .environment(authVM)
+            }
             
         case .practice:
             NavigationStack {
@@ -132,7 +139,7 @@ struct MainNavigationView: View {
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, sentences, stats, camera, practice
+        case home, flashcards, sentences, stats, camera,review, practice
     }
 }
 struct StatsView: View {

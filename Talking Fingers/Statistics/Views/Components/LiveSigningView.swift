@@ -26,23 +26,12 @@ struct LiveSigningView: View {
                 .padding(.bottom, 20)
 
             // Camera placeholder
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemGray).opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
-
-                VStack(spacing: 8) {
-                    Image(systemName: "camera")
-                        .font(.system(size: 36))
-                        .foregroundColor(.gray.opacity(0.4))
-                    Text("Camera coming soon")
-                        .font(.caption)
-                        .foregroundColor(.gray.opacity(0.4))
-                }
-            }
+            GradedSigningCameraView(
+                targetWord: glossWords[safe: currentWordIndex]?.rawValue ?? ""
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 340)
+            .padding(.bottom, 24)
             .frame(maxWidth: .infinity)
             .frame(height: 340)
             .padding(.bottom, 24)
@@ -159,5 +148,11 @@ struct LiveSigningView: View {
                 currentWordIndex = glossWords.count
             }
         }
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

@@ -35,6 +35,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private var assetWriter: AVAssetWriter?
     private var assetWriterInput: AVAssetWriterInput?
     private var isWritingVideo = false
+    private var didStartWriterSession = false
 
     // --- Callbacks ---
     // Keep main signature so merge works with main as-is
@@ -61,20 +62,23 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: - Comparison mode
     var isComparing = false
     var confidenceScore: Double = 0.0
+    /// The sign type of the currently loaded comparison reference, or `nil`
+    /// when no comparison is active. Views use this to pick category thresholds
+    /// (e.g. requiring stricter scores for static signs).
+    private(set) var activeComparisonType: SignType?
     private var comparisonReference: SignReference?
     private var smoothedConfidence: Double = 0.0
     private let smoothingFactor: Double = 0.3
 
     #if os(iOS)
     private let motionManager = CMMotionManager()
+    #endif
+
+    // Scoring is now aspect-ratio aware (see scoreMatchedPairs), so the same
+    // tunings work on iOS and macOS without padding macOS with extra slack.
     private let staticScoreDecay: Double = 3.0
     private let displayMultiplier: Double = 1.3
     private let smoothingAlpha: Double = 0.3
-    #else
-    private let staticScoreDecay: Double = 2.1
-    private let displayMultiplier: Double = 1.45
-    private let smoothingAlpha: Double = 0.45
-    #endif
 
     var currentPitch: Double = 0.0
     
@@ -212,6 +216,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             let refs = try loadSignReferences(forSign: normalizedName)
             comparisonReference = refs.first
             isComparing = comparisonReference != nil
+            activeComparisonType = comparisonReference?.signType
             if !isComparing { confidenceScore = 0 }
             smoothedConfidence = 0
             frameBuffer.frames.removeAll()
@@ -225,6 +230,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func stopComparing() {
         isComparing = false
         comparisonReference = nil
+        activeComparisonType = nil
         confidenceScore = 0
         smoothedConfidence = 0
         frameBuffer.frames.removeAll()
@@ -242,23 +248,15 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     private func jointWeight(for key: String) -> Double {
-        #if os(macOS)
-        // More tolerant on macOS where occlusion/jitter is worse
-        if key.hasSuffix("WRI") { return 1.8 }
-        if key.hasSuffix("CMC") { return 1.4 }
-        if key.hasSuffix("MCP") { return 1.35 }
-        if key.hasSuffix("PIP") { return 1.1 }
-        if key.hasSuffix("IP")  { return 1.0 }
-        if key.hasSuffix("DIP") { return 0.7 }
-        if key.hasSuffix("TIP") { return 0.45 }
-        #else
-        // Closer to original stricter weighting on iOS
+        // Same weighting on both platforms now that scoring is geometry-aware.
+        // Wrist + knuckles get the most weight because they define the hand
+        // orientation; finger tips get a bit less because Vision jitters them
+        // more under occlusion (touching fingers, side angles, etc.).
         if key.hasSuffix("WRI") { return 1.5 }
         if key.hasSuffix("MCP") { return 1.3 }
         if key.hasSuffix("PIP") { return 1.1 }
         if key.hasSuffix("DIP") { return 1.0 }
         if key.hasSuffix("TIP") { return 0.9 }
-        #endif
 
         return 1.0
     }
@@ -271,17 +269,23 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let liveJoints = live.joints
         let refJoints = reference.joints
 
+        // Convert each frame's Vision-normalized (0..1) coordinates into
+        // pixel-equivalent space using the dimensions of the source camera
+        // frame. Without this, an iPhone reference (recorded against a 720x1280
+        // portrait frame) and a macOS live frame (1280x720 landscape) describe
+        // the same physical hand with very different x/y proportions, and the
+        // uniform centroid+scale step below cannot recover the true shape.
+        let liveW = live.sourceWidth
+        let liveH = live.sourceHeight
+        let refW = reference.sourceWidth
+        let refH = reference.sourceHeight
+
         var matchedLive: [(x: Double, y: Double, w: Double)] = []
         var matchedRef: [(x: Double, y: Double, w: Double)] = []
 
         for (key, refJoint) in refJoints {
             guard key.contains("VNHLK") else { continue }
-
-            #if os(macOS)
-            guard refJoint.confidence > 0.2 else { continue }
-            #else
             guard refJoint.confidence > 0.3 else { continue }
-            #endif
 
             let liveKey: String
             if swapLiveHandPrefixes, let swapped = swappedHandKey(key) {
@@ -291,17 +295,12 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             }
 
             guard let liveJoint = liveJoints[liveKey] else { continue }
-
-            #if os(macOS)
-            guard liveJoint.confidence > 0.2 else { continue }
-            #else
             guard liveJoint.confidence > 0.3 else { continue }
-            #endif
 
             let w = jointWeight(for: key)
 
-            matchedLive.append((x: liveJoint.x, y: liveJoint.y, w: w))
-            matchedRef.append((x: refJoint.x, y: refJoint.y, w: w))
+            matchedLive.append((x: liveJoint.x * liveW, y: liveJoint.y * liveH, w: w))
+            matchedRef.append((x: refJoint.x * refW, y: refJoint.y * refH, w: w))
         }
 
         guard matchedLive.count >= 5 else { return 0 }
@@ -377,7 +376,27 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // runs 24 times a second - every video frame processed here
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         autoreleasepool {
+            
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            
+            if isRecording && recordingStartTime == nil {
+                recordingStartTime = pts
+            }
+            
+            if isWritingVideo,
+               let assetWriter,
+               let assetWriterInput,
+               assetWriter.status == .writing {
+
+                if !didStartWriterSession {
+                    assetWriter.startSession(atSourceTime: pts)
+                    didStartWriterSession = true
+                }
+
+                if assetWriterInput.isReadyForMoreMediaData {
+                    assetWriterInput.append(sampleBuffer)
+                }
+            }
 
             let handler = VNImageRequestHandler(
                 cmSampleBuffer: sampleBuffer,
@@ -414,13 +433,13 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     // New body callback (for overlays/labels)
                     self.onBodyPoseDetected?(bodyObservations, pts)
 
-                    if self.isRecording {
-                        if self.recordingStartTime == nil { self.recordingStartTime = pts }
+                    if self.isRecording, let start = self.recordingStartTime {
+                        let relativeTimestamp = pts - start
 
                         let frame = SignFrame(
                             body: primaryBody,
                             hands: handObservations,
-                            at: pts
+                            at: relativeTimestamp
                         )
 
                         self.recordedFrames.append(frame)
@@ -570,7 +589,9 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     /// Call this before `filterFrames` / `filterReferences` to discard the
     /// trailing grace-period where hands were no longer visible.
     func trimFrames(after cutoff: CMTime) {
-        recordedFrames.removeAll { $0.timestamp > cutoff }
+        guard let start = recordingStartTime else { return }
+            let relativeCutoff = cutoff - start
+            recordedFrames.removeAll { $0.timestamp > relativeCutoff }
     }
 
     // Filter frames (SignFrame-based)
@@ -803,13 +824,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         ]
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
         input.expectsMediaDataInRealTime = true
-        writer.add(input)
-        writer.startWriting()
-        writer.startSession(atSourceTime: .zero)
 
+        if writer.canAdd(input) {
+            writer.add(input)
+        }
+        
+        writer.startWriting()
+        
         assetWriter = writer
         assetWriterInput = input
         isWritingVideo = true
+        didStartWriterSession = false
     }
 
     /// Stops the asset writer and resets video recording state.
@@ -820,6 +845,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         assetWriter?.finishWriting { [weak self] in
             self?.assetWriter = nil
             self?.assetWriterInput = nil
+            self?.didStartWriterSession = false
         }
     }
 
