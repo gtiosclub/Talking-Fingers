@@ -27,6 +27,7 @@ class FlashcardVM {
 
         return [
             FlashcardModel(term: .hello, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .greetings, gifFileName: Term.hello.defaultGifFileName),
+            FlashcardModel(term: .a, id: UUID(), lastSucceeded: nil, starred: false, progress: .new, category: .greetings),
             FlashcardModel(term: .bye, id: UUID(), lastSucceeded: daysAgo(10), starred: false, progress: .learning, category: .greetings),
             FlashcardModel(term: .niceMeetYou, id: UUID(), lastSucceeded: daysAgo(3), starred: true, progress: .learning, category: .greetings),
             FlashcardModel(term: .howYou, id: UUID(), lastSucceeded: daysAgo(1), starred: false, progress: .polishing, category: .greetings),

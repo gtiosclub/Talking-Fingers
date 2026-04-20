@@ -54,9 +54,10 @@ struct SigningPracticeView: View {
     @State private var bodySkeletonVisibility: Bool = true
 
     let signName: String?
-
-    init(signName: String? = nil) {
+    var onConfidenceChange: ((Double) -> Void)?
+    init(signName: String? = nil, onConfidenceChange: ((Double) -> Void)? = nil) {
         self.signName = signName
+        self.onConfidenceChange = onConfidenceChange
     }
     @State private var cameraMode: CameraMode = .compare
 
@@ -187,6 +188,7 @@ struct SigningPracticeView: View {
             .onChange(of: cameraVM.confidenceScore) { _, newValue in
                 let passThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 70
                 if cameraVM.confidenceScore >= passThreshold {
+                    onConfidenceChange?(newValue)
                     pass = true
                 }
             }
@@ -431,11 +433,11 @@ struct SigningPracticeView: View {
     /// When `nil`, the comparison overlay (Bad/Okay/Good label) is hidden
     /// and no reference is loaded.
     let signName: String?
-
-    init(signName: String? = nil) {
+    var onConfidenceChange: ((Double) -> Void)?
+    init(signName: String? = nil, onConfidenceChange: ((Double) -> Void)? = nil) {
         self.signName = signName
+        self.onConfidenceChange = onConfidenceChange
     }
-
     @State private var cameraVM: CameraVM = CameraVM()
 
     @State private var hands: [VNHumanHandPoseObservation] = []
@@ -590,6 +592,9 @@ struct SigningPracticeView: View {
             } else {
                 cameraVM.stopComparing()
             }
+        }
+        .onChange(of: cameraVM.confidenceScore) { _, newValue in
+            onConfidenceChange?(newValue)
         }
     }
 
