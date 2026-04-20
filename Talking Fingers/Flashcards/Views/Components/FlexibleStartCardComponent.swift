@@ -55,6 +55,17 @@ enum StartContext {
             return "flame.fill"
         }
     }
+    
+    var id: String {
+        switch self {
+        case .learn(let cat):
+            return "learn_\(cat.rawValue)"
+        case .exercise(let cat):
+            return "exercise_\(cat.rawValue)"
+        case .dailyChallenge:
+            return "dailyChallenge"
+        }
+    }
 }
 
 struct FlexibleStartCardComponent: View {
@@ -92,14 +103,26 @@ struct FlexibleStartCardComponent: View {
                 switch context {
                 case .learn(let category):
                     LearnFlow(
-                        initialCard: flashcardVM.flashcards.first ?? FlashcardModel(term: .hello, id: UUID(), category: category),
+                        initialCard: flashcardVM.flashcards.first ?? fallbackCard(for: category),
                         targetCount: total,
                         vm: flashcardVM
                     ) {
                         showEndScreen = true
                     }
                     
-                case .exercise, .dailyChallenge:
+                case .exercise(let category):
+                    ExerciseSessionFlow(
+                        initialCard: flashcardVM.flashcards.first ?? fallbackCard(for: category),
+                        imageName: context.iconName,
+                        targetCount: total,
+                        vm: flashcardVM,
+                        onLeave: closeAction
+                    ) {
+                        showEndScreen = true
+                    }
+                    .environment(flashcardVM)
+                    .environment(dataVM)
+                case .dailyChallenge:
                     ExerciseSessionFlow(
                         initialCard: flashcardVM.flashcards.first ?? FlashcardModel(term: .hello, id: UUID(), category: .greetings),
                         imageName: context.iconName,
@@ -188,10 +211,41 @@ struct FlexibleStartCardComponent: View {
         }
         .padding(.horizontal, 16)
         .onAppear {
-            if flashcardVM.flashcards.isEmpty || flashcardVM.flashcards.count <= 1 {
-                 flashcardVM.flashcards = FlashcardVM.dummyFlashcards
-            }
+            configureCardsForContext()
         }
+        .onChange(of: context.id) { _, _ in
+            configureCardsForContext()
+        }
+    }
+    
+    private func configureCardsForContext() {
+        let allCards = FlashcardVM.dummyFlashcards
+        
+        var scopedCards: [FlashcardModel]
+        switch context {
+        case .learn(let category), .exercise(let category):
+            let cardsInCategory = allCards.filter { $0.category == category }
+            scopedCards = cardsInCategory.isEmpty ? fallbackCards(for: category) : cardsInCategory
+        case .dailyChallenge:
+            flashcardVM.flashcards = allCards
+            scopedCards = flashcardVM.generateDailyReviewQueue(limit: total).cards
+        }
+        
+        flashcardVM.flashcards = scopedCards
+        flashcardVM.lastCardID = nil
+    }
+    
+    private func fallbackCards(for category: TermCategory) -> [FlashcardModel] {
+        Term.words(for: category).map { term in
+            FlashcardModel(term: term, id: UUID(), category: category)
+        }
+    }
+    
+    private func fallbackCard(for category: TermCategory) -> FlashcardModel {
+        if let term = Term.words(for: category).first {
+            return FlashcardModel(term: term, id: UUID(), category: category)
+        }
+        return FlashcardModel(term: .hello, id: UUID(), category: .greetings)
     }
 }
 
