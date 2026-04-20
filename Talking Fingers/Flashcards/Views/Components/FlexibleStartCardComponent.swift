@@ -105,8 +105,10 @@ struct FlexibleStartCardComponent: View {
                     LearnFlow(
                         initialCard: flashcardVM.flashcards.first ?? fallbackCard(for: category),
                         targetCount: total,
-                        vm: flashcardVM
+                        vm: flashcardVM,
+                        onLeave: closeAction
                     ) {
+                        markLearnCompletedIfNeeded()
                         showEndScreen = true
                     }
                     
@@ -235,6 +237,12 @@ struct FlexibleStartCardComponent: View {
         flashcardVM.lastCardID = nil
     }
     
+    private func markLearnCompletedIfNeeded() {
+        guard case .learn(let category) = context else { return }
+        let key = "learnCompleted_\(category.rawValue)"
+        UserDefaults.standard.set(true, forKey: key)
+    }
+    
     private func fallbackCards(for category: TermCategory) -> [FlashcardModel] {
         Term.words(for: category).map { term in
             FlashcardModel(term: term, id: UUID(), category: category)
@@ -358,12 +366,14 @@ private struct LearnFlow: View {
     @State private var completedCount: Int = 0
     let targetCount: Int
     let vm: FlashcardVM
+    let onLeave: () -> Void
     let onFinished: () -> Void
     
-    init(initialCard: FlashcardModel, targetCount: Int, vm: FlashcardVM, onFinished: @escaping () -> Void) {
+    init(initialCard: FlashcardModel, targetCount: Int, vm: FlashcardVM, onLeave: @escaping () -> Void, onFinished: @escaping () -> Void) {
         _currentCard = State(initialValue: initialCard)
         self.targetCount = targetCount
         self.vm = vm
+        self.onLeave = onLeave
         self.onFinished = onFinished
     }
     
@@ -371,7 +381,7 @@ private struct LearnFlow: View {
         let learnVM = LearnModeVM(flashcard: currentCard)
         learnVM.onNextCard = { advance() }
         
-        return LearnModeView(vm: learnVM, progress: Double(completedCount) / Double(max(targetCount, 1)), onClose: onFinished)
+        return LearnModeView(vm: learnVM, progress: Double(completedCount) / Double(max(targetCount, 1)), onClose: onLeave)
             .id(currentCard.id)
     }
     

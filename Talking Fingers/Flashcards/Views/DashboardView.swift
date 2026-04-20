@@ -60,6 +60,11 @@ struct DashboardView: View {
         flashcardVM.generateDailyReviewQueue(limit: 5)
     }
     
+    private func isExerciseUnlocked(for category: TermCategory) -> Bool {
+        let key = "learnCompleted_\(category.rawValue)"
+        return UserDefaults.standard.bool(forKey: key)
+    }
+    
     var body: some View {
 #if os(macOS)
         macLayout
@@ -216,6 +221,7 @@ struct DashboardView: View {
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
                     isPresented: $showModePopup,
+                    isExerciseUnlocked: selectedCategoryForPopup.map { isExerciseUnlocked(for: $0) } ?? false,
                     onLearn: {
                         if let cat = selectedCategoryForPopup {
                             activeFlow = .learn(cat)
@@ -294,6 +300,7 @@ struct DashboardView: View {
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
                     isPresented: $showModePopup,
+                    isExerciseUnlocked: selectedCategoryForPopup.map { isExerciseUnlocked(for: $0) } ?? false,
                     onLearn: {
                         if let cat = selectedCategoryForPopup {
                             activeFlow = .learn(cat)
