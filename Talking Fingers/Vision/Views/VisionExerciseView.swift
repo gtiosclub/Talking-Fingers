@@ -208,17 +208,7 @@ struct VisionExerciseView: View {
             }
 
             // Live graded camera feed
-            GradedSigningCameraView(
-                targetWord: currentCard.term.displayName,
-                onConfidenceChange: { score in
-                    confidenceScore = score
-                    if score >= passThreshold && !isPassed {
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            isPassed = true
-                        }
-                    }
-                }
-            )
+            SigningPracticeView(signName: currentCard.term.displayName)
             .frame(height: cameraHeight)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
