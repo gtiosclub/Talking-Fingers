@@ -177,6 +177,17 @@ enum TermGifCatalog {
             return "name.gif"
         case .what:
             return "what.gif"
+        case .son:
+            return "son.gif"
+        case .daughter:
+            return "daughter.gif"
+        case .grandson:
+            return "grandson.gif"
+        case .granddaughter:
+            return "granddaughter.gif"
+        case .grandchild:
+            return "grandchild.gif"
+
         
         default:
             return nil
