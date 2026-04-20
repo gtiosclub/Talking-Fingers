@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 enum ActiveFlow: Identifiable {
     case learn(TermCategory)
@@ -30,8 +31,9 @@ struct DashboardView: View {
     @State private var selectedCategoryForPopup: TermCategory? = nil
     
     @State private var activeFlow: ActiveFlow? = nil
-    
     @Environment(SwiftDataVM.self) private var dataVM
+    @Query private var users: [User]
+    @State private var selectedTab: Int = 0
     
     // Compute categories that are in progress (have at least one non-new and non-mastered card)
     private var inProgressCategories: [(category: TermCategory, progress: Float, mode: String)] {
@@ -65,100 +67,152 @@ struct DashboardView: View {
         iosLayout
 #endif
     }
+    
     var iosLayout: some View {
-        NavigationStack{
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    
-                    // MARK: - Search icon
-                    HStack {
-                        Spacer()
-                        NavigationLink {
-                            SearchView()
-                                .navigationBarBackButtonHidden(true)
-                        } label: {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 22))
-                                .foregroundStyle(.black)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // MARK: - In Progress
-                    if !inProgressCategories.isEmpty {
-                        Text("In Progress")
-                            .font(.system(size: 26, weight: .bold))
-                            .padding(.horizontal)
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
                         
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
-                                    Button {
-                                        if item.mode == "Learn" {
-                                            activeFlow = .learn(item.category)
-                                        } else {
-                                            activeFlow = .exercise(item.category)
-                                        }
-                                    } label: {
-                                        InProgressCard(
-                                            category: item.category,
-                                            mode: item.mode,
-                                            progress: item.progress,
-                                            backgroundColor: Color.blue.opacity(0.15)
-                                        )
-                                        .frame(width: 180)
-                                    }
-                                    .buttonStyle(.plain)
+                        // MARK: - Top Nav
+                        HStack {
+                            Spacer()
+                            Text("Talking Fingers")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(Color.gray.opacity(0.8))
+                                .padding(.leading, 24)
+                            Spacer()
+                            
+                            NavigationLink {
+                                SearchView()
+                                    .navigationBarBackButtonHidden(true)
+                            } label: {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        
+                        // MARK: - Welcome Header
+                        HStack(spacing: 16) {
+                            Image(systemName: "camera.macro")
+                                .font(.system(size: 45))
+                                .foregroundColor(Color(red: 0.85, green: 0.8, blue: 0.3))
+                            
+                            VStack(alignment: .leading, spacing: 0) {
+                                if let userName = users.first?.name, !userName.isEmpty {
+                                    Text("Welcome back,")
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(Color.black.opacity(0.7))
+                                    
+                                    Text(userName)
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
+                                } else {
+                                    Text("Welcome back!")
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(Color.black.opacity(0.7))
                                 }
                             }
-                            .padding(.horizontal)
+                            Spacer()
                         }
-                    }
-                    
-                    // MARK: - Daily Challenge
-                    Text("Daily Challenge")
-                        .font(.system(size: 26, weight: .bold))
                         .padding(.horizontal)
-                    
-                    Button {
-                        activeFlow = .dailyChallenge
-                    } label: {
-                        DailyChallengeCard(
-                            streak: 3,
-                            completed: dailyQueue.cards.count,
-                            total: dailyQueue.requestedLimit
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal)
-                    
-                    // MARK: - Categories
-                    Text("Categories")
-                        .font(.system(size: 26, weight: .bold))
-                        .padding(.horizontal)
-                    
-                    let columns = [
-                        GridItem(.flexible(), spacing: 12)
-                    ]
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(TermCategory.allCases, id: \.self) { category in
-                            Button {
-                                selectedCategoryForPopup = category
-                                showModePopup = true
-                            } label: {
-                                CategoryComponent(title: category.displayName)
+                        
+                        // MARK: - Jump back in! (White Bubble)
+                        if !inProgressCategories.isEmpty {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Jump back in!")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(Color.black.opacity(0.8))
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 20)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
+                                            Button {
+                                                if item.mode == "Learn" {
+                                                    activeFlow = .learn(item.category)
+                                                } else {
+                                                    activeFlow = .exercise(item.category)
+                                                }
+                                            } label: {
+                                                InProgressCard(
+                                                    category: item.category,
+                                                    mode: item.mode,
+                                                    progress: item.progress,
+                                                    backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
+                                                )
+                                                .frame(width: 155) // Keeps cards properly sized within the bubble
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 20)
+                                }
                             }
-                            .buttonStyle(.plain)
+                            .background(Color.white)
+                            .cornerRadius(24)
+                            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+                            .padding(.horizontal, 16)
                         }
+                        
+                        // MARK: - Daily Challenge
+                        Text("Keep up your streak!")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(Color.black.opacity(0.8))
+                            .padding(.horizontal)
+                        
+                        Button {
+                            activeFlow = .dailyChallenge
+                        } label: {
+                            DailyChallengeCard(
+                                streak: 3,
+                                completed: dailyQueue.cards.count,
+                                total: dailyQueue.requestedLimit
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal)
+                        
+                        // MARK: - Categories
+                        Text("Categories")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(Color.black.opacity(0.8))
+                            .padding(.horizontal)
+                        
+                        let columns = [
+                            GridItem(.flexible(), spacing: 12)
+                        ]
+                        LazyVGrid(columns: columns, spacing: 12) {
+                            ForEach(TermCategory.allCases, id: \.self) { category in
+                                Button {
+                                    let normalized = category.rawValue.lowercased()
+                                    if let cat = TermCategory.allCases.first(where: { $0.rawValue.lowercased() == normalized }) {
+                                        selectedCategoryForPopup = cat
+                                        showModePopup = true
+                                    }
+                                } label: {
+                                    CategoryComponent(title: category.displayName)
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        Spacer(minLength: 120) // Give space for the floating tab bar
                     }
-                    .padding(.horizontal)
-                    
-                    Spacer(minLength: 80)
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
+                .background(Color(red: 0.96, green: 0.97, blue: 0.99)) // Light background
+                
+                // MARK: - Floating Tab Bar Overlay
+                FloatingTabBar(selectedTab: $selectedTab)
             }
-            .background(Color.categoryComponentColor)
-            
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
                     isPresented: $showModePopup,
@@ -223,56 +277,57 @@ struct DashboardView: View {
     
     // MARK: - Mac Layout
     var macLayout: some View {
-        HStack(spacing: 0) {
-            
-            // MAIN CONTENT
-            Group {
-                if let flow = activeFlow {
-                    macFlowView(for: flow)
-                } else if currentView == "Home" {
-                    dashboardContent
-                } else {
-                    categoryDetailView(currentView)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .background(Color.categoryComponentColor)
-        .popupHost(isPresented: $showModePopup) {
-            ModePopupView(
-                isPresented: $showModePopup,
-                onLearn: {
-                    if let cat = selectedCategoryForPopup {
-                        activeFlow = .learn(cat)
-                    }
-                },
-                onExercise: {
-                    if let cat = selectedCategoryForPopup {
-                        activeFlow = .exercise(cat)
+        NavigationStack {
+            HStack(spacing: 0) {
+                
+                // MAIN CONTENT
+                Group {
+                    if currentView == "Home" {
+                        dashboardContent
+                    } else {
+                        categoryDetailView(currentView)
                     }
                 }
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func macFlowView(for flow: ActiveFlow) -> some View {
-        switch flow {
-        case .learn(let category):
-            FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
-                activeFlow = nil
+                .frame(maxWidth: .infinity)
             }
-            .environment(dataVM)
-        case .exercise(let category):
-            FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
-                activeFlow = nil
+            .background(Color.categoryComponentColor)
+            .popupHost(isPresented: $showModePopup) {
+                ModePopupView(
+                    isPresented: $showModePopup,
+                    onLearn: {
+                        if let cat = selectedCategoryForPopup {
+                            activeFlow = .learn(cat)
+                        }
+                    },
+                    onExercise: {
+                        if let cat = selectedCategoryForPopup {
+                            activeFlow = .exercise(cat)
+                        }
+                    }
+                )
             }
-            .environment(dataVM)
-        case .dailyChallenge:
-            FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
-                activeFlow = nil
+            .sheet(item: $activeFlow) { flow in
+                switch flow {
+                case .learn(let category):
+                    FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
+                        activeFlow = nil
+                    }
+                    .environment(dataVM)
+                    .frame(minWidth: 700, minHeight: 600)
+                case .exercise(let category):
+                    FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
+                        activeFlow = nil
+                    }
+                    .environment(dataVM)
+                    .frame(minWidth: 700, minHeight: 600)
+                case .dailyChallenge:
+                    FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
+                        activeFlow = nil
+                    }
+                    .environment(dataVM)
+                    .frame(minWidth: 700, minHeight: 600)
+                }
             }
-            .environment(dataVM)
         }
     }
     
@@ -280,37 +335,93 @@ struct DashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 
-                HStack {
-                    TextField("Search for a word or phrase...", text: .constant(""))
-                        .textFieldStyle(.roundedBorder)
-                    Image(systemName: "magnifyingglass")
-                }
-                
-                Text("In Progress")
-                    .font(.title)
-                
-                HStack(spacing: 16) {
-                    ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
-                        Button {
-                            if item.mode == "Learn" {
-                                activeFlow = .learn(item.category)
-                            } else {
-                                activeFlow = .exercise(item.category)
-                            }
-                        } label: {
-                            InProgressCard(
-                                category: item.category,
-                                mode: item.mode,
-                                progress: item.progress,
-                                backgroundColor: Color.blue.opacity(0.15)
+                // MARK: - Search
+                NavigationLink {
+                    SearchView()
+                } label: {
+                    HStack {
+                        Text("Search for a word or phrase...")
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: 400, alignment: .leading)
+                            .background(Color.white)
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                             )
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.plain)
+                        
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
+                            .padding(.leading, 8)
                     }
                 }
+                .buttonStyle(.plain)
                 
-                // MARK: - Daily Challenge
+                // MARK: - Welcome Header
+                HStack(spacing: 16) {
+                    Image(systemName: "camera.macro")
+                        .font(.system(size: 45))
+                        .foregroundColor(Color(red: 0.85, green: 0.8, blue: 0.3))
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let userName = users.first?.name, !userName.isEmpty {
+                            Text("Welcome back,")
+                                .font(.system(size: 26, weight: .bold))
+                                .foregroundColor(Color.black.opacity(0.7))
+                            
+                            Text(userName)
+                                .font(.system(size: 26, weight: .bold))
+                                .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
+                        } else {
+                            Text("Welcome back!")
+                                .font(.system(size: 26, weight: .bold))
+                                .foregroundColor(Color.black.opacity(0.7))
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.top, 10)
+                
+                // MARK: - Mac Jump Back In
+                if !inProgressCategories.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Jump back in!")
+                            .font(.title)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                        
+                        HStack(spacing: 16) {
+                            ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
+                                Button {
+                                    if item.mode == "Learn" {
+                                        activeFlow = .learn(item.category)
+                                    } else {
+                                        activeFlow = .exercise(item.category)
+                                    }
+                                } label: {
+                                    InProgressCard(
+                                        category: item.category,
+                                        mode: item.mode,
+                                        progress: item.progress,
+                                        backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
+                                    )
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                    }
+                    .background(Color.white)
+                    .cornerRadius(24)
+                    .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+                }
+                
+                // MARK: - Mac Daily Challenge
                 Text("Daily Challenge")
                     .font(.title)
 
@@ -325,6 +436,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
                 
+                // MARK: - Categories
                 Text("Categories")
                     .font(.title)
                 
@@ -404,6 +516,7 @@ private struct InProgressCard: View {
                 .resizable()
                 .scaledToFit()
                 .frame(height: 70)
+                .foregroundColor(.black.opacity(0.6))
 
             VStack(spacing: 4) {
                 Text("Continue \(mode)")
@@ -456,49 +569,114 @@ private struct DailyChallengeCard: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 14) {
+                
                 HStack(spacing: 4) {
-                    Text("\(streak) Day Streak")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.orange)
                     Text("🔥")
                         .font(.system(size: 14))
+                    Text("\(streak) Day Streak")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Color(red: 0.5, green: 0.35, blue: 0.1))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color(red: 0.98, green: 0.88, blue: 0.65))
+                )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Practice Missed Signs")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+
+                    Text("+20XP")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3).opacity(0.8))
                 }
 
-                Text("Start Challenge")
-                    .font(.system(size: 24, weight: .bold))
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.7))
 
-                // Progress bar
-                HStack(spacing: 8) {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.white.opacity(0.5))
-                                .frame(height: 8)
-
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(red: 0.45, green: 0.65, blue: 0.25))
-                                .frame(width: geo.size.width * progress, height: 8)
-                        }
+                        Capsule()
+                            .fill(Color(red: 0.30, green: 0.55, blue: 0.85))
+                            .frame(width: geo.size.width * progress)
                     }
-                    .frame(height: 8)
-
-                    Text("\(completed)/\(total)")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
                 }
+                .frame(height: 10)
             }
 
             Spacer()
 
-            // Placeholder icon for the lunchbox illustration
-            Image(systemName: "takeoutbag.and.cup.and.straw.fill")
-                .font(.system(size: 50))
-                .foregroundStyle(Color.brown.opacity(0.6))
+            Image(systemName: "medal.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 65)
+                .foregroundColor(Color(red: 0.90, green: 0.72, blue: 0.30))
+                .padding(.trailing, 8)
         }
-        .padding(18)
-        .background(Color(red: 0.96, green: 0.90, blue: 0.72))
-        .cornerRadius(20)
+        .padding(24)
+        .background(Color(red: 0.99, green: 0.95, blue: 0.86))
+        .cornerRadius(24)
+        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
+}
+
+// MARK: - Floating Tab Bar Components
+
+private struct FloatingTabBar: View {
+    @Binding var selectedTab: Int
+    
+    var body: some View {
+        HStack {
+            Spacer()
+            TabBarButton(icon: "house.fill", title: "Home", isSelected: selectedTab == 0) {
+                selectedTab = 0
+            }
+            Spacer()
+            TabBarButton(icon: "hand.raised.fill", title: "Practice", isSelected: selectedTab == 1) {
+                selectedTab = 1
+            }
+            Spacer()
+            TabBarButton(icon: "person.fill", title: "Profile", isSelected: selectedTab == 2) {
+                selectedTab = 2
+            }
+            Spacer()
+        }
+        .padding(.vertical, 12)
+        .background(Color.white)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.08), radius: 15, x: 0, y: 5)
+        .padding(.horizontal, 30)
+        .padding(.bottom, 20)
+    }
+}
+
+private struct TabBarButton: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 22))
+                Text(title)
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .foregroundColor(isSelected ? Color(red: 0.30, green: 0.55, blue: 0.85) : Color.gray.opacity(0.6))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color(red: 0.30, green: 0.55, blue: 0.85).opacity(0.15) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
