@@ -144,10 +144,10 @@ struct PageOneContent: View {
 
 #Preview {
     let sampleData = AISentenceModel(
-        sentence: "I didn't go to the store yesterday.",
+        sentence: "I went to the store yesterday.",
         score: nil,
         practiceType: .words,
-        gloss: [.yesterday, .store, .me, .goNot],
+        gloss: [.yesterday, .store, .me, .go],
         completed: false
     )
 

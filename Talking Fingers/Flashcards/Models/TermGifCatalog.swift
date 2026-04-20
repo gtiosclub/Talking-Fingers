@@ -119,8 +119,65 @@ enum TermGifCatalog {
             return "meet.gif"
         case .how:
             return "how.gif"
-        case .whatUp:
-            return "whatUp.gif"
+//        case .whatUp:
+//            return "whatUp.gif"
+        case .sorry:
+            return "sorry.gif"
+        case .up:
+            return "up.gif"
+        case .go:
+            return "go.gif"
+        case .he:
+            return "he.gif"
+        case .her:
+            return "her.gif"
+        case .his:
+            return "his.gif"
+        case .its:
+            return "its.gif"
+        case .it:
+            return "it.gif"
+        case .she:
+            return "she.gif"
+        case .me:
+            return "me.gif"
+        case .my:
+            return "my.gif"
+        case .our:
+            return "our.gif"
+        case .their:
+            return "their.gif"
+        case .they:
+            return "they.gif"
+        case .we:
+            return "we.gif"
+        case .your:
+            return "your.gif"
+        case .when:
+            return "when.gif"
+        case .where:
+            return "where.gif"
+        case .who:
+            return "who.gif"
+        case .why:
+            return "why.gif"
+        case .student:
+            return "student.gif"
+        case .work:
+            return "work.gif"
+        case .like:
+            return "like.gif"
+        case .live:
+            return "live.gif"
+        case .age:
+            return "age.gif"
+        case .favorite:
+            return "favorite.gif"
+        case .name:
+            return "name.gif"
+        case .what:
+            return "what.gif"
+        
         default:
             return nil
         }

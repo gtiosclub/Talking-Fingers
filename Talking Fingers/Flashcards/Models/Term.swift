@@ -91,7 +91,9 @@ enum Term: String, CaseIterable, Codable {
     // case seeYouLater = "SEE-YOU-LATER"
     // case niceMeetYou = "NICE-MEET-YOU"
     // case howYou = "HOW-YOU"
-     case whatUp = "WHAT-UP"
+//     case whatUp = "WHAT-UP"
+    case sorry = "SORRY"
+    case up = "UP"
     
 
     // MARK: - Personal Information
@@ -104,6 +106,10 @@ enum Term: String, CaseIterable, Codable {
     case he = "HE"
     case she = "SHE"
     case it = "IT"
+    case her = "HER"
+    case his = "HIS"
+    case its = "ITS"
+    case your = "YOUR"
     case their = "THEIR"
     case our = "OUR"
     case age = "AGE"
@@ -113,7 +119,7 @@ enum Term: String, CaseIterable, Codable {
     case work = "WORK"
     case like = "LIKE"
     case favorite = "FAVORITE"
-    case goNot = "GO-NOT"
+    case go = "GO"
     case who = "WHO"
     case what = "WHAT"
     case when = "WHEN"
@@ -136,7 +142,7 @@ enum Term: String, CaseIterable, Codable {
     case child = "CHILD"
 
     // MARK: - Verbs
-    case go = "GO"
+//    case go = "GO"
     case come = "COME"
     case want = "WANT"
     case dontLike = "DON’T-LIKE"
@@ -249,12 +255,12 @@ enum Term: String, CaseIterable, Codable {
 //             .bye, .seeYouLater, .niceMeetYou, .howYou, .whatUp:
 //            return .greetings
         case .hello, .hi, .good, .morning, .afternoon, .evening, .night,
-                .bye, .see, .you, .later, .nice, .meet, .how, .whatUp:
+                .bye, .see, .you, .later, .nice, .meet, .how, .sorry, .up:
             return .greetings
 
         case .name, .my, .me, .you, .they, .we, .he, .she, .it, .their,
              .our, .age, .live, .from, .student, .work, .like, .favorite,
-             .goNot, .who, .what, .when, .where, .why, .how:
+             .go, .who, .what, .when, .where, .why, .how, .his, .her, .your, .its:
             return .personalInformation
 
         case .family, .mother, .father, .mom, .dad, .sister,
