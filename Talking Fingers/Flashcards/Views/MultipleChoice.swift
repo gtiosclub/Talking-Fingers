@@ -142,7 +142,7 @@ struct MultipleChoice: View {
         // Correct answer popup
         .popupHost(isPresented: $showCorrectPopup) {
             CorrectResultPopUpComponent(
-                message: explanationText,
+                message: "You got it right!",
                 onNext: {
                     advanceToNextCard()
                 }
@@ -151,7 +151,7 @@ struct MultipleChoice: View {
         // Incorrect answer popup
         .popupHost(isPresented: $showIncorrectPopup) {
             IncorrectResultPopUpComponent(
-                message: explanationText,
+                message: "Correct answer: \(correctAnswer)",
                 onNext: {
                     advanceToNextCard()
                 }
@@ -482,7 +482,7 @@ private struct ResultCard: View {
                     .foregroundColor(isCorrect ? Color.green : Color.red)
             }
 
-            Text(isCorrect ? "Answer: the correct answer" : "Your accuracy: 25%")
+            Text(message)
                 .foregroundColor(isCorrect ? Color.green : Color.red)
                 .font(.system(size: 16, weight: .medium))
 
