@@ -10,6 +10,7 @@ struct LiveSigningView: View {
     let sentenceModel: AISentenceModel
     var onBack: () -> Void
     var onComplete: (() -> Void)? = nil
+    var externalCameraVM: CameraVM? = nil
 
     // Index of the word currently being signed (highlighted in black)
     @State private var currentWordIndex: Int = 0
@@ -48,7 +49,8 @@ struct LiveSigningView: View {
                 onConfidenceChange: { _ in
                     handleThresholdReached()
                 },
-                usesInternalPadding: false
+                usesInternalPadding: false,
+                externalCameraVM: externalCameraVM
             )
             .frame(maxWidth: .infinity)
             .frame(height: 480)

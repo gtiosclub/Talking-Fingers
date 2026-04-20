@@ -420,18 +420,14 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 DispatchQueue.main.async {
                     self.onPoseDetected?(handObservations, pts)
                     self.onBodyPoseDetected?(bodyObservations, pts)
-                    
+
                     // Do something with score
                     self.processFrame(body: primaryBody, hands: handObservations, pitch: self.currentPitch, timestamp: pts)
-                    
 
                     // Existing pitch-correction normalization (this is not the scale-invariance unit-box normalization)
                     self.normalizedHands = handObservations.compactMap {
                         NormalizedHandModel(from: $0, pitch: self.currentPitch - (.pi / 2))
                     }
-
-                    // New body callback (for overlays/labels)
-                    self.onBodyPoseDetected?(bodyObservations, pts)
 
                     if self.isRecording, let start = self.recordingStartTime {
                         let relativeTimestamp = pts - start

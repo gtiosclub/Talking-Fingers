@@ -22,7 +22,11 @@ struct SigningPracticeView: View {
     @State private var currentWordIndex: Int = 0
     @State var pass: Bool = false
     @State private var showJointsSheet: Bool = false
-    @State private var cameraVM: CameraVM = CameraVM()
+    @State private var cameraVM: CameraVM
+    /// When `true` the view manages the camera's `start`/`stop` lifecycle in
+    /// `.onAppear`/`.onDisappear`. When an external VM is passed in, the parent
+    /// is responsible for lifecycle, so we skip those calls.
+    private let ownsCameraLifecycle: Bool
 
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
@@ -65,11 +69,14 @@ struct SigningPracticeView: View {
     init(signName: String? = nil,
          onConfidenceChange: ((Double) -> Void)? = nil,
          showsLeaveButton: Bool = true,
-         usesInternalPadding: Bool = true) {
+         usesInternalPadding: Bool = true,
+         externalCameraVM: CameraVM? = nil) {
         self.signName = signName
         self.onConfidenceChange = onConfidenceChange
         self.showsLeaveButton = showsLeaveButton
         self.usesInternalPadding = usesInternalPadding
+        _cameraVM = State(initialValue: externalCameraVM ?? CameraVM())
+        self.ownsCameraLifecycle = externalCameraVM == nil
     }
     @State private var cameraMode: CameraMode = .compare
 
@@ -170,7 +177,9 @@ struct SigningPracticeView: View {
                     }
                 }
                 .onAppear {
-                    cameraVM.checkPermission()
+                    if ownsCameraLifecycle {
+                        cameraVM.checkPermission()
+                    }
 
                     cameraVM.onPoseDetected = { handObservations, pts in
                         hands = handObservations
@@ -184,11 +193,14 @@ struct SigningPracticeView: View {
                     cameraVM.startComparing(forSign: signName ?? "")
                 }
                 .task {
+                    guard ownsCameraLifecycle else { return }
                     try? await Task.sleep(for: .milliseconds(300))
                     cameraVM.start()
                 }
                 .onDisappear {
-                    cameraVM.stop()
+                    if ownsCameraLifecycle {
+                        cameraVM.stop()
+                    }
                 }
                 .onChange(of: cameraMode) { _, newValue in
                     if newValue == .compare {
@@ -460,14 +472,27 @@ struct SigningPracticeView: View {
     /// When `false`, hides the top "Leave" button so the view can be embedded
     /// inside another view that already provides navigation.
     var showsLeaveButton: Bool
+    /// When `true` (default) the view applies its own horizontal padding and a
+    /// 16:9 aspect ratio constraint to the camera. Set to `false` when
+    /// embedding in a parent that wants to control sizing directly.
+    var usesInternalPadding: Bool
     init(signName: String? = nil,
          onConfidenceChange: ((Double) -> Void)? = nil,
-         showsLeaveButton: Bool = true) {
+         showsLeaveButton: Bool = true,
+         usesInternalPadding: Bool = true,
+         externalCameraVM: CameraVM? = nil) {
         self.signName = signName
         self.onConfidenceChange = onConfidenceChange
         self.showsLeaveButton = showsLeaveButton
+        self.usesInternalPadding = usesInternalPadding
+        _cameraVM = State(initialValue: externalCameraVM ?? CameraVM())
+        self.ownsCameraLifecycle = externalCameraVM == nil
     }
-    @State private var cameraVM: CameraVM = CameraVM()
+    @State private var cameraVM: CameraVM
+    /// When `true` the view manages the camera's `start`/`stop` lifecycle in
+    /// `.onAppear`/`.onDisappear`. When an external VM is passed in, the parent
+    /// is responsible for lifecycle, so we skip those calls.
+    private let ownsCameraLifecycle: Bool
 
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
@@ -595,8 +620,10 @@ struct SigningPracticeView: View {
             Spacer(minLength: 0)
         }
         .onAppear {
-            cameraVM.isMirrored = true
-            cameraVM.checkPermission()
+            if ownsCameraLifecycle {
+                cameraVM.isMirrored = true
+                cameraVM.checkPermission()
+            }
 
             cameraVM.onPoseDetected = { handObservations, _ in
                 hands = handObservations
@@ -611,11 +638,14 @@ struct SigningPracticeView: View {
             }
         }
         .task {
+            guard ownsCameraLifecycle else { return }
             try? await Task.sleep(for: .milliseconds(300))
             cameraVM.start()
         }
         .onDisappear {
-            cameraVM.stop()
+            if ownsCameraLifecycle {
+                cameraVM.stop()
+            }
         }
         .onChange(of: signName) { _, newValue in
             if let newValue {
