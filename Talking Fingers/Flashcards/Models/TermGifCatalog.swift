@@ -97,18 +97,28 @@ enum TermGifCatalog {
             return "bye.gif"
         case .hi:
             return "hi.gif"
-        case .goodMorning:
-            return "goodMorning.gif"
-        case .goodAfternoon:
-            return "goodAfternoon.gif"
-        case .goodNight:
-            return "goodNight.gif"
-        case .seeYouLater:
-            return "seeYouLater.gif"
-        case .niceMeetYou:
-            return "niceMeetYou.gif"
-        case .howYou:
-            return "howYou.gif"
+        case .good:
+            return "good.gif"
+        case .morning:
+            return "morning.gif"
+        case .afternoon:
+            return "afternoon.gif"
+        case .evening:
+            return "evening.gif"
+        case .night:
+            return "night.gif"
+        case .see:
+            return "see.gif"
+        case .you:
+            return "you.gif"
+        case .later:
+            return "later.gif"
+        case .nice:
+            return "nice.gif"
+        case .meet:
+            return "meet.gif"
+        case .how:
+            return "how.gif"
         case .whatUp:
             return "whatUp.gif"
         default:
