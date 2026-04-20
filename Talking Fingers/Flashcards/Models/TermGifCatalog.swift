@@ -63,8 +63,6 @@ enum TermGifCatalog {
             return "Y.gif"
         case .z:
             return "Z.gif"
-        case .hello:
-            return "helloGIF.gif"
         case .zero:
             return "zero.gif"
         case .one:
@@ -85,6 +83,34 @@ enum TermGifCatalog {
             return "eight.gif"
         case .nine:
             return "nine.gif"
+        case .ten:
+            return "ten.gif"
+        case .fifteen:
+            return "fifteen.gif"
+        case .twenty:
+            return "twenty.gif"
+        case .hundred:
+            return "hundred.gif"
+        case .hello:
+            return "hello.gif"
+        case .bye:
+            return "bye.gif"
+        case .hi:
+            return "hi.gif"
+        case .goodMorning:
+            return "goodMorning.gif"
+        case .goodAfternoon:
+            return "goodAfternoon.gif"
+        case .goodNight:
+            return "goodNight.gif"
+        case .seeYouLater:
+            return "seeYouLater.gif"
+        case .niceMeetYou:
+            return "niceMeetYou.gif"
+        case .howYou:
+            return "howYou.gif"
+        case .whatUp:
+            return "whatUp.gif"
         default:
             return nil
         }
