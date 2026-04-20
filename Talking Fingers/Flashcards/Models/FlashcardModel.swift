@@ -24,7 +24,7 @@ class FlashcardModel {
         self.starred = starred
         self.progress = progress
         self.category = category
-        self.gifFileName = gifFileName
+        self.gifFileName = gifFileName ?? term.defaultGifFileName
     }    
     init(term: Term, id: UUID, category: TermCategory, gifFileName: String? = nil) {
         self.term = term
@@ -33,6 +33,6 @@ class FlashcardModel {
         self.starred = false
         self.progress = .new
         self.category = category
-        self.gifFileName = gifFileName
+        self.gifFileName = gifFileName ?? term.defaultGifFileName
     }
 }

@@ -81,6 +81,7 @@ enum Term: String, CaseIterable, Codable {
     case niceMeetYou = "NICE-MEET-YOU"
     case howYou = "HOW-YOU"
     case whatUp = "WHAT-UP"
+    
 
     // MARK: - Personal Information
     case name = "NAME"
