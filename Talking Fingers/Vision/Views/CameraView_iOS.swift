@@ -475,13 +475,26 @@ struct CameraView: View {
                     cameraVM.clearBuffer()
                     return
                 }
-                
-                let signRef = SignReference(signName: normalizedName, signType: signType, frames: trimmedSignFrames)
+
+                // Cap at 2 seconds — no sign should take longer than that.
+                let finalFrames = cameraVM.truncateFrames(trimmedSignFrames, toMaxSeconds: 2.0)
+
+                guard !finalFrames.isEmpty else {
+                    print("Recording for '\(normalizedName)' produced 0 frames after 2s truncation — not saved.")
+                    cameraVM.clearBuffer()
+                    return
+                }
+
+                if finalFrames.count < trimmedSignFrames.count {
+                    print("Truncated '\(normalizedName)' from \(trimmedSignFrames.count) → \(finalFrames.count) frames (2s cap).")
+                }
+
+                let signRef = SignReference(signName: normalizedName, signType: signType, frames: finalFrames)
                 
                 try cameraVM.saveSignReference(signRef, forSign: normalizedName)
 
                 let baseName = cameraVM.currentRecordingBaseName ?? cameraVM.makeRecordingBaseName(forSign: normalizedName)
-                let fileURL = try cameraVM.saveRecordingFramesToJSON(trimmedSignFrames, baseName: baseName)
+                let fileURL = try cameraVM.saveRecordingFramesToJSON(finalFrames, baseName: baseName)
                 let decodedFrames = try cameraVM.loadRecordingFramesFromJSON(url: fileURL)
 
                 onRecordingFinished?(decodedFrames, fileURL)

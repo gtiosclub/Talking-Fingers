@@ -929,6 +929,16 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return Array(frames[startIndex...endIndex])
     }
 
+    /// Caps `frames` at a maximum duration measured from the first frame's
+    /// timestamp. Any frame whose timestamp is more than `maxSeconds` past
+    /// the first frame is dropped. Assumes timestamps are monotonically
+    /// non-decreasing (as produced by the capture pipeline).
+    func truncateFrames(_ frames: [SignFrame], toMaxSeconds maxSeconds: Double) -> [SignFrame] {
+        guard let first = frames.first else { return frames }
+        let cutoff = first.timestamp.seconds + maxSeconds
+        return frames.filter { $0.timestamp.seconds <= cutoff }
+    }
+
     /// Loads SignFrames from a local recording JSON.
     func loadRecordingFramesFromJSON(url: URL) throws -> [SignFrame] {
         try SignFrame.decodeArray(from: url)
