@@ -221,19 +221,13 @@ struct FlexibleStartCardComponent: View {
     }
     
     private func configureCardsForContext() {
-        let allCards = FlashcardVM.dummyFlashcards
-        
-        var scopedCards: [FlashcardModel]
         switch context {
         case .learn(let category), .exercise(let category):
-            let cardsInCategory = allCards.filter { $0.category == category }
-            scopedCards = cardsInCategory.isEmpty ? fallbackCards(for: category) : cardsInCategory
+            flashcardVM.flashcards = fallbackCards(for: category)
         case .dailyChallenge:
-            flashcardVM.flashcards = allCards
-            scopedCards = flashcardVM.generateDailyReviewQueue(limit: total).cards
+            flashcardVM.flashcards = FlashcardVM.dummyFlashcards
+            flashcardVM.flashcards = flashcardVM.generateDailyReviewQueue(limit: total).cards
         }
-        
-        flashcardVM.flashcards = scopedCards
         flashcardVM.lastCardID = nil
     }
     
