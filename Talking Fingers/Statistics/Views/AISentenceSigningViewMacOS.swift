@@ -174,7 +174,7 @@ struct LiveSigningViewMacOS: View {
 
     /// How long to wait after reaching the threshold before auto-advancing
     /// if the user hasn't manually tapped Continue.
-    private let autoAdvanceDelay: Duration = .seconds(4)
+    private let autoAdvanceDelay: Duration = .seconds(0.5)
 
     var glossWords: [Term] { sentenceModel.gloss }
     var isFinished: Bool { currentWordIndex >= glossWords.count }
