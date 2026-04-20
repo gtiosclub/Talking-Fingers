@@ -12,6 +12,7 @@ struct ModePopupView: View {
     @Binding var isPresented: Bool
     @State private var animatePopup = false
     
+    var isExerciseUnlocked: Bool = true
     var onLearn: () -> Void
     var onExercise: () -> Void
     
@@ -68,15 +69,22 @@ struct ModePopupView: View {
                             Text("Exercise")
                                 .font(.title2)
                                 .foregroundStyle(.black)
+                            
+                            if !isExerciseUnlocked {
+                                Text("Complete Learn first")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .frame(maxWidth: .infinity, minHeight: 220)
-                        .background(Color(red: 0.663, green: 0.808, blue: 0.985, opacity: 0.4))
+                        .background(Color(red: 0.663, green: 0.808, blue: 0.985, opacity: isExerciseUnlocked ? 0.4 : 0.2))
                         .overlay(
                             RoundedRectangle(cornerRadius: 24)
-                                .stroke(Color(red: 0.663, green: 0.85, blue: 0.925), lineWidth: 1.5)
+                                .stroke(Color(red: 0.663, green: 0.85, blue: 0.925).opacity(isExerciseUnlocked ? 1.0 : 0.5), lineWidth: 1.5)
                         )
                         .cornerRadius(24)
                     }
+                    .disabled(!isExerciseUnlocked)
                 }
             }
             .padding(20)
@@ -112,6 +120,7 @@ struct ModePopupView: View {
         
         ModePopupView(
             isPresented: .constant(true),
+            isExerciseUnlocked: false,
             onLearn: {print("learn tapped")},
             onExercise: {print("exercise tapped")}
         )

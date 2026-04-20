@@ -60,6 +60,29 @@ struct DashboardView: View {
         flashcardVM.generateDailyReviewQueue(limit: 5)
     }
     
+    private var foundationsCompleted: Bool {
+        isLearnCompleted(for: .alphabet) && isLearnCompleted(for: .numbers)
+    }
+    
+    private func isLearnCompleted(for category: TermCategory) -> Bool {
+        let key = "learnCompleted_\(category.rawValue)"
+        return UserDefaults.standard.bool(forKey: key)
+    }
+    
+    private func canAccessCategory(_ category: TermCategory) -> Bool {
+        if category == .alphabet || category == .numbers { return true }
+        return foundationsCompleted
+    }
+    
+    private func category(from title: String) -> TermCategory? {
+        let normalized = title.lowercased()
+        return TermCategory.allCases.first(where: { $0.rawValue.lowercased() == normalized })
+    }
+    
+    private func isExerciseUnlocked(for category: TermCategory) -> Bool {
+        isLearnCompleted(for: category)
+    }
+    
     var body: some View {
 #if os(macOS)
         macLayout
@@ -133,6 +156,7 @@ struct DashboardView: View {
                                     HStack(spacing: 16) {
                                         ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
                                             Button {
+                                                guard canAccessCategory(item.category) else { return }
                                                 if item.mode == "Learn" {
                                                     activeFlow = .learn(item.category)
                                                 } else {
@@ -146,8 +170,10 @@ struct DashboardView: View {
                                                     backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
                                                 )
                                                 .frame(width: 155) // Keeps cards properly sized within the bubble
+                                                .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
                                             }
                                             .buttonStyle(.plain)
+                                            .disabled(!canAccessCategory(item.category))
                                         }
                                     }
                                     .padding(.horizontal, 20)
@@ -190,16 +216,16 @@ struct DashboardView: View {
                         LazyVGrid(columns: columns, spacing: 12) {
                             ForEach(TermCategory.allCases, id: \.self) { category in
                                 Button {
-                                    let normalized = category.rawValue.lowercased()
-                                    if let cat = TermCategory.allCases.first(where: { $0.rawValue.lowercased() == normalized }) {
-                                        selectedCategoryForPopup = cat
-                                        showModePopup = true
-                                    }
+                                    guard canAccessCategory(category) else { return }
+                                    selectedCategoryForPopup = category
+                                    showModePopup = true
                                 } label: {
                                     CategoryComponent(title: category.displayName)
                                         .frame(maxWidth: .infinity)
+                                        .opacity(canAccessCategory(category) ? 1.0 : 0.5)
                                 }
                                 .buttonStyle(.plain)
+                                .disabled(!canAccessCategory(category))
                             }
                         }
                         .padding(.horizontal)
@@ -216,13 +242,16 @@ struct DashboardView: View {
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
                     isPresented: $showModePopup,
+                    isExerciseUnlocked: selectedCategoryForPopup.map { canAccessCategory($0) && isExerciseUnlocked(for: $0) } ?? false,
                     onLearn: {
                         if let cat = selectedCategoryForPopup {
+                            guard canAccessCategory(cat) else { return }
                             activeFlow = .learn(cat)
                         }
                     },
                     onExercise: {
                         if let cat = selectedCategoryForPopup {
+                            guard canAccessCategory(cat) else { return }
                             activeFlow = .exercise(cat)
                         }
                     }
@@ -294,13 +323,16 @@ struct DashboardView: View {
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
                     isPresented: $showModePopup,
+                    isExerciseUnlocked: selectedCategoryForPopup.map { canAccessCategory($0) && isExerciseUnlocked(for: $0) } ?? false,
                     onLearn: {
                         if let cat = selectedCategoryForPopup {
+                            guard canAccessCategory(cat) else { return }
                             activeFlow = .learn(cat)
                         }
                     },
                     onExercise: {
                         if let cat = selectedCategoryForPopup {
+                            guard canAccessCategory(cat) else { return }
                             activeFlow = .exercise(cat)
                         }
                     }
@@ -396,6 +428,7 @@ struct DashboardView: View {
                         HStack(spacing: 16) {
                             ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
                                 Button {
+                                    guard canAccessCategory(item.category) else { return }
                                     if item.mode == "Learn" {
                                         activeFlow = .learn(item.category)
                                     } else {
@@ -409,8 +442,10 @@ struct DashboardView: View {
                                         backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
                                     )
                                     .frame(maxWidth: .infinity)
+                                    .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
                                 }
                                 .buttonStyle(.plain)
+                                .disabled(!canAccessCategory(item.category))
                             }
                         }
                         .padding(.horizontal, 20)
@@ -442,17 +477,21 @@ struct DashboardView: View {
                 
                 VStack(spacing: 12) {
                     ForEach(allCategories, id: \.self) { category in
+                        let resolvedCategory = self.category(from: category)
+                        let isAccessible = resolvedCategory.map(canAccessCategory) ?? true
                         Button {
-                            let normalized = category.lowercased()
-                            if let cat = TermCategory.allCases.first(where: { $0.rawValue.lowercased() == normalized }) {
+                            if let cat = resolvedCategory {
+                                guard canAccessCategory(cat) else { return }
                                 selectedCategoryForPopup = cat
                                 showModePopup = true
                             }
                         } label: {
                             CategoryComponent(title: category)
                                 .frame(maxWidth: .infinity)
+                                .opacity(isAccessible ? 1.0 : 0.5)
                         }
                         .buttonStyle(.plain)
+                        .disabled(!isAccessible)
                     }
                 }
             }

@@ -114,13 +114,18 @@ extension LearnModeView {
     var displayedImage: some View {
         Group {
             if vm.showingCamera {
-                Image(vm.cameraImageName)
-                    .resizable()
-                    .scaledToFit()
+                SigningPracticeView(signName: vm.word, onConfidenceChange: { score in
+                    vm.updateConfidence(score)
+                })
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                Image(vm.signImageName)
-                    .resizable()
-                    .scaledToFit()
+                if let gifFileName = vm.flashcard.gifFileName ?? vm.flashcard.term.defaultGifFileName {
+                    GIFView(gifFileName: gifFileName)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    Text("No reference GIF available")
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -156,6 +161,8 @@ extension LearnModeView {
                         .fill(vm.buttonColor)
                 )
         }
+        .disabled(!vm.canAdvanceToNextWord)
+        .opacity(vm.canAdvanceToNextWord ? 1.0 : 0.6)
         .buttonStyle(.plain)
     }
 }

@@ -186,8 +186,8 @@ struct SigningPracticeView: View {
                     }
                 }
             .onChange(of: cameraVM.confidenceScore) { _, newValue in
-                let passThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 70
-                if cameraVM.confidenceScore >= passThreshold {
+                let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+                if cameraVM.confidenceScore >= goodThreshold {
                     onConfidenceChange?(newValue)
                     pass = true
                 }
@@ -594,7 +594,10 @@ struct SigningPracticeView: View {
             }
         }
         .onChange(of: cameraVM.confidenceScore) { _, newValue in
-            onConfidenceChange?(newValue)
+            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+            if cameraVM.confidenceScore >= goodThreshold {
+                onConfidenceChange?(newValue)
+            }
         }
     }
 
