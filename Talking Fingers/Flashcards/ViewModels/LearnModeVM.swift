@@ -17,6 +17,7 @@ class LearnModeVM: ObservableObject {
     }
 
     @Published var state: LearnState = .initial
+    @Published private(set) var hasGoodConfidence: Bool = false
     
     var onNextCard: (() -> Void)? = nil
 
@@ -42,7 +43,12 @@ class LearnModeVM: ObservableObject {
     }
 
     var buttonText: String {
-        state == .initial ? "Try Signing" : "Next Word"
+        switch state {
+        case .initial:
+            return "Try Signing"
+        case .practicing, .showingHint:
+            return hasGoodConfidence ? "Next Word" : "Keep Signing"
+        }
     }
 
     var buttonColor: Color {
@@ -64,6 +70,10 @@ class LearnModeVM: ObservableObject {
     var showingHint: Bool {
         state == .showingHint
     }
+    
+    var canAdvanceToNextWord: Bool {
+        state == .practicing || state == .showingHint ? hasGoodConfidence : true
+    }
 
     func tapHint() {
         guard state != .initial else { return }
@@ -80,14 +90,22 @@ class LearnModeVM: ObservableObject {
         case .initial:
             state = .practicing
         case .practicing, .showingHint:
+            guard hasGoodConfidence else { return }
             nextWord()
         }
+    }
+    
+    func updateConfidence(_: Double) {
+        // Vision pipeline already decides when the user reached "Good";
+        // this callback is treated as a pass signal.
+        if !hasGoodConfidence { hasGoodConfidence = true }
     }
 
     func nextWord() {
         print("next word")
         // reset for next flashcard later
         state = .initial
+        hasGoodConfidence = false
         onNextCard?()
     }
 }
