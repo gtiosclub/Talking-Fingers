@@ -55,9 +55,21 @@ struct SigningPracticeView: View {
 
     let signName: String?
     var onConfidenceChange: ((Double) -> Void)?
-    init(signName: String? = nil, onConfidenceChange: ((Double) -> Void)? = nil) {
+    /// Present for API parity with the macOS variant; the iOS view has no
+    /// built-in leave button so this value is currently unused.
+    var showsLeaveButton: Bool
+    /// When `true` (default) the view applies its own horizontal padding and a
+    /// 9:16 aspect ratio constraint to the camera. Set to `false` when
+    /// embedding in a parent that wants to control sizing directly.
+    var usesInternalPadding: Bool
+    init(signName: String? = nil,
+         onConfidenceChange: ((Double) -> Void)? = nil,
+         showsLeaveButton: Bool = true,
+         usesInternalPadding: Bool = true) {
         self.signName = signName
         self.onConfidenceChange = onConfidenceChange
+        self.showsLeaveButton = showsLeaveButton
+        self.usesInternalPadding = usesInternalPadding
     }
     @State private var cameraMode: CameraMode = .compare
 
@@ -138,15 +150,15 @@ struct SigningPracticeView: View {
                                 }
                             }
                         }
-                        .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                        .frame(maxWidth: .infinity)
+                        .modifier(CameraAspectModifier(usesAspectRatio: usesInternalPadding))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(.white.opacity(0.15), lineWidth: 1)
                         )
                         .shadow(radius: 12)
-                        .padding(.horizontal)
+                        .padding(.horizontal, usesInternalPadding ? 16 : 0)
                     } else {
                         ContentUnavailableView(
                             "Camera Access Required",
@@ -423,6 +435,17 @@ struct ProgressBar: View {
 import SwiftUI
 import AVFoundation
 import Vision
+
+private struct CameraAspectModifier: ViewModifier {
+    let usesAspectRatio: Bool
+    func body(content: Content) -> some View {
+        if usesAspectRatio {
+            content.aspectRatio(9.0 / 16.0, contentMode: .fit)
+        } else {
+            content
+        }
+    }
+}
 #endif
 
 #if os(macOS)
@@ -434,9 +457,15 @@ struct SigningPracticeView: View {
     /// and no reference is loaded.
     let signName: String?
     var onConfidenceChange: ((Double) -> Void)?
-    init(signName: String? = nil, onConfidenceChange: ((Double) -> Void)? = nil) {
+    /// When `false`, hides the top "Leave" button so the view can be embedded
+    /// inside another view that already provides navigation.
+    var showsLeaveButton: Bool
+    init(signName: String? = nil,
+         onConfidenceChange: ((Double) -> Void)? = nil,
+         showsLeaveButton: Bool = true) {
         self.signName = signName
         self.onConfidenceChange = onConfidenceChange
+        self.showsLeaveButton = showsLeaveButton
     }
     @State private var cameraVM: CameraVM = CameraVM()
 
@@ -491,19 +520,21 @@ struct SigningPracticeView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            HStack {
-                Button(action: { dismiss() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "door.left.hand.open")
-                        Text("Leave")
+            if showsLeaveButton {
+                HStack {
+                    Button(action: { dismiss() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "door.left.hand.open")
+                            Text("Leave")
+                        }
                     }
-                }
-                .foregroundColor(.gray)
+                    .foregroundColor(.gray)
 
-                Spacer()
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.top, 20)
             }
-            .padding(.horizontal)
-            .padding(.top, 20)
 
             VStack(spacing: 16) {
                 if cameraVM.isAuthorized {
@@ -540,16 +571,16 @@ struct SigningPracticeView: View {
                             }
                         }
                     }
-                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                    .frame(maxWidth: 980)
-                    .frame(maxWidth: .infinity)
+                    .modifier(CameraAspectModifierMacOS(usesAspectRatio: usesInternalPadding))
+                    .frame(maxWidth: usesInternalPadding ? 980 : .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .stroke(.white.opacity(0.15), lineWidth: 1)
                     )
                     .shadow(radius: 12)
-                    .padding(.horizontal)
+                    .padding(.horizontal, usesInternalPadding ? 16 : 0)
                 } else {
                     ContentUnavailableView(
                         "Camera Access Required",
@@ -771,6 +802,17 @@ struct SigningPracticeView: View {
         if score >= goodThreshold { return "Good" }
         if score >= okayThreshold { return "Okay" }
         return "Bad"
+    }
+}
+
+private struct CameraAspectModifierMacOS: ViewModifier {
+    let usesAspectRatio: Bool
+    func body(content: Content) -> some View {
+        if usesAspectRatio {
+            content.aspectRatio(16.0 / 9.0, contentMode: .fit)
+        } else {
+            content
+        }
     }
 }
 #endif

@@ -15,9 +15,24 @@ struct LiveSigningView: View {
     @State private var currentWordIndex: Int = 0
     // Tracks which words have been completed
     @State private var completedWords: Set<Int> = []
+    // Tracks which words the user explicitly skipped (not credited as completed).
+    @State private var skippedWords: Set<Int> = []
+    // True once the live signing view has reported a confidence at/above the
+    // "good" threshold for the current word. Gates the Continue button.
+    @State private var passedThreshold: Bool = false
+    // Pending auto-advance task started when threshold is first reached.
+    @State private var autoAdvanceTask: Task<Void, Never>?
+
+    /// How long to wait after reaching the threshold before auto-advancing
+    /// if the user hasn't manually tapped Continue.
+    private let autoAdvanceDelay: Duration = .seconds(4)
 
     var glossWords: [Term] { sentenceModel.gloss }
-    var isFinished: Bool { completedWords.count >= glossWords.count }
+    var isFinished: Bool { currentWordIndex >= glossWords.count }
+
+    private var currentTargetWord: String {
+        glossWords[safe: currentWordIndex]?.rawValue ?? ""
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,15 +40,19 @@ struct LiveSigningView: View {
             glossRow
                 .padding(.bottom, 20)
 
-            // Camera placeholder
-            GradedSigningCameraView(
-                targetWord: glossWords[safe: currentWordIndex]?.rawValue ?? ""
+            // Live camera tied to the current target word.
+            // Negative horizontal padding extends past the parent's 24pt
+            // padding so the preview sits close to the screen edges.
+            SigningPracticeView(
+                signName: currentTargetWord.lowercased(),
+                onConfidenceChange: { _ in
+                    handleThresholdReached()
+                },
+                usesInternalPadding: false
             )
             .frame(maxWidth: .infinity)
-            .frame(height: 340)
-            .padding(.bottom, 24)
-            .frame(maxWidth: .infinity)
-            .frame(height: 340)
+            .frame(height: 480)
+            .padding(.horizontal, -16)
             .padding(.bottom, 24)
 
             // Word progress circles
@@ -41,7 +60,7 @@ struct LiveSigningView: View {
                 .padding(.bottom, 24)
 
             // Action buttons row
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 // Back button
                 Button(action: onBack) {
                     Image(systemName: "chevron.left")
@@ -52,25 +71,45 @@ struct LiveSigningView: View {
                         .background(Color.gray.opacity(0.6))
                         .cornerRadius(8)
                 }
+                .frame(maxWidth: 64)
 
-                // "Complete Sign" simulation button
-                Button(action: {
-                    if isFinished {
-                        onComplete?()
-                    } else {
-                        advanceWord()
-                    }
-                }) {
-                    Text(isFinished ? "Done ✓" : "Next Word →")
+                // Skip current word without crediting it as completed
+                Button(action: skipWord) {
+                    Text("Skip")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.gray.opacity(0.15))
+                        .cornerRadius(8)
+                }
+                .disabled(isFinished)
+
+                // Continue button — only tappable once threshold is reached
+                Button(action: advanceWord) {
+                    Text(isFinished ? "Done ✓" : "Continue →")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(isFinished ? Color.green : Color.black)
+                        .background(continueButtonColor)
                         .cornerRadius(8)
                 }
+                .disabled(!passedThreshold && !isFinished)
+                .animation(.easeInOut(duration: 0.2), value: passedThreshold)
             }
         }
+        .onDisappear {
+            autoAdvanceTask?.cancel()
+            autoAdvanceTask = nil
+        }
+    }
+
+    // MARK: Continue Button Styling
+    private var continueButtonColor: Color {
+        if isFinished { return .green }
+        if passedThreshold { return Color(hex: "#97C171") }
+        return Color.gray.opacity(0.4)
     }
 
     // MARK: Gloss Row
@@ -100,11 +139,12 @@ struct LiveSigningView: View {
     @ViewBuilder
     private func circleIcon(for index: Int) -> some View {
         let isCompleted = completedWords.contains(index)
+        let isSkipped = skippedWords.contains(index)
         let isCurrent = index == currentWordIndex && !isFinished
 
         ZStack {
             Circle()
-                .fill(isCompleted ? Color.black : (isCurrent ? Color(hex: "#FDF2D8") : Color.gray.opacity(0.12)))
+                .fill(circleFill(isCompleted: isCompleted, isSkipped: isSkipped, isCurrent: isCurrent))
                 .overlay(
                     Group {
                         if isCurrent {
@@ -119,6 +159,10 @@ struct LiveSigningView: View {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
+            } else if isSkipped {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.gray)
             } else if isCurrent {
                 Image(systemName: "lightbulb.fill")
                     .font(.system(size: 15, weight: .medium))
@@ -132,10 +176,19 @@ struct LiveSigningView: View {
         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
     }
 
+    private func circleFill(isCompleted: Bool, isSkipped: Bool, isCurrent: Bool) -> Color {
+        if isCompleted { return .black }
+        if isSkipped { return Color.gray.opacity(0.25) }
+        if isCurrent { return Color(hex: "#FDF2D8") }
+        return Color.gray.opacity(0.12)
+    }
+
     // MARK: Helpers
     private func colorForWord(at index: Int) -> Color {
         if completedWords.contains(index) {
             return .gray
+        } else if skippedWords.contains(index) {
+            return .gray.opacity(0.55)
         } else if index == currentWordIndex {
             return .black
         } else {
@@ -143,16 +196,55 @@ struct LiveSigningView: View {
         }
     }
 
-    private func advanceWord() {
-        guard currentWordIndex < glossWords.count else { return }
-        withAnimation {
-            completedWords.insert(currentWordIndex)
-            if currentWordIndex < glossWords.count - 1 {
-                currentWordIndex += 1
-            } else {
-                // All done — move index past end to signal finished
-                currentWordIndex = glossWords.count
+    /// Called by the camera view when confidence crosses the "good" threshold.
+    /// Unlocks the Continue button and schedules an auto-advance after a few
+    /// seconds in case the user doesn't tap it themselves.
+    private func handleThresholdReached() {
+        guard !isFinished, !passedThreshold else { return }
+        passedThreshold = true
+
+        autoAdvanceTask?.cancel()
+        autoAdvanceTask = Task { @MainActor in
+            try? await Task.sleep(for: autoAdvanceDelay)
+            if Task.isCancelled { return }
+            if passedThreshold && !isFinished {
+                advanceWord()
             }
+        }
+    }
+
+    private func advanceWord() {
+        advance(markingCurrentAs: .completed)
+    }
+
+    private func skipWord() {
+        advance(markingCurrentAs: .skipped)
+    }
+
+    private enum WordOutcome { case completed, skipped }
+
+    private func advance(markingCurrentAs outcome: WordOutcome) {
+        autoAdvanceTask?.cancel()
+        autoAdvanceTask = nil
+
+        guard currentWordIndex < glossWords.count else {
+            if isFinished { onComplete?() }
+            return
+        }
+
+        withAnimation {
+            switch outcome {
+            case .completed: completedWords.insert(currentWordIndex)
+            case .skipped: skippedWords.insert(currentWordIndex)
+            }
+            currentWordIndex += 1
+        }
+
+        // Reset threshold for the next word (or leave false if finished).
+        passedThreshold = false
+
+        if isFinished {
+            onComplete?()
         }
     }
 }
