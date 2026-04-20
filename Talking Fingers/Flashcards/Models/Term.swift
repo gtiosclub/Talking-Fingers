@@ -73,21 +73,32 @@ enum Term: String, CaseIterable, Codable {
     // MARK: - Greetings
     case hello = "HELLO"
     case hi = "HI"
-    case goodMorning = "GOOD-MORNING"
-    case goodAfternoon = "GOOD-AFTERNOON"
-    case goodNight = "GOOD-NIGHT"
+    // case goodMorning = "GOOD-MORNING"
+    // case goodAfternoon = "GOOD-AFTERNOON"
+    // case goodNight = "GOOD-NIGHT"
+    case good = "GOOD"
+    case morning = "MORNING"
+    case afternoon = "AFTERNOON"
+    case evening = "EVENING"
+    case night = "NIGHT"
     case bye = "BYE"
-    case seeYouLater = "SEE-YOU-LATER"
-    case niceMeetYou = "NICE-MEET-YOU"
-    case howYou = "HOW-YOU"
-    case whatUp = "WHAT-UP"
+    case see = "SEE"
+    case later = "LATER"
+    case nice = "NICE"
+    case meet = "MEET"
+    case you = "YOU"
+    case how = "HOW"
+    // case seeYouLater = "SEE-YOU-LATER"
+    // case niceMeetYou = "NICE-MEET-YOU"
+    // case howYou = "HOW-YOU"
+     case whatUp = "WHAT-UP"
     
 
     // MARK: - Personal Information
     case name = "NAME"
     case my = "MY"
     case me = "ME"
-    case you = "YOU"
+//    case you = "YOU"
     case they = "THEY"
     case we = "WE"
     case he = "HE"
@@ -108,7 +119,7 @@ enum Term: String, CaseIterable, Codable {
     case when = "WHEN"
     case `where` = "WHERE"
     case why = "WHY"
-    case how = "HOW"
+//    case how = "HOW"
 
     // MARK: - Family
     case family = "FAMILY"
@@ -140,7 +151,7 @@ enum Term: String, CaseIterable, Codable {
     case teach = "TEACH"
     case visit = "VISIT"
     case talk = "TALK"
-    case see = "SEE"
+//    case see = "SEE"
     case make = "MAKE"
     case take = "TAKE"
     case give = "GIVE"
@@ -156,10 +167,10 @@ enum Term: String, CaseIterable, Codable {
     case tomorrow = "TOMORROW"
     case yesterday = "YESTERDAY"
     case now = "NOW"
-    case later = "LATER"
-    case morning = "MORNING"
-    case afternoon = "AFTERNOON"
-    case night = "NIGHT"
+//    case later = "LATER"
+//    case morning = "MORNING"
+//    case afternoon = "AFTERNOON"
+//    case night = "NIGHT"
     case week = "WEEK"
     case month = "MONTH"
     case year = "YEAR"
@@ -194,7 +205,7 @@ enum Term: String, CaseIterable, Codable {
     case park = "PARK"
     
     // MARK: - Common Descriptors
-    case good = "GOOD"
+//    case good = "GOOD"
     case bad = "BAD"
     case new = "NEW"
     case old = "OLD"
@@ -234,8 +245,11 @@ enum Term: String, CaseIterable, Codable {
                 .five, .six, .seven, .eight, .nine, .ten, .fifteen, .twenty, .hundred:
             return .numbers
 
-        case .hello, .hi, .goodMorning, .goodAfternoon, .goodNight,
-             .bye, .seeYouLater, .niceMeetYou, .howYou, .whatUp:
+//        case .hello, .hi, .goodMorning, .goodAfternoon, .goodNight,
+//             .bye, .seeYouLater, .niceMeetYou, .howYou, .whatUp:
+//            return .greetings
+        case .hello, .hi, .good, .morning, .afternoon, .evening, .night,
+                .bye, .see, .you, .later, .nice, .meet, .how, .whatUp:
             return .greetings
 
         case .name, .my, .me, .you, .they, .we, .he, .she, .it, .their,
