@@ -467,26 +467,26 @@ struct CameraView: View {
 
             do {
                 
-                // Trim by motion
-                let trimmedSignFrames = cameraVM.trimFramesByVelocity(filteredFrames)
-                
-                guard !trimmedSignFrames.isEmpty else {
-                    print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
-                    cameraVM.clearBuffer()
-                    return
-                }
+                // Cap at 2 seconds first — no sign should take longer than that.
+                let truncatedFrames = cameraVM.truncateFrames(filteredFrames, toMaxSeconds: 2.0)
 
-                // Cap at 2 seconds — no sign should take longer than that.
-                let finalFrames = cameraVM.truncateFrames(trimmedSignFrames, toMaxSeconds: 2.0)
-
-                guard !finalFrames.isEmpty else {
+                guard !truncatedFrames.isEmpty else {
                     print("Recording for '\(normalizedName)' produced 0 frames after 2s truncation — not saved.")
                     cameraVM.clearBuffer()
                     return
                 }
 
-                if finalFrames.count < trimmedSignFrames.count {
-                    print("Truncated '\(normalizedName)' from \(trimmedSignFrames.count) → \(finalFrames.count) frames (2s cap).")
+                if truncatedFrames.count < filteredFrames.count {
+                    print("Truncated '\(normalizedName)' from \(filteredFrames.count) → \(truncatedFrames.count) frames (2s cap).")
+                }
+
+                // Then trim by motion within the 2-second window.
+                let finalFrames = cameraVM.trimFramesByVelocity(truncatedFrames)
+                
+                guard !finalFrames.isEmpty else {
+                    print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
+                    cameraVM.clearBuffer()
+                    return
                 }
 
                 let signRef = SignReference(signName: normalizedName, signType: signType, frames: finalFrames)
