@@ -77,7 +77,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     // Scoring is now aspect-ratio aware (see scoreMatchedPairs), so the same
     // tunings work on iOS and macOS without padding macOS with extra slack.
     private let staticScoreDecay: Double = 3.0
-    private let displayMultiplier: Double = 1.3
     private let smoothingAlpha: Double = 0.3
 
     var currentPitch: Double = 0.0
@@ -466,8 +465,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         if isComparing, let ref = comparisonReference {
             if ref.signType == .static, let refFrame = ref.frames.first {
                 let rawScore = compareStaticFrames(live: currentFrame, reference: refFrame)
-                let displayed = min(100, rawScore * displayMultiplier)
-                smoothedConfidence = smoothedConfidence * (1 - smoothingAlpha) + displayed * smoothingAlpha
+                smoothedConfidence = smoothedConfidence * (1 - smoothingAlpha) + rawScore * smoothingAlpha
                 confidenceScore = smoothedConfidence
                 return
             }
@@ -483,8 +481,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
                 let dtwScore = dtwEngine.computeDTW(buffer: frameBuffer, template: ref)
                 let rawScore = dtwScore.isFinite ? max(0, min(100, 100.0 * exp(-3.0 * dtwScore))) : 0
-                let displayed = min(100, rawScore * 1.5)
-                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + displayed * smoothingFactor
+                smoothedConfidence = smoothedConfidence * (1 - smoothingFactor) + rawScore * smoothingFactor
                 confidenceScore = smoothedConfidence
                 return
             }

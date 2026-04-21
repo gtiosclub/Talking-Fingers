@@ -191,7 +191,7 @@ struct SigningPracticeView: View {
             }
         }
         .onChange(of: cameraVM.confidenceScore) { _, newValue in
-            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+                let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
             if cameraVM.confidenceScore >= goodThreshold {
                 onConfidenceChange?(newValue)
                 pass = true
@@ -364,8 +364,8 @@ struct SigningPracticeView: View {
 
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return .green }
         if score >= okayThreshold { return .yellow }
         return .red
@@ -373,8 +373,8 @@ struct SigningPracticeView: View {
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return "Good" }
         if score >= okayThreshold { return "Okay" }
         return "Bad"
@@ -603,7 +603,7 @@ struct SigningPracticeView: View {
             }
         }
         .onChange(of: cameraVM.confidenceScore) { _, newValue in
-            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
             if cameraVM.confidenceScore >= goodThreshold {
                 onConfidenceChange?(newValue)
             }
@@ -766,8 +766,8 @@ struct SigningPracticeView: View {
     }
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return .green }
         if score >= okayThreshold { return .yellow }
         return .red
@@ -775,8 +775,8 @@ struct SigningPracticeView: View {
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return "Good" }
         if score >= okayThreshold { return "Okay" }
         return "Bad"
