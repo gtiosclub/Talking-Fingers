@@ -9,6 +9,7 @@ import SwiftUI
 
 struct HintPopUpComponent: View {
     let hintText: String
+    var gifFileName: String? = nil
     var onDismiss: () -> Void
 
     var body: some View {
@@ -18,11 +19,18 @@ struct HintPopUpComponent: View {
                 .foregroundColor(Color(red: 0.93, green: 0.78, blue: 0.50))
                 .padding(.top, 10)
 
-            Text(hintText)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.black.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
+            if let gifFileName {
+                GIFView(gifFileName: gifFileName)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else {
+                Text(hintText)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.black.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+            }
 
             Button {
                 onDismiss()
@@ -35,6 +43,7 @@ struct HintPopUpComponent: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
             }
+            .buttonStyle(.plain)
             .padding(.top, 4)
         }
         .padding(28)

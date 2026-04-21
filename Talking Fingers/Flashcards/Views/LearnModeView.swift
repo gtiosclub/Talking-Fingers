@@ -22,12 +22,29 @@ struct LearnModeView: View {
                 topBar
 
                 VStack(spacing: 20) {
-                    Text(vm.word)
-                        .font(.system(size: 45, weight: .bold))
-                        .padding(.top, 10)
+                    if !vm.showingCamera {
+                        Text(vm.word)
+                            .font(.system(size: 45, weight: .bold))
+                            .padding(.top, 10)
 
-                    imageArea
+                        gifCard
+                            .frame(maxHeight: .infinity)
+                    } else {
+                        SigningCameraCard(
+                            word: vm.word,
+                            showSaveButton: false,
+                            showStuckButton: false,
+                            showWordTitle: true,
+                            isHintActive: showHintPopup,
+                            onConfidenceChange: { vm.updateConfidence($0) },
+                            onHintTap: {
+                                vm.tapHint()
+                                showHintPopup = true
+                            }
+                        )
+                        .padding(.top, 16)
                         .frame(maxHeight: .infinity)
+                    }
 
                     Spacer()
 
@@ -39,7 +56,8 @@ struct LearnModeView: View {
         }
         .popupHost(isPresented: $showHintPopup) {
             HintPopUpComponent(
-                hintText: "This sign resembles a B shape"
+                hintText: "This sign resembles a B shape",
+                gifFileName: vm.flashcard.gifFileName ?? vm.flashcard.term.defaultGifFileName
             ) {
                 showHintPopup = false
                 if vm.state == .showingHint {
@@ -52,99 +70,28 @@ struct LearnModeView: View {
 
 extension LearnModeView {
     private var topBar: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Button {
-                    onClose()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16, weight: .medium))
-                        Text("Leave")
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                    .foregroundColor(.gray)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            
-            HStack(spacing: 12) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(red: 0.88, green: 0.92, blue: 0.96))
-
-                        Capsule()
-                            .fill(Color(red: 0.30, green: 0.55, blue: 0.85))
-                            .frame(width: geo.size.width * CGFloat(progress))
-                    }
-                }
-                .frame(height: 10)
-
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.black)
-            }
-            .padding(.horizontal, 20)
-        }
-        .padding(.top, 10)
+        SessionTopBar(progress: progress, onLeave: onClose)
     }
 
-    var imageArea: some View {
-        ZStack(alignment: .topTrailing) {
-            displayedImage
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if vm.showingCamera {
-                hintButton
+    var gifCard: some View {
+        Group {
+            if let gifFileName = vm.flashcard.gifFileName ?? vm.flashcard.term.defaultGifFileName {
+                GIFView(gifFileName: gifFileName)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Text("No reference GIF available")
+                    .foregroundStyle(.secondary)
             }
         }
+        // On iOS the GIF is natural-sized and centred, so keep inner padding.
+        // On Mac the GIF fills the card edge-to-edge, so no inner padding.
+        .iosOnly(horizontalPadding: 20)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
-    }
-
-    var displayedImage: some View {
-        Group {
-            if vm.showingCamera {
-                SigningPracticeView(signName: vm.word, onConfidenceChange: { score in
-                    vm.updateConfidence(score)
-                })
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else {
-                if let gifFileName = vm.flashcard.gifFileName ?? vm.flashcard.term.defaultGifFileName {
-                    GIFView(gifFileName: gifFileName)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    Text("No reference GIF available")
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(.horizontal, 20)
-    }
-
-    var hintButton: some View {
-        Button {
-            vm.tapHint()
-            showHintPopup = true
-        } label: {
-            Image(systemName: "lightbulb.fill")
-                .font(.system(size: 30))
-                .foregroundColor(vm.bulbColor)
-                .padding(10)
-                .background(.white)
-                .clipShape(Circle())
-                .shadow(radius: 2)
-        }
-        .padding(10)
     }
 
     var mainButton: some View {

@@ -122,6 +122,48 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
+        Group {
+            if cameraVM.isAuthorized {
+                ZStack {
+                    CameraPreviewView(session: cameraVM.session)
+                        .ignoresSafeArea()
+                    GeometryReader { geo in
+                        handOutlineOverlay(in: geo.size)
+                        handJointLabelsOverlay(in: geo.size)
+                        bodyJointLabelsOverlay(in: geo.size)
+                        handSkeletonOverlay(in: geo.size)
+                        bodySkeletonOverlay(in: geo.size)
+                    }
+                    if signName != nil && hands.count > 0 {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text(confidenceLabel)
+                                    .foregroundStyle(confidenceColor)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .font(.system(size: 18, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(10)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "Camera Access Required",
+                    systemImage: "camera.fill",
+                    description: Text("Please allow camera access in Settings to use sign language recognition.")
+                )
+            }
+        }
+        .onAppear {
+            cameraVM.checkPermission()
 
         VStack(spacing: 20) {
             // MARK: Camera Window (replaces cartoon)
@@ -181,12 +223,44 @@ struct SigningPracticeView: View {
                         cameraVM.checkPermission()
                     }
 
-                    cameraVM.onPoseDetected = { handObservations, pts in
-                        hands = handObservations
+            cameraVM.onPoseDetected = { handObservations, pts in
+                hands = handObservations
 
-                        guard cameraVM.isRecording else { return }
-                    }
+                guard cameraVM.isRecording else { return }
+            }
 
+            cameraVM.onBodyPoseDetected = { bodyObservations, _ in
+                bodies = bodyObservations
+            }
+            cameraVM.startComparing(forSign: signName ?? "")
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            cameraVM.start()
+        }
+        .onDisappear {
+            cameraVM.stop()
+        }
+        .onChange(of: cameraMode) { _, newValue in
+            if newValue == .compare {
+                cameraVM.startComparing(forSign: signName ?? "")
+            } else {
+                cameraVM.stopComparing()
+            }
+        }
+        .onChange(of: cameraVM.confidenceScore) { _, newValue in
+            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+            if cameraVM.confidenceScore >= goodThreshold {
+                onConfidenceChange?(newValue)
+                pass = true
+            }
+        }
+        .onChange(of: signName ?? "") { _, newValue in
+            print("Current word is \(newValue)")
+            if cameraMode == .compare {
+                cameraVM.startComparing(forSign: newValue)
+                pass = false
+            }
                     cameraVM.onBodyPoseDetected = { bodyObservations, _ in
                         bodies = bodyObservations
                     }
@@ -544,22 +618,15 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
+        Group {
+            if cameraVM.isAuthorized {
+                ZStack {
+                    CameraPreviewView(
+                        session: cameraVM.session,
+                        isMirrored: cameraVM.isMirrored
+                    )
+                    .ignoresSafeArea()
         VStack(spacing: 16) {
-            if showsLeaveButton {
-                HStack {
-                    Button(action: { dismiss() }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "door.left.hand.open")
-                            Text("Leave")
-                        }
-                    }
-                    .foregroundColor(.gray)
-
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.top, 20)
-            }
 
             VStack(spacing: 16) {
                 if cameraVM.isAuthorized {
@@ -570,6 +637,39 @@ struct SigningPracticeView: View {
                         )
                         .ignoresSafeArea()
 
+                    GeometryReader { geo in
+                        handOutlineOverlay(in: geo.size)
+                        handJointLabelsOverlay(in: geo.size)
+                        bodyJointLabelsOverlay(in: geo.size)
+                        handSkeletonOverlay(in: geo.size)
+                        bodySkeletonOverlay(in: geo.size)
+                    }
+                    if signName != nil && hands.count > 0 {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text(confidenceLabel)
+                                    .foregroundStyle(confidenceColor)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .font(.system(size: 18, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(10)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "Camera Access Required",
+                    systemImage: "camera.fill",
+                    description: Text("Please allow camera access in Settings to use sign language recognition.")
+                )
                         GeometryReader { geo in
                             handOutlineOverlay(in: geo.size)
                             handJointLabelsOverlay(in: geo.size)
@@ -616,8 +716,6 @@ struct SigningPracticeView: View {
                     .padding(.top, 24)
                 }
             }
-
-            Spacer(minLength: 0)
         }
         .onAppear {
             if ownsCameraLifecycle {

@@ -20,7 +20,6 @@ struct ModePopupView: View {
         ZStack {
             Color.black.opacity(animatePopup ? 0.3 : 0)
                 .ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.25), value: animatePopup)
                 .onTapGesture {
                     closePopup()
                 }
@@ -31,6 +30,72 @@ struct ModePopupView: View {
                     .font(.title)
                     .fontWeight(.semibold)
                 
+#if os(macOS)
+                VStack(spacing: 16) {
+                    Button {
+                        onLearn()
+                        closePopup()
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image("learnModeIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 80)
+                            
+                            Text("Learn")
+                                .font(.title)
+                                .foregroundStyle(.black)
+                            
+                            Spacer()
+                        }
+//                        .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity, minHeight: 110)
+                        .background(Color(red: 0.678, green: 0.808, blue: 0.561, opacity: 0.3))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24)
+                                .stroke(Color(red: 0.678, green: 0.95, blue: 0.561), lineWidth: 1.5)
+                        )
+                        .cornerRadius(24)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        onExercise()
+                        closePopup()
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image("exerciseModeIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 80)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Exercise")
+                                    .font(.title)
+                                    .foregroundStyle(.black)
+                                
+                                if !isExerciseUnlocked {
+                                    Text("Complete Learn first")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+//                        .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity, minHeight: 110)
+                        .background(Color(red: 0.663, green: 0.808, blue: 0.985, opacity: isExerciseUnlocked ? 0.4 : 0.2))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24)
+                                .stroke(Color(red: 0.663, green: 0.85, blue: 0.925).opacity(isExerciseUnlocked ? 1.0 : 0.5), lineWidth: 1.5)
+                        )
+                        .cornerRadius(24)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!isExerciseUnlocked)
+                }
+#else
                 HStack(spacing: 10) {
                     
                     Button {
@@ -86,6 +151,7 @@ struct ModePopupView: View {
                     }
                     .disabled(!isExerciseUnlocked)
                 }
+#endif
             }
             .padding(20)
             .background(Color.white)

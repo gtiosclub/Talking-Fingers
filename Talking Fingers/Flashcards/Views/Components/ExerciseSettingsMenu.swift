@@ -38,14 +38,9 @@ struct ExerciseSettingsMenu: View {
                 )
             }
         } label: {
-            HStack(spacing: 6) {
-                Text("Exercise Settings")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.black)
-            }
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.black)
         }
         .menuOrder(.fixed)
     }
