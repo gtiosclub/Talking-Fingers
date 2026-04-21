@@ -145,7 +145,7 @@ struct MainNavigationView: View {
             }
         case .review:
             NavigationStack {
-                CameraView()
+                ReviewView()
                     .environment(authVM)
             }
             
