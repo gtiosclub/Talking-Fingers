@@ -37,6 +37,16 @@ extension View {
         #endif
     }
 
+    /// Helper to apply horizontal padding only on iOS; no-op on macOS.
+    @ViewBuilder
+    func iosOnly(horizontalPadding: CGFloat) -> some View {
+        #if os(iOS)
+        self.padding(.horizontal, horizontalPadding)
+        #else
+        self
+        #endif
+    }
+
     @ViewBuilder
     func universalFullScreenCover<Content: View>(
         isPresented: Binding<Bool>,

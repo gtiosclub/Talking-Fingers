@@ -12,6 +12,10 @@ struct AISentenceSigningView: View {
     /// Session progress 0.0...1.0 (e.g. currentSentenceIndex / totalSentences). Shown in the single progress bar.
     var sessionProgress: Double = 0
     var onSentenceComplete: (() -> Void)? = nil
+    /// Optional externally-owned camera VM. When provided, the live signing
+    /// step reuses it instead of creating its own, which avoids tearing the
+    /// camera session down and back up between sentences.
+    var externalCameraVM: CameraVM? = nil
 
     @State private var currentPage: Int = 1
     @State private var showGloss: Bool = false
@@ -53,7 +57,8 @@ struct AISentenceSigningView: View {
                     onBack: {
                         withAnimation { currentPage = 1 }
                     },
-                    onComplete: onSentenceComplete
+                    onComplete: onSentenceComplete,
+                    externalCameraVM: externalCameraVM
                 )
             }
         }

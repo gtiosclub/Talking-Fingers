@@ -145,7 +145,7 @@ struct MainNavigationView: View {
             }
         case .review:
             NavigationStack {
-                ReviewView(signName: "Review")
+                ReviewView()
                     .environment(authVM)
             }
             
@@ -163,7 +163,15 @@ struct MainNavigationView: View {
 }
 struct StatsView: View {
     var body: some View {
+        #if os(iOS)
         ProfileWidgetsView(presentation: .embedded)
+        #else
+        Text("Profile widgets are available in the iOS app.")
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #endif
     }
 }
 #Preview {

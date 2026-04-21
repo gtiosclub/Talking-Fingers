@@ -467,26 +467,31 @@ struct CameraView: View {
 
             do {
                 
-                // Trim by motion
-                let trimmedSignFrames = cameraVM.trimFramesByVelocity(filteredFrames)
-                
-                guard !trimmedSignFrames.isEmpty else {
-                    print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
-                    cameraVM.clearBuffer()
-                    return
-                }
+                // Cap at 2 seconds first — no sign should take longer than that.
+                let truncatedFrames = cameraVM.truncateFrames(filteredFrames, toMaxSeconds: 2.0)
 
-                // Cap at 2 seconds — no sign should take longer than that.
-                let finalFrames = cameraVM.truncateFrames(trimmedSignFrames, toMaxSeconds: 2.0)
-
-                guard !finalFrames.isEmpty else {
+                guard !truncatedFrames.isEmpty else {
                     print("Recording for '\(normalizedName)' produced 0 frames after 2s truncation — not saved.")
                     cameraVM.clearBuffer()
                     return
                 }
 
-                if finalFrames.count < trimmedSignFrames.count {
-                    print("Truncated '\(normalizedName)' from \(trimmedSignFrames.count) → \(finalFrames.count) frames (2s cap).")
+                if truncatedFrames.count < filteredFrames.count {
+                    print("Truncated '\(normalizedName)' from \(filteredFrames.count) → \(truncatedFrames.count) frames (2s cap).")
+                }
+
+                // Only trim by motion for dynamic signs. Static signs (like
+                // letters) can be mostly still and would otherwise be removed.
+                let finalFrames: [SignFrame]
+                if signType == .dynamic {
+                    finalFrames = cameraVM.trimFramesByVelocity(truncatedFrames)
+                    guard !finalFrames.isEmpty else {
+                        print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
+                        cameraVM.clearBuffer()
+                        return
+                    }
+                } else {
+                    finalFrames = truncatedFrames
                 }
 
                 let signRef = SignReference(signName: normalizedName, signType: signType, frames: finalFrames)
@@ -511,8 +516,8 @@ struct CameraView: View {
 
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return .green }
         if score >= okayThreshold { return .yellow }
         return .red
@@ -520,8 +525,8 @@ struct CameraView: View {
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return "Good" }
         if score >= okayThreshold { return "Okay" }
         return "Bad"

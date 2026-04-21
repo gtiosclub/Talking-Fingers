@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+#if os(iOS)
 private enum TFWidgetColors {
     static let gold = Color(hex: 0xF8BC3A)
     static let black = Color(hex: 0x000000)
@@ -965,3 +966,4 @@ struct AccuracyPreview: View {
 #Preview {
     ProfileWidgetsView()
 }
+#endif

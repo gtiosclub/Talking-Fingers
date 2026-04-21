@@ -16,6 +16,12 @@ struct PracticeSessionView: View {
     @State private var currentSentenceIndex: Int
     @State private var isExtending: Bool = false
 
+    /// Shared camera VM kept alive for the whole session so sentence changes
+    /// don't tear the AVCaptureSession down and build a new one (which was
+    /// causing visible lag on the camera feed + overlay after the first
+    /// sentence transition).
+    @State private var sessionCameraVM = CameraVM()
+
     private let completionBlue = Color(hex: "#3A5A9C")
     private let scoreRing = Color(hex: "#F0DEB0")
     private let scoreNumber = Color(hex: "#E8A317")
@@ -123,7 +129,8 @@ struct PracticeSessionView: View {
                         sessionProgress: sessionProgress,
                         onSentenceComplete: {
                             markCurrentSentenceCompletedAndAdvance()
-                        }
+                        },
+                        externalCameraVM: sessionCameraVM
                     )
                     .id(currentSentenceIndex)
                 }
@@ -140,6 +147,19 @@ struct PracticeSessionView: View {
             #else
             Color.white
             #endif
+        }
+        .onAppear {
+            #if os(macOS)
+            sessionCameraVM.isMirrored = true
+            #endif
+            sessionCameraVM.checkPermission()
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            sessionCameraVM.start()
+        }
+        .onDisappear {
+            sessionCameraVM.stop()
         }
     }
 

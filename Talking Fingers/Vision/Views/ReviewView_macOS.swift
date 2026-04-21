@@ -14,6 +14,10 @@ import Vision
 struct ReviewView: View {
     let signName: String
 
+    init(signName: String = "") {
+        self.signName = signName
+    }
+
     @State private var cameraVM = CameraVM()
     @State private var hands: [VNHumanHandPoseObservation] = []
 

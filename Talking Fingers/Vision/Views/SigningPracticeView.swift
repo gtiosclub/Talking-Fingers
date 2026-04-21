@@ -22,7 +22,11 @@ struct SigningPracticeView: View {
     @State private var currentWordIndex: Int = 0
     @State var pass: Bool = false
     @State private var showJointsSheet: Bool = false
-    @State private var cameraVM: CameraVM = CameraVM()
+    @State private var cameraVM: CameraVM
+    /// When `true` the view manages the camera's `start`/`stop` lifecycle in
+    /// `.onAppear`/`.onDisappear`. When an external VM is passed in, the parent
+    /// is responsible for lifecycle, so we skip those calls.
+    private let ownsCameraLifecycle: Bool
 
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
@@ -55,9 +59,24 @@ struct SigningPracticeView: View {
 
     let signName: String?
     var onConfidenceChange: ((Double) -> Void)?
-    init(signName: String? = nil, onConfidenceChange: ((Double) -> Void)? = nil) {
+    /// Present for API parity with the macOS variant; the iOS view has no
+    /// built-in leave button so this value is currently unused.
+    var showsLeaveButton: Bool
+    /// When `true` (default) the view applies its own horizontal padding and a
+    /// 9:16 aspect ratio constraint to the camera. Set to `false` when
+    /// embedding in a parent that wants to control sizing directly.
+    var usesInternalPadding: Bool
+    init(signName: String? = nil,
+         onConfidenceChange: ((Double) -> Void)? = nil,
+         showsLeaveButton: Bool = true,
+         usesInternalPadding: Bool = true,
+         externalCameraVM: CameraVM? = nil) {
         self.signName = signName
         self.onConfidenceChange = onConfidenceChange
+        self.showsLeaveButton = showsLeaveButton
+        self.usesInternalPadding = usesInternalPadding
+        _cameraVM = State(initialValue: externalCameraVM ?? CameraVM())
+        self.ownsCameraLifecycle = externalCameraVM == nil
     }
     @State private var cameraMode: CameraMode = .compare
 
@@ -103,103 +122,87 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
-
-        VStack(spacing: 20) {
-            // MARK: Camera Window (replaces cartoon)
-                VStack(spacing: 16) {
-                    if cameraVM.isAuthorized {
-
-                        ZStack {
-                            CameraPreviewView(session: cameraVM.session)
-                                .ignoresSafeArea()
-                            GeometryReader { geo in
-                                handOutlineOverlay(in: geo.size)
-                                handJointLabelsOverlay(in: geo.size)
-                                bodyJointLabelsOverlay(in: geo.size)
-                                handSkeletonOverlay(in: geo.size)
-                                bodySkeletonOverlay(in: geo.size)
+        Group {
+            if cameraVM.isAuthorized {
+                ZStack {
+                    CameraPreviewView(session: cameraVM.session)
+                        .ignoresSafeArea()
+                    GeometryReader { geo in
+                        handOutlineOverlay(in: geo.size)
+                        handJointLabelsOverlay(in: geo.size)
+                        bodyJointLabelsOverlay(in: geo.size)
+                        handSkeletonOverlay(in: geo.size)
+                        bodySkeletonOverlay(in: geo.size)
+                    }
+                    if signName != nil && hands.count > 0 {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text(confidenceLabel)
+                                    .foregroundStyle(confidenceColor)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .font(.system(size: 18, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(10)
                             }
-                            if signName != nil && hands.count > 0{
-                                VStack {
-                                    HStack {
-                                        Spacer()
-                                        Text(confidenceLabel)
-                                            .foregroundStyle(confidenceColor)
-                                            .contentTransition(.interpolate)
-                                            .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                            .font(.system(size: 18, weight: .bold))
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 6)
-                                            .background(.ultraThinMaterial)
-                                            .clipShape(Capsule())
-                                            .padding(10)
-                                    }
-                                    Spacer()
-                                }
-                            }
+                            Spacer()
                         }
-                        .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(.white.opacity(0.15), lineWidth: 1)
-                        )
-                        .shadow(radius: 12)
-                        .padding(.horizontal)
-                    } else {
-                        ContentUnavailableView(
-                            "Camera Access Required",
-                            systemImage: "camera.fill",
-                            description: Text("Please allow camera access in Settings to use sign language recognition.")
-                        )
-                        .padding(.horizontal)
-                        .padding(.top, 24)
                     }
                 }
-                .onAppear {
-                    cameraVM.checkPermission()
-
-                    cameraVM.onPoseDetected = { handObservations, pts in
-                        hands = handObservations
-
-                        guard cameraVM.isRecording else { return }
-                    }
-
-                    cameraVM.onBodyPoseDetected = { bodyObservations, _ in
-                        bodies = bodyObservations
-                    }
-                    cameraVM.startComparing(forSign: signName ?? "")
-                }
-                .task {
-                    try? await Task.sleep(for: .milliseconds(300))
-                    cameraVM.start()
-                }
-                .onDisappear {
-                    cameraVM.stop()
-                }
-                .onChange(of: cameraMode) { _, newValue in
-                    if newValue == .compare {
-                        cameraVM.startComparing(forSign: signName ?? "")
-                    } else {
-                        cameraVM.stopComparing()
-                    }
-                }
-            .onChange(of: cameraVM.confidenceScore) { _, newValue in
-                let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-                if cameraVM.confidenceScore >= goodThreshold {
-                    onConfidenceChange?(newValue)
-                    pass = true
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "Camera Access Required",
+                    systemImage: "camera.fill",
+                    description: Text("Please allow camera access in Settings to use sign language recognition.")
+                )
             }
-            .onChange(of: signName ?? "") { _, newValue in
-                print("Current word is \(newValue)")
-                if cameraMode == .compare {
-                    cameraVM.startComparing(forSign: newValue)
-                    pass = false
-                }
+        }
+        .onAppear {
+            cameraVM.checkPermission()
+
+            cameraVM.onPoseDetected = { handObservations, pts in
+                hands = handObservations
+
+                guard cameraVM.isRecording else { return }
             }
-                    
+
+            cameraVM.onBodyPoseDetected = { bodyObservations, _ in
+                bodies = bodyObservations
+            }
+            cameraVM.startComparing(forSign: signName ?? "")
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            cameraVM.start()
+        }
+        .onDisappear {
+            cameraVM.stop()
+        }
+        .onChange(of: cameraMode) { _, newValue in
+            if newValue == .compare {
+                cameraVM.startComparing(forSign: signName ?? "")
+            } else {
+                cameraVM.stopComparing()
+            }
+        }
+        .onChange(of: cameraVM.confidenceScore) { _, newValue in
+                let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+            if cameraVM.confidenceScore >= goodThreshold {
+                onConfidenceChange?(newValue)
+                pass = true
+            }
+        }
+        .onChange(of: signName ?? "") { _, newValue in
+            print("Current word is \(newValue)")
+            if cameraMode == .compare {
+                cameraVM.startComparing(forSign: newValue)
+                pass = false
+            }
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -361,8 +364,8 @@ struct SigningPracticeView: View {
 
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return .green }
         if score >= okayThreshold { return .yellow }
         return .red
@@ -370,8 +373,8 @@ struct SigningPracticeView: View {
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return "Good" }
         if score >= okayThreshold { return "Okay" }
         return "Bad"
@@ -423,6 +426,17 @@ struct ProgressBar: View {
 import SwiftUI
 import AVFoundation
 import Vision
+
+private struct CameraAspectModifier: ViewModifier {
+    let usesAspectRatio: Bool
+    func body(content: Content) -> some View {
+        if usesAspectRatio {
+            content.aspectRatio(9.0 / 16.0, contentMode: .fit)
+        } else {
+            content
+        }
+    }
+}
 #endif
 
 #if os(macOS)
@@ -434,11 +448,30 @@ struct SigningPracticeView: View {
     /// and no reference is loaded.
     let signName: String?
     var onConfidenceChange: ((Double) -> Void)?
-    init(signName: String? = nil, onConfidenceChange: ((Double) -> Void)? = nil) {
+    /// When `false`, hides the top "Leave" button so the view can be embedded
+    /// inside another view that already provides navigation.
+    var showsLeaveButton: Bool
+    /// When `true` (default) the view applies its own horizontal padding and a
+    /// 16:9 aspect ratio constraint to the camera. Set to `false` when
+    /// embedding in a parent that wants to control sizing directly.
+    var usesInternalPadding: Bool
+    init(signName: String? = nil,
+         onConfidenceChange: ((Double) -> Void)? = nil,
+         showsLeaveButton: Bool = true,
+         usesInternalPadding: Bool = true,
+         externalCameraVM: CameraVM? = nil) {
         self.signName = signName
         self.onConfidenceChange = onConfidenceChange
+        self.showsLeaveButton = showsLeaveButton
+        self.usesInternalPadding = usesInternalPadding
+        _cameraVM = State(initialValue: externalCameraVM ?? CameraVM())
+        self.ownsCameraLifecycle = externalCameraVM == nil
     }
-    @State private var cameraVM: CameraVM = CameraVM()
+    @State private var cameraVM: CameraVM
+    /// When `true` the view manages the camera's `start`/`stop` lifecycle in
+    /// `.onAppear`/`.onDisappear`. When an external VM is passed in, the parent
+    /// is responsible for lifecycle, so we skip those calls.
+    private let ownsCameraLifecycle: Bool
 
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
@@ -490,82 +523,55 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Button(action: { dismiss() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "door.left.hand.open")
-                        Text("Leave")
+        Group {
+            if cameraVM.isAuthorized {
+                ZStack {
+                    CameraPreviewView(
+                        session: cameraVM.session,
+                        isMirrored: cameraVM.isMirrored
+                    )
+                    .ignoresSafeArea()
+
+                    GeometryReader { geo in
+                        handOutlineOverlay(in: geo.size)
+                        handJointLabelsOverlay(in: geo.size)
+                        bodyJointLabelsOverlay(in: geo.size)
+                        handSkeletonOverlay(in: geo.size)
+                        bodySkeletonOverlay(in: geo.size)
                     }
-                }
-                .foregroundColor(.gray)
-
-                Spacer()
-            }
-            .padding(.horizontal)
-            .padding(.top, 20)
-
-            VStack(spacing: 16) {
-                if cameraVM.isAuthorized {
-                    ZStack {
-                        CameraPreviewView(
-                            session: cameraVM.session,
-                            isMirrored: cameraVM.isMirrored
-                        )
-                        .ignoresSafeArea()
-
-                        GeometryReader { geo in
-                            handOutlineOverlay(in: geo.size)
-                            handJointLabelsOverlay(in: geo.size)
-                            bodyJointLabelsOverlay(in: geo.size)
-                            handSkeletonOverlay(in: geo.size)
-                            bodySkeletonOverlay(in: geo.size)
-                        }
-                        if signName != nil && hands.count > 0 {
-                            VStack {
-                                HStack {
-                                    Spacer()
-                                    Text(confidenceLabel)
-                                        .foregroundStyle(confidenceColor)
-                                        .contentTransition(.interpolate)
-                                        .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                        .font(.system(size: 18, weight: .bold))
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(.ultraThinMaterial)
-                                        .clipShape(Capsule())
-                                        .padding(10)
-                                }
+                    if signName != nil && hands.count > 0 {
+                        VStack {
+                            HStack {
                                 Spacer()
+                                Text(confidenceLabel)
+                                    .foregroundStyle(confidenceColor)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .font(.system(size: 18, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(10)
                             }
+                            Spacer()
                         }
                     }
-                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                    .frame(maxWidth: 980)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(.white.opacity(0.15), lineWidth: 1)
-                    )
-                    .shadow(radius: 12)
-                    .padding(.horizontal)
-                } else {
-                    ContentUnavailableView(
-                        "Camera Access Required",
-                        systemImage: "camera.fill",
-                        description: Text("Please allow camera access in Settings to use sign language recognition.")
-                    )
-                    .padding(.horizontal)
-                    .padding(.top, 24)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "Camera Access Required",
+                    systemImage: "camera.fill",
+                    description: Text("Please allow camera access in Settings to use sign language recognition.")
+                )
             }
-
-            Spacer(minLength: 0)
         }
         .onAppear {
-            cameraVM.isMirrored = true
-            cameraVM.checkPermission()
+            if ownsCameraLifecycle {
+                cameraVM.isMirrored = true
+                cameraVM.checkPermission()
+            }
 
             cameraVM.onPoseDetected = { handObservations, _ in
                 hands = handObservations
@@ -580,11 +586,14 @@ struct SigningPracticeView: View {
             }
         }
         .task {
+            guard ownsCameraLifecycle else { return }
             try? await Task.sleep(for: .milliseconds(300))
             cameraVM.start()
         }
         .onDisappear {
-            cameraVM.stop()
+            if ownsCameraLifecycle {
+                cameraVM.stop()
+            }
         }
         .onChange(of: signName) { _, newValue in
             if let newValue {
@@ -594,7 +603,7 @@ struct SigningPracticeView: View {
             }
         }
         .onChange(of: cameraVM.confidenceScore) { _, newValue in
-            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
             if cameraVM.confidenceScore >= goodThreshold {
                 onConfidenceChange?(newValue)
             }
@@ -757,8 +766,8 @@ struct SigningPracticeView: View {
     }
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return .green }
         if score >= okayThreshold { return .yellow }
         return .red
@@ -766,11 +775,22 @@ struct SigningPracticeView: View {
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 40
+        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
+        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
         if score >= goodThreshold { return "Good" }
         if score >= okayThreshold { return "Okay" }
         return "Bad"
+    }
+}
+
+private struct CameraAspectModifierMacOS: ViewModifier {
+    let usesAspectRatio: Bool
+    func body(content: Content) -> some View {
+        if usesAspectRatio {
+            content.aspectRatio(16.0 / 9.0, contentMode: .fit)
+        } else {
+            content
+        }
     }
 }
 #endif

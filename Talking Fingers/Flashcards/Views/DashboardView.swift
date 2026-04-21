@@ -85,13 +85,68 @@ struct DashboardView: View {
     
     var body: some View {
 #if os(macOS)
-        macLayout
+        // MARK: - Mac Layout
+        NavigationStack {
+            HStack(spacing: 0) {
+                
+                // MAIN CONTENT
+                Group {
+                    if currentView == "Home" {
+                        dashboardContent
+                    } else {
+                        categoryDetailView(currentView)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .background(Color.categoryComponentColor)
+            .popupHost(isPresented: $showModePopup) {
+                ModePopupView(
+                    isPresented: $showModePopup,
+                    isExerciseUnlocked: selectedCategoryForPopup.map { canAccessCategory($0) && isExerciseUnlocked(for: $0) } ?? false,
+                    onLearn: {
+                        if let cat = selectedCategoryForPopup {
+                            guard canAccessCategory(cat) else { return }
+                            activeFlow = .learn(cat)
+                        }
+                    },
+                    onExercise: {
+                        if let cat = selectedCategoryForPopup {
+                            guard canAccessCategory(cat) else { return }
+                            activeFlow = .exercise(cat)
+                        }
+                    }
+                )
+            }
+            .overlay {
+                if let flow = activeFlow {
+                    ZStack {
+                        Color(NSColor.windowBackgroundColor)
+                            .ignoresSafeArea()
+                        switch flow {
+                        case .learn(let category):
+                            FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
+                                activeFlow = nil
+                            }
+                            .environment(dataVM)
+                        case .exercise(let category):
+                            FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
+                                activeFlow = nil
+                            }
+                            .environment(dataVM)
+                        case .dailyChallenge:
+                            FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
+                                activeFlow = nil
+                            }
+                            .environment(dataVM)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+         }
 #else
-        iosLayout
-#endif
-    }
-    
-    var iosLayout: some View {
+        // MARK: - iOS Layout
         NavigationStack {
             ZStack(alignment: .bottom) {
                 ScrollView {
@@ -257,7 +312,6 @@ struct DashboardView: View {
                     }
                 )
             }
-#if os(iOS)
             .fullScreenCover(item: $activeFlow) { flow in
                 switch flow {
                 case .learn(let category):
@@ -277,91 +331,11 @@ struct DashboardView: View {
                     .environment(dataVM)
                 }
             }
-#else
-            .sheet(item: $activeFlow) { flow in
-                switch flow {
-                case .learn(let category):
-                    FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
-                        activeFlow = nil
-                    }
-                    .environment(dataVM)
-                    .frame(minWidth: 700, minHeight: 600)
-                case .exercise(let category):
-                    FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
-                        activeFlow = nil
-                    }
-                    .environment(dataVM)
-                    .frame(minWidth: 700, minHeight: 600)
-                case .dailyChallenge:
-                    FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
-                        activeFlow = nil
-                    }
-                    .environment(dataVM)
-                    .frame(minWidth: 700, minHeight: 600)
-                }
-            }
-#endif
         }
+        
+#endif
     }
     
-    // MARK: - Mac Layout
-    var macLayout: some View {
-        NavigationStack {
-            HStack(spacing: 0) {
-                
-                // MAIN CONTENT
-                Group {
-                    if currentView == "Home" {
-                        dashboardContent
-                    } else {
-                        categoryDetailView(currentView)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .background(Color.categoryComponentColor)
-            .popupHost(isPresented: $showModePopup) {
-                ModePopupView(
-                    isPresented: $showModePopup,
-                    isExerciseUnlocked: selectedCategoryForPopup.map { canAccessCategory($0) && isExerciseUnlocked(for: $0) } ?? false,
-                    onLearn: {
-                        if let cat = selectedCategoryForPopup {
-                            guard canAccessCategory(cat) else { return }
-                            activeFlow = .learn(cat)
-                        }
-                    },
-                    onExercise: {
-                        if let cat = selectedCategoryForPopup {
-                            guard canAccessCategory(cat) else { return }
-                            activeFlow = .exercise(cat)
-                        }
-                    }
-                )
-            }
-            .sheet(item: $activeFlow) { flow in
-                switch flow {
-                case .learn(let category):
-                    FlexibleStartCardComponent(context: .learn(category), completed: 0, total: 12) {
-                        activeFlow = nil
-                    }
-                    .environment(dataVM)
-                    .frame(minWidth: 700, minHeight: 600)
-                case .exercise(let category):
-                    FlexibleStartCardComponent(context: .exercise(category), completed: 0, total: 12) {
-                        activeFlow = nil
-                    }
-                    .environment(dataVM)
-                    .frame(minWidth: 700, minHeight: 600)
-                case .dailyChallenge:
-                    FlexibleStartCardComponent(context: .dailyChallenge, completed: 0, total: 5) {
-                        activeFlow = nil
-                    }
-                    .environment(dataVM)
-                    .frame(minWidth: 700, minHeight: 600)
-                }
-            }
-        }
-    }
     
     var dashboardContent: some View {
         ScrollView {
@@ -376,7 +350,7 @@ struct DashboardView: View {
                             .foregroundColor(.gray)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .frame(maxWidth: 400, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color.white)
                             .cornerRadius(6)
                             .overlay(
@@ -501,6 +475,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
     
     func categoryDetailView(_ category: String) -> some View {
         VStack {
