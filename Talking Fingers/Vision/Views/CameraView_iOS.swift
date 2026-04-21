@@ -480,13 +480,18 @@ struct CameraView: View {
                     print("Truncated '\(normalizedName)' from \(filteredFrames.count) → \(truncatedFrames.count) frames (2s cap).")
                 }
 
-                // Then trim by motion within the 2-second window.
-                let finalFrames = cameraVM.trimFramesByVelocity(truncatedFrames)
-                
-                guard !finalFrames.isEmpty else {
-                    print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
-                    cameraVM.clearBuffer()
-                    return
+                // Only trim by motion for dynamic signs. Static signs (like
+                // letters) can be mostly still and would otherwise be removed.
+                let finalFrames: [SignFrame]
+                if signType == .dynamic {
+                    finalFrames = cameraVM.trimFramesByVelocity(truncatedFrames)
+                    guard !finalFrames.isEmpty else {
+                        print("Recording for '\(normalizedName)' produced 0 frames after velocity trimming — not saved.")
+                        cameraVM.clearBuffer()
+                        return
+                    }
+                } else {
+                    finalFrames = truncatedFrames
                 }
 
                 let signRef = SignReference(signName: normalizedName, signType: signType, frames: finalFrames)
