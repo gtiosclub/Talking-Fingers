@@ -49,11 +49,6 @@ struct MultipleChoice: View {
     private let tfGreen = Color(red: 159/255, green: 192/255, blue: 122/255)
     private let tfGreenText = Color(red: 82/255, green: 106/255, blue: 54/255)
 
-    /// 28 % of the view height, clamped between 140 pt (small phones) and 280 pt (large displays).
-    private var gifHeight: CGFloat {
-        min(max(viewHeight * 0.28, 140), 280)
-    }
-
     // MARK: - Init
     init(
         question: String,
@@ -90,16 +85,14 @@ struct MultipleChoice: View {
                 topBar
 
                 // ── Card ───────────────────────────────────────────────────
-                ScrollView {
-                    VStack(spacing: 20) {
-                        questionCard
-                    }
-                    .frame(maxWidth: 1100)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 24)
+                VStack(spacing: 20) {
+                    questionCard
                 }
+                .frame(maxWidth: 1100)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
 
                 // ── Submit (bottom area) + private tiny level badge ───────
                 VStack(spacing: 6) {
@@ -123,14 +116,7 @@ struct MultipleChoice: View {
             .toolbar(.hidden, for: .navigationBar)
             #endif
         }
-        // Capture the runtime view height so gifHeight can adapt.
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { viewHeight = geo.size.height }
-                    .onChange(of: geo.size.height) { _, h in viewHeight = h }
-            }
-        )
+        .frame(maxHeight: .infinity)
         // Hint popup like LearnModeView
         .popupHost(isPresented: $showHintPopup) {
             HintPopUpComponent(
@@ -239,37 +225,16 @@ struct MultipleChoice: View {
                 }
                 .buttonStyle(.plain)
             }
-
-            // Sign illustration placeholder
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(hex: 0xFFFFFF))
-                    .frame(height: 180)
-                    .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
-
-                /*if imageName.isEmpty {
-                    // Fallback sketch-style placeholder
-                    Image(systemName: "hand.wave.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 100)
-                        .foregroundColor(.black.opacity(0.8))
-                } else {
-                    Image(imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 160)
-                        .padding(12)
-                }*/
-                if let gifFileName = currentCard.gifFileName ?? currentCard.term.defaultGifFileName {
-                    GIFView(gifFileName: gifFileName)
-                        .frame(width: 200, height: 150)
-                } else {
-                    Text("No GIF available")
-                }
+            
+            if let gifFileName = currentCard.gifFileName ?? currentCard.term.defaultGifFileName {
+                GIFView(gifFileName: gifFileName)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Text("No GIF available")
             }
-            
-            
+
+            Spacer(minLength: 8)
+
             // Question text (if desired)
             if !question.isEmpty {
                 Text(question)
@@ -285,6 +250,7 @@ struct MultipleChoice: View {
             }
         }
         .padding(20)
+        .frame(maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 20)
                 .fill(Color.white)

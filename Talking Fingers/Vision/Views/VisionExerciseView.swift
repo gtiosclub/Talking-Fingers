@@ -25,7 +25,6 @@ struct VisionExerciseView: View {
     @Query private var users: [User]
 
     // MARK: - State
-    @State private var isSaved: Bool = false
     @State private var showHintPopup: Bool = false
     @State private var showStuckPopup: Bool = false
     @State private var isPassed: Bool = false
@@ -105,135 +104,44 @@ struct VisionExerciseView: View {
         .onChange(of: currentCard.id) { _, _ in
             isPassed = false
             confidenceScore = 0
-            isSaved = false
         }
     }
 
     // MARK: - Top Bar
     private var topBar: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Button {
-                    #if os(macOS)
-                    onLeave?()
-                    #else
-                    dismiss()
-                    #endif
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16, weight: .medium))
-                        Text("Leave")
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                    .foregroundColor(.gray)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
+        SessionTopBar(
+            progress: progress,
+            onLeave: {
+                #if os(macOS)
+                onLeave?()
+                #else
+                dismiss()
+                #endif
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-
-            HStack(spacing: 12) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(red: 0.88, green: 0.92, blue: 0.96))
-                        Capsule()
-                            .fill(Color(red: 0.30, green: 0.55, blue: 0.85))
-                            .frame(width: geo.size.width * CGFloat(progress))
-                    }
-                }
-                .frame(height: 10)
-
-                ExerciseSettingsMenu(mode: $inputMode)
-            }
-            .padding(.horizontal, 20)
+        ) {
+            ExerciseSettingsMenu(mode: $inputMode)
         }
-        .padding(.top, 10)
     }
 
     // MARK: - Camera Card
     private var cameraCard: some View {
-        VStack(spacing: 16) {
-
-            // Word title
-            Text(currentCard.term.displayName)
-                .font(.system(size: 45, weight: .bold))
-                .padding(.top, 4)
-
-            // Action buttons row: save | stuck | hint
-            HStack {
-                Button {
-                    isSaved.toggle()
-                } label: {
-                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                        .foregroundColor(tfGreenText)
-                        .padding(14)
-                        .background(Circle().fill(tfGreen.opacity(0.25)))
-                        .scaleEffect(1.1)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Button {
-                    showStuckPopup = true
-                } label: {
-                    Image(systemName: "exclamationmark")
-                        .foregroundColor(.orange)
-                        .padding(14)
-                        .background(
-                            Circle().fill(Color.orange.opacity(showStuckPopup ? 0.3 : 0.15))
-                        )
-                        .scaleEffect(1.1)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Button {
-                    showHintPopup = true
-                } label: {
-                    Image(systemName: "lightbulb")
-                        .foregroundColor(.orange)
-                        .padding(14)
-                        .background(
-                            Circle().fill(Color.orange.opacity(showHintPopup ? 0.3 : 0.2))
-                        )
-                        .scaleEffect(1.1)
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Live graded camera feed
-            SigningPracticeView(signName: currentCard.term.displayName,
-                                onConfidenceChange: { score in
+        SigningCameraCard(
+            word: currentCard.term.displayName,
+            cameraHeight: cameraHeight,
+            isHintActive: showHintPopup,
+            isStuckActive: showStuckPopup,
+            onConfidenceChange: { score in
                 confidenceScore = score
                 if score >= passThreshold && !isPassed {
                     withAnimation(.easeOut(duration: 0.3)) {
                         isPassed = true
                     }
                 }
-            })
-            .frame(height: cameraHeight)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-            )
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.blue.opacity(0.25), lineWidth: 1.5)
-                )
+            },
+            onHintTap: { showHintPopup = true },
+            onStuckTap: { showStuckPopup = true }
         )
-        .shadow(color: .black.opacity(0.05), radius: 8)
+        .id(currentCard.id)
     }
 
     // MARK: - Next Word Button
@@ -285,6 +193,162 @@ struct VisionExerciseView: View {
             dismiss()
             #endif
         }
+    }
+}
+
+// MARK: - Session Top Bar
+
+/// Progress bar + Leave button shared by every exercise / learn screen.
+/// Pass a `@ViewBuilder` trailing block to add items (e.g. `ExerciseSettingsMenu`)
+/// next to the progress bar; omit it for just the bar.
+struct SessionTopBar<Trailing: View>: View {
+    var progress: Double
+    var onLeave: () -> Void
+    private let trailing: Trailing
+
+    init(
+        progress: Double,
+        onLeave: @escaping () -> Void,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.progress = progress
+        self.onLeave = onLeave
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Button { onLeave() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("Leave")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .foregroundColor(.gray)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+
+            HStack(spacing: 12) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color(red: 0.88, green: 0.92, blue: 0.96))
+                        Capsule()
+                            .fill(Color(red: 0.30, green: 0.55, blue: 0.85))
+                            .frame(width: geo.size.width * CGFloat(progress))
+                    }
+                }
+                .frame(height: 10)
+
+                trailing
+            }
+            .padding(.horizontal, 20)
+        }
+        .padding(.top, 10)
+    }
+}
+
+extension SessionTopBar where Trailing == EmptyView {
+    init(progress: Double, onLeave: @escaping () -> Void) {
+        self.init(progress: progress, onLeave: onLeave, trailing: { EmptyView() })
+    }
+}
+
+// MARK: - Shared Camera Card
+
+/// Reusable camera card used by both VisionExerciseView (all buttons shown) and
+/// LearnModeView (save + stuck hidden). Pass showSaveButton/showStuckButton = false
+/// to suppress the corresponding action button.
+struct SigningCameraCard: View {
+    let word: String
+    var showSaveButton: Bool = true
+    var showStuckButton: Bool = true
+    var showWordTitle: Bool = true
+    /// Fixed height for the live camera feed. Pass nil to fill available space.
+    var cameraHeight: CGFloat? = nil
+    var isHintActive: Bool = false
+    var isStuckActive: Bool = false
+    var onConfidenceChange: (Double) -> Void = { _ in }
+    var onHintTap: () -> Void = {}
+    var onStuckTap: () -> Void = {}
+
+    @State private var isSaved: Bool = false
+
+    private let tfGreen     = Color(red: 159/255, green: 192/255, blue: 122/255)
+    private let tfGreenText = Color(red: 82/255,  green: 106/255, blue: 54/255)
+    private let circleSize: CGFloat = 48
+
+    var body: some View {
+        VStack(spacing: 16) {
+            if showWordTitle {
+                Text(word)
+                    .font(.system(size: 45, weight: .bold))
+                    .padding(.top, 4)
+            }
+
+            HStack {
+                if showSaveButton {
+                    Button { isSaved.toggle() } label: {
+                        Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                            .foregroundColor(tfGreenText)
+                            .frame(width: circleSize, height: circleSize)
+                            .background(Circle().fill(tfGreen.opacity(0.25)))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Spacer()
+
+                HStack(spacing: 12) {
+                    if showStuckButton {
+                        Button { onStuckTap() } label: {
+                            Image(systemName: "exclamationmark")
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                                .frame(width: circleSize, height: circleSize)
+                                .background(Circle().fill(Color.orange.opacity(isStuckActive ? 0.3 : 0.15)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button { onHintTap() } label: {
+                        Image(systemName: isHintActive ? "lightbulb.max.fill" : "lightbulb.max")
+                            .foregroundColor(.orange)
+                            .frame(width: circleSize, height: circleSize)
+                            .background(Circle().fill(Color.orange.opacity(isHintActive ? 0.3 : 0.2)))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            SigningPracticeView(signName: word, onConfidenceChange: onConfidenceChange)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: cameraHeight,
+                    maxHeight: cameraHeight ?? .infinity
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.blue.opacity(0.25), lineWidth: 1.5)
+                )
+        )
+        .shadow(color: .black.opacity(0.05), radius: 8)
     }
 }
 

@@ -122,108 +122,87 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
-
-        VStack(spacing: 20) {
-            // MARK: Camera Window (replaces cartoon)
-                VStack(spacing: 16) {
-                    if cameraVM.isAuthorized {
-
-                        ZStack {
-                            CameraPreviewView(session: cameraVM.session)
-                                .ignoresSafeArea()
-                            GeometryReader { geo in
-                                handOutlineOverlay(in: geo.size)
-                                handJointLabelsOverlay(in: geo.size)
-                                bodyJointLabelsOverlay(in: geo.size)
-                                handSkeletonOverlay(in: geo.size)
-                                bodySkeletonOverlay(in: geo.size)
+        Group {
+            if cameraVM.isAuthorized {
+                ZStack {
+                    CameraPreviewView(session: cameraVM.session)
+                        .ignoresSafeArea()
+                    GeometryReader { geo in
+                        handOutlineOverlay(in: geo.size)
+                        handJointLabelsOverlay(in: geo.size)
+                        bodyJointLabelsOverlay(in: geo.size)
+                        handSkeletonOverlay(in: geo.size)
+                        bodySkeletonOverlay(in: geo.size)
+                    }
+                    if signName != nil && hands.count > 0 {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text(confidenceLabel)
+                                    .foregroundStyle(confidenceColor)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .font(.system(size: 18, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(10)
                             }
-                            if signName != nil && hands.count > 0{
-                                VStack {
-                                    HStack {
-                                        Spacer()
-                                        Text(confidenceLabel)
-                                            .foregroundStyle(confidenceColor)
-                                            .contentTransition(.interpolate)
-                                            .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                            .font(.system(size: 18, weight: .bold))
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 6)
-                                            .background(.ultraThinMaterial)
-                                            .clipShape(Capsule())
-                                            .padding(10)
-                                    }
-                                    Spacer()
-                                }
-                            }
+                            Spacer()
                         }
-                        .modifier(CameraAspectModifier(usesAspectRatio: usesInternalPadding))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(.white.opacity(0.15), lineWidth: 1)
-                        )
-                        .shadow(radius: 12)
-                        .padding(.horizontal, usesInternalPadding ? 16 : 0)
-                    } else {
-                        ContentUnavailableView(
-                            "Camera Access Required",
-                            systemImage: "camera.fill",
-                            description: Text("Please allow camera access in Settings to use sign language recognition.")
-                        )
-                        .padding(.horizontal)
-                        .padding(.top, 24)
                     }
                 }
-                .onAppear {
-                    if ownsCameraLifecycle {
-                        cameraVM.checkPermission()
-                    }
-
-                    cameraVM.onPoseDetected = { handObservations, pts in
-                        hands = handObservations
-
-                        guard cameraVM.isRecording else { return }
-                    }
-
-                    cameraVM.onBodyPoseDetected = { bodyObservations, _ in
-                        bodies = bodyObservations
-                    }
-                    cameraVM.startComparing(forSign: signName ?? "")
-                }
-                .task {
-                    guard ownsCameraLifecycle else { return }
-                    try? await Task.sleep(for: .milliseconds(300))
-                    cameraVM.start()
-                }
-                .onDisappear {
-                    if ownsCameraLifecycle {
-                        cameraVM.stop()
-                    }
-                }
-                .onChange(of: cameraMode) { _, newValue in
-                    if newValue == .compare {
-                        cameraVM.startComparing(forSign: signName ?? "")
-                    } else {
-                        cameraVM.stopComparing()
-                    }
-                }
-            .onChange(of: cameraVM.confidenceScore) { _, newValue in
-                let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
-                if cameraVM.confidenceScore >= goodThreshold {
-                    onConfidenceChange?(newValue)
-                    pass = true
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "Camera Access Required",
+                    systemImage: "camera.fill",
+                    description: Text("Please allow camera access in Settings to use sign language recognition.")
+                )
             }
-            .onChange(of: signName ?? "") { _, newValue in
-                print("Current word is \(newValue)")
-                if cameraMode == .compare {
-                    cameraVM.startComparing(forSign: newValue)
-                    pass = false
-                }
+        }
+        .onAppear {
+            cameraVM.checkPermission()
+
+            cameraVM.onPoseDetected = { handObservations, pts in
+                hands = handObservations
+
+                guard cameraVM.isRecording else { return }
             }
-                    
+
+            cameraVM.onBodyPoseDetected = { bodyObservations, _ in
+                bodies = bodyObservations
+            }
+            cameraVM.startComparing(forSign: signName ?? "")
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            cameraVM.start()
+        }
+        .onDisappear {
+            cameraVM.stop()
+        }
+        .onChange(of: cameraMode) { _, newValue in
+            if newValue == .compare {
+                cameraVM.startComparing(forSign: signName ?? "")
+            } else {
+                cameraVM.stopComparing()
+            }
+        }
+        .onChange(of: cameraVM.confidenceScore) { _, newValue in
+            let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 75
+            if cameraVM.confidenceScore >= goodThreshold {
+                onConfidenceChange?(newValue)
+                pass = true
+            }
+        }
+        .onChange(of: signName ?? "") { _, newValue in
+            print("Current word is \(newValue)")
+            if cameraMode == .compare {
+                cameraVM.startComparing(forSign: newValue)
+                pass = false
+            }
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -544,80 +523,49 @@ struct SigningPracticeView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 16) {
-            if showsLeaveButton {
-                HStack {
-                    Button(action: { dismiss() }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "door.left.hand.open")
-                            Text("Leave")
-                        }
+        Group {
+            if cameraVM.isAuthorized {
+                ZStack {
+                    CameraPreviewView(
+                        session: cameraVM.session,
+                        isMirrored: cameraVM.isMirrored
+                    )
+                    .ignoresSafeArea()
+
+                    GeometryReader { geo in
+                        handOutlineOverlay(in: geo.size)
+                        handJointLabelsOverlay(in: geo.size)
+                        bodyJointLabelsOverlay(in: geo.size)
+                        handSkeletonOverlay(in: geo.size)
+                        bodySkeletonOverlay(in: geo.size)
                     }
-                    .foregroundColor(.gray)
-
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.top, 20)
-            }
-
-            VStack(spacing: 16) {
-                if cameraVM.isAuthorized {
-                    ZStack {
-                        CameraPreviewView(
-                            session: cameraVM.session,
-                            isMirrored: cameraVM.isMirrored
-                        )
-                        .ignoresSafeArea()
-
-                        GeometryReader { geo in
-                            handOutlineOverlay(in: geo.size)
-                            handJointLabelsOverlay(in: geo.size)
-                            bodyJointLabelsOverlay(in: geo.size)
-                            handSkeletonOverlay(in: geo.size)
-                            bodySkeletonOverlay(in: geo.size)
-                        }
-                        if signName != nil && hands.count > 0 {
-                            VStack {
-                                HStack {
-                                    Spacer()
-                                    Text(confidenceLabel)
-                                        .foregroundStyle(confidenceColor)
-                                        .contentTransition(.interpolate)
-                                        .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                        .font(.system(size: 18, weight: .bold))
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(.ultraThinMaterial)
-                                        .clipShape(Capsule())
-                                        .padding(10)
-                                }
+                    if signName != nil && hands.count > 0 {
+                        VStack {
+                            HStack {
                                 Spacer()
+                                Text(confidenceLabel)
+                                    .foregroundStyle(confidenceColor)
+                                    .contentTransition(.interpolate)
+                                    .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
+                                    .font(.system(size: 18, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Capsule())
+                                    .padding(10)
                             }
+                            Spacer()
                         }
                     }
-                    .modifier(CameraAspectModifierMacOS(usesAspectRatio: usesInternalPadding))
-                    .frame(maxWidth: usesInternalPadding ? 980 : .infinity)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(.white.opacity(0.15), lineWidth: 1)
-                    )
-                    .shadow(radius: 12)
-                    .padding(.horizontal, usesInternalPadding ? 16 : 0)
-                } else {
-                    ContentUnavailableView(
-                        "Camera Access Required",
-                        systemImage: "camera.fill",
-                        description: Text("Please allow camera access in Settings to use sign language recognition.")
-                    )
-                    .padding(.horizontal)
-                    .padding(.top, 24)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "Camera Access Required",
+                    systemImage: "camera.fill",
+                    description: Text("Please allow camera access in Settings to use sign language recognition.")
+                )
             }
-
-            Spacer(minLength: 0)
         }
         .onAppear {
             if ownsCameraLifecycle {

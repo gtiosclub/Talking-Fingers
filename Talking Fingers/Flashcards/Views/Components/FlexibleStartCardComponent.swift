@@ -148,6 +148,9 @@ struct FlexibleStartCardComponent: View {
             VStack(spacing: 16) {
                 let lightGreen = Color(red: 0.56, green: 0.72, blue: 0.44)
                 let isDaily = context.title == "Daily Challenge"
+
+                Spacer()
+
                 Image(systemName: context.iconName)
                     .resizable()
                     .scaledToFit()
@@ -166,7 +169,8 @@ struct FlexibleStartCardComponent: View {
                     
                     Text(context.subtitle)
                         .font(.system(size: 42, weight: .bold))
-                        .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))                }
+                        .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))
+                }
 
                 Text("\(completed)/\(total) Words Completed")
                     .foregroundColor(.black)
@@ -176,7 +180,7 @@ struct FlexibleStartCardComponent: View {
                     .scaleEffect(y: 1.5)
                     .padding(.horizontal, 60)
 
-                Spacer().frame(height: 20)
+                Spacer()
 
                 Button(action: {
                     isActive = true
@@ -209,8 +213,12 @@ struct FlexibleStartCardComponent: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 40)
+
+                Spacer()
             }
+            .frame(maxHeight: .infinity)
         }
+        .frame(maxHeight: .infinity)
         .padding(.horizontal, 16)
         .onAppear {
             configureCardsForContext()
