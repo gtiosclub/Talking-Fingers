@@ -54,8 +54,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let dtwEngine = DTWService()
     var lastScore = 30.0
     private var frameCounter = 0
-    private let stride = 12 // Run DTW every 4th frame
-    private let maxBufferSize = 75 // ~3 seconds of
+    private let stride = 8 // Run DTW every 4th frame
+    private let maxBufferSize = 65 // ~3 seconds of
     private var currentSignReference: SignReference?
     private var currentSignFrame: SignFrame?
 
