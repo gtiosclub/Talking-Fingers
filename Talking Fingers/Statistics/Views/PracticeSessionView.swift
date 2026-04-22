@@ -10,11 +10,16 @@ import SwiftUI
 
 struct PracticeSessionView: View {
     @Binding var sentences: [AISentenceModel]
+    var practiceTitle: String
+    var selectedCategories: Set<TermCategory>?
     var onFinish: () -> Void
     var onExtend: () async -> Void
 
     @State private var currentSentenceIndex: Int
     @State private var isExtending: Bool = false
+    @State private var showPracticeEntry: Bool = true
+    @State private var signingSubtitle: String = "New sentence!"
+    @State private var signingPageIndex: Int = 1
 
     /// Shared camera VM kept alive for the whole session so sentence changes
     /// don't tear the AVCaptureSession down and build a new one (which was
@@ -29,6 +34,7 @@ struct PracticeSessionView: View {
     private let extendFill = Color(hex: "#D6ECC4")
     private let extendText = Color(hex: "#3D6B2A")
     private let finishGreen = Color(hex: "#97C171")
+    private let subtitleBlue = Color(hex: "#2A7BBC")
     
     // Accuracy color scheme
     private let highAccuracyBg = Color(hex: "#EAF3E3")
@@ -43,11 +49,15 @@ struct PracticeSessionView: View {
 
     init(
         sentences: Binding<[AISentenceModel]>,
+        practiceTitle: String = "Practice",
+        selectedCategories: Set<TermCategory>? = nil,
         initialSentenceIndex: Int = 0,
         onFinish: @escaping () -> Void,
         onExtend: @escaping () async -> Void
     ) {
         self._sentences = sentences
+        self.practiceTitle = practiceTitle
+        self.selectedCategories = selectedCategories
         self.onFinish = onFinish
         self.onExtend = onExtend
         let count = sentences.wrappedValue.count
@@ -57,13 +67,20 @@ struct PracticeSessionView: View {
 
     private var sessionProgress: Double {
         guard !sentences.isEmpty else { return 0 }
-        return Double(currentSentenceIndex + 1) / Double(sentences.count)
+        return Double(currentSentenceIndex) / Double(sentences.count)
     }
 
     /// Categories touched by gloss in this session (stable order).
     private var sessionCategories: [TermCategory] {
         let present = Set(sentences.flatMap { $0.gloss.map(\.category) })
         return TermCategory.allCases.filter { present.contains($0) }
+    }
+
+    private var displayCategories: [TermCategory] {
+        if let selectedCategories, !selectedCategories.isEmpty {
+            return TermCategory.allCases.filter { selectedCategories.contains($0) }
+        }
+        return sessionCategories
     }
 
     private func progressInCategory(_ category: TermCategory) -> Double {
@@ -77,6 +94,49 @@ struct PracticeSessionView: View {
     private var overallSessionProgress: Double {
         guard !sentences.isEmpty else { return 0 }
         return Double(sentences.filter(\.completed).count) / Double(sentences.count)
+    }
+
+    private var remainingSentenceCount: Int {
+        max(0, sentences.count - currentSentenceIndex)
+    }
+
+    private var entryModeIsComprehension: Bool {
+        guard currentSentenceIndex < sentences.count else {
+            return sentences.allSatisfy { $0.practiceType == .comprehension } && !sentences.isEmpty
+        }
+        return sentences[currentSentenceIndex].practiceType == .comprehension
+    }
+
+    private var entryFlowerAssetName: String {
+        entryModeIsComprehension ? "SentencesComprehendFlowerFull" : "SentencesSignFlowerFull"
+    }
+
+    private var currentTopProgress: Double {
+        if showPracticeEntry { return overallSessionProgress }
+        if currentSentenceIndex < sentences.count {
+            return min(1, sessionProgress + 0.03)
+        }
+        return 1
+    }
+
+    private var currentTopSubtitle: String {
+        if showPracticeEntry { return "Here we go!" }
+        if currentSentenceIndex >= sentences.count { return "Practice completed!" }
+        if sentences[currentSentenceIndex].practiceType == .comprehension { return "New sentence!" }
+        if signingPageIndex == 2 { return "" }
+        return signingSubtitle
+    }
+
+    private var currentTopSubtitleColor: Color { subtitleBlue }
+
+    private var primaryActionButtonTitle: String? {
+        if showPracticeEntry { return "Start" }
+        guard currentSentenceIndex < sentences.count else { return nil }
+        let currentSentence = sentences[currentSentenceIndex]
+        if currentSentence.practiceType != .comprehension && signingPageIndex == 1 {
+            return "Continue"
+        }
+        return nil
     }
     
     private var sessionAccuracy: Double {
@@ -123,6 +183,7 @@ struct PracticeSessionView: View {
                 sentences = updated
             }
             currentSentenceIndex += 1
+            signingPageIndex = 1
         }
     }
 
@@ -132,24 +193,38 @@ struct PracticeSessionView: View {
                 Button(action: onFinish) {
                     HStack(spacing: 6) {
                         Image(systemName: "door.left.hand.open")
-                            .font(.body.weight(.medium))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(hex: "#B3B3B3"))
                         Text("Leave")
+                            .foregroundColor(Color(hex: "#B3B3B3"))
+                            .font(.system(size: 16, weight: .medium))
                     }
-                    .font(.body)
-                    .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
+
                 Spacer()
+
+                Text("Practice: \(practiceTitle)")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(Color(hex: "#B3B3B3"))
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
             .padding(.bottom, 4)
 
-            if currentSentenceIndex < sentences.count {
+            sessionTopChrome
+
+            if showPracticeEntry {
+                PracticeEntryView(
+                    practiceTitle: practiceTitle,
+                    remainingSentenceCount: remainingSentenceCount,
+                    categories: displayCategories,
+                    flowerAssetName: entryFlowerAssetName
+                )
+            } else if currentSentenceIndex < sentences.count {
                 if sentences[currentSentenceIndex].practiceType == .comprehension {
                     AISentenceComprehensionView(
                         sentenceModel: $sentences[currentSentenceIndex],
-                        sessionProgress: sessionProgress,
                         onSentenceComplete: {
                             markCurrentSentenceCompletedAndAdvance()
                         }
@@ -158,9 +233,12 @@ struct PracticeSessionView: View {
                 } else {
                     AISentenceSigningView(
                         sentenceModel: $sentences[currentSentenceIndex],
-                        sessionProgress: sessionProgress,
+                        currentPage: $signingPageIndex,
                         onSentenceComplete: {
                             markCurrentSentenceCompletedAndAdvance()
+                        },
+                        onSubtitleChange: { subtitle in
+                            signingSubtitle = subtitle
                         },
                         externalCameraVM: sessionCameraVM
                     )
@@ -168,6 +246,21 @@ struct PracticeSessionView: View {
                 }
             } else {
                 completionContent
+            }
+
+            if let primaryActionButtonTitle {
+                Button(action: handlePrimaryActionButtonTap) {
+                    Text(primaryActionButtonTitle)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(finishGreen)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -184,6 +277,7 @@ struct PracticeSessionView: View {
             #if os(macOS)
             sessionCameraVM.isMirrored = true
             #endif
+            signingPageIndex = 1
             sessionCameraVM.checkPermission()
         }
         .task {
@@ -197,16 +291,6 @@ struct PracticeSessionView: View {
 
     private var completionContent: some View {
         VStack(spacing: 0) {
-            CustomProgressBar(
-                progress: 1.0,
-                trackColor: barTrack,
-                trackOpacity: 1.0,
-                fillColor: barBlue,
-                barHeight: 10
-            )
-            .padding(.horizontal, 24)
-            .padding(.top, 12)
-
             Spacer(minLength: 12)
 
             Text("Practice completed!")
@@ -265,6 +349,26 @@ struct PracticeSessionView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 28)
         }
+    }
+
+    private var sessionTopChrome: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            CustomProgressBar(
+                progress: currentTopProgress,
+                trackColor: barTrack,
+                trackOpacity: 1.0,
+                fillColor: barBlue,
+                barHeight: 10
+            )
+
+            if !currentTopSubtitle.isEmpty {
+                Text(currentTopSubtitle)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(currentTopSubtitleColor)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 12)
     }
 
     private var performanceCard: some View {
@@ -328,6 +432,24 @@ struct PracticeSessionView: View {
             await onExtend()
             await MainActor.run {
                 isExtending = false
+                signingPageIndex = 1
+                showPracticeEntry = true
+            }
+        }
+    }
+
+    private func handlePrimaryActionButtonTap() {
+        if showPracticeEntry {
+            signingSubtitle = "New sentence!"
+            signingPageIndex = 1
+            showPracticeEntry = false
+            return
+        }
+
+        guard currentSentenceIndex < sentences.count else { return }
+        if sentences[currentSentenceIndex].practiceType != .comprehension && signingPageIndex == 1 {
+            withAnimation {
+                signingPageIndex = 2
             }
         }
     }

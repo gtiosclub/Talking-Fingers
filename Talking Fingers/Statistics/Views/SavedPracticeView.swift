@@ -79,6 +79,8 @@ struct SavedPracticeView: View {
         .universalFullScreenCover(isPresented: $showSessionView) {
             PracticeSessionView(
                 sentences: $sessionSentences,
+                practiceTitle: lastPracticeTitle.isEmpty ? "Practice" : lastPracticeTitle,
+                selectedCategories: lastCategories,
                 initialSentenceIndex: savedSessionStartSentenceIndex,
                 onFinish: {
                     if shouldPersistSessionOnFinish {
