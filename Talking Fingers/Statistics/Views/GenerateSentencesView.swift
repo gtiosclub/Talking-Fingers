@@ -30,21 +30,46 @@ struct GenerateSentencesView: View {
     private var canGenerate: Bool {
         !trainingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating
     }
+
+    private var availableCategories: [TermCategory] {
+        TermCategory.allCases.filter { category in
+            category != .commonDescriptors
+            && category != .dateTime
+            && category != .commonObjects
+            && category != .feelingsEmotions
+        }
+    }
+
+    private var effectiveCategories: Set<TermCategory> {
+        selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories
+    }
+
+    private var isComprehensionOnlyMode: Bool {
+        modeSelection.comprehension && !modeSelection.signing
+    }
+
+    private var practiceTitle: String {
+        isComprehensionOnlyMode ? "New Comprehension Practice" : "New Signing Practice"
+    }
+
+    private var practiceTitleColor: Color {
+        Color(hex: isComprehensionOnlyMode ? "#58A0DA" : "#71A046")
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("New Practice")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(practiceTitle)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(practiceTitleColor)
                 .padding(.top, 20)
             
             
             VStack(alignment: .leading, spacing: 16) {
                 Text("Categories")
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
                 
                 FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
-                    ForEach(TermCategory.allCases, id: \.self) { category in
+                    ForEach(availableCategories, id: \.self) { category in
                         CategoryButton(
                             category: category,
                             isSelected: selectedCategories.contains(category),
@@ -56,10 +81,9 @@ struct GenerateSentencesView: View {
                 }
             }
             
-            // Training Name Section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Name")
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
                 
                 TextField("Enter training name", text: $trainingName)
                     .padding()
@@ -69,7 +93,7 @@ struct GenerateSentencesView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.black, lineWidth: 1)
+                            .stroke(Color(hex: "#F0F0F0"), lineWidth: 1.5)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
@@ -81,7 +105,6 @@ struct GenerateSentencesView: View {
                     .padding(.horizontal)
             }
             
-            Spacer()
             
             Button(action: {
                 startTraining()
@@ -90,13 +113,13 @@ struct GenerateSentencesView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 12)
                 } else {
                     Text("Start")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 12)
                 }
             }
             .background(Color(hex: "#97C171").opacity(canGenerate ? 1.0 : 0.5))
@@ -104,11 +127,11 @@ struct GenerateSentencesView: View {
             .disabled(!canGenerate)
         }
         .padding(.horizontal, 24)
-        .padding(.bottom, 20)
+        .padding(.bottom, 15)
+        .padding(.top, 10)
     }
     
     private var selectedGlossTerms: [Term] {
-        let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
         let terms = effectiveCategories.flatMap { Term.words(for: $0) }
         let unique = Array(Set(terms))
         return unique.sorted { $0.rawValue < $1.rawValue }
@@ -128,7 +151,6 @@ struct GenerateSentencesView: View {
             errorMessage = nil
             
             do {
-                let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
                 let sentences = try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
                 
                 await MainActor.run {
@@ -145,7 +167,14 @@ struct GenerateSentencesView: View {
 
     /// Generate 5 sentences for the given categories (e.g. for Extend in a session).
     static func generateSentences(categories: Set<TermCategory>, modeSelection: PracticeModeSelection = PracticeModeSelection(signing: true, comprehension: false)) async throws -> [AISentenceModel] {
-        let effectiveCategories = categories.isEmpty ? Set(TermCategory.allCases) : categories
+        let allowedCategories = Set(
+            TermCategory.allCases.filter { category in
+                category != .commonDescriptors
+                && category != .dateTime
+                && category != .feelingsEmotions
+            }
+        )
+        let effectiveCategories = categories.isEmpty ? allowedCategories : categories.intersection(allowedCategories)
         return try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
     }
 }
@@ -160,8 +189,7 @@ struct CategoryButton: View {
     var body: some View {
         Button(action: action) {
             Text(category.rawValue.capitalized)
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .font(.system(size: 17))
                 .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -171,7 +199,7 @@ struct CategoryButton: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
+                        .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#F0F0F0"), lineWidth: isSelected ? 0.5 : 1.5)
                 )
         }
     }

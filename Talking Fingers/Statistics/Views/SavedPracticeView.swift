@@ -6,13 +6,12 @@ struct SavedPracticeView: View {
     @Query(sort: \SavedPracticeModel.date, order: .reverse) private var savedSessions: [SavedPracticeModel]
 
     @State private var expandedCardID: UUID?
-    @State private var showCreatePracticeView = false
+    @State private var createPracticeSheetMode: CreatePracticeSheetMode?
     @State private var showSessionView = false
     @State private var sessionSentences: [AISentenceModel] = []
     @State private var lastCategories: Set<TermCategory>?
     @State private var lastPracticeTitle: String = ""
     @State private var lastModeSelection = PracticeModeSelection(signing: true, comprehension: false)
-    @State private var pendingModeSelection = PracticeModeSelection(signing: true, comprehension: false)
     @State private var savedSessionStartSentenceIndex: Int = 0
     @State private var practiceSessionIdentity = UUID()
     @State private var shouldPersistSessionOnFinish = true
@@ -28,6 +27,7 @@ struct SavedPracticeView: View {
         let completedCount = session.sentences.filter(\.completed).count
         let totalCount = session.sentences.count
         let isComplete = completedCount == totalCount && totalCount > 0
+        let sessionModeSelection = modeSelection(for: session)
 
         let completedSentences = session.sentences.filter(\.completed)
         let accuracies = completedSentences.compactMap(\.accuracy)
@@ -38,7 +38,8 @@ struct SavedPracticeView: View {
             title: displayTitle(for: session),
             subtitle: session.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()),
             accuracy: averageAccuracy,
-            isComplete: isComplete
+            isComplete: isComplete,
+            iconName: sessionModeSelection.comprehension && !sessionModeSelection.signing ? "eye" : "hand.wave"
         )
     }
 
@@ -58,16 +59,17 @@ struct SavedPracticeView: View {
             }
         }
         .background(Color.white.ignoresSafeArea())
-        .sheet(isPresented: $showCreatePracticeView) {
-            GenerateSentencesView(initialModeSelection: pendingModeSelection) { sentences, categories, practiceTitle in
-                lastModeSelection = pendingModeSelection
+        .sheet(item: $createPracticeSheetMode) { sheetMode in
+            let initialModeSelection = sheetMode.modeSelection
+            GenerateSentencesView(initialModeSelection: initialModeSelection) { sentences, categories, practiceTitle in
+                lastModeSelection = initialModeSelection
                 lastCategories = categories
                 lastPracticeTitle = practiceTitle
                 sessionSentences = sentences
                 savedSessionStartSentenceIndex = 0
                 practiceSessionIdentity = UUID()
                 shouldPersistSessionOnFinish = true
-                showCreatePracticeView = false
+                createPracticeSheetMode = nil
                 showSessionView = true
             }
             .presentationDetents([.height(460), .medium])
@@ -140,8 +142,7 @@ struct SavedPracticeView: View {
                 imageAssetName: "SentencesSignFlowerPartial",
                 placeholderOnLeading: true
             ) {
-                pendingModeSelection = PracticeModeSelection(signing: true, comprehension: false)
-                showCreatePracticeView = true
+                createPracticeSheetMode = .signing
             }
 
             PracticeModeCard(
@@ -154,8 +155,23 @@ struct SavedPracticeView: View {
                 imageAssetName: "SentencesComprehendFlowerPartial",
                 placeholderOnLeading: false
             ) {
-                pendingModeSelection = PracticeModeSelection(signing: false, comprehension: true)
-                showCreatePracticeView = true
+                createPracticeSheetMode = .comprehension
+            }
+        }
+    }
+
+    private enum CreatePracticeSheetMode: String, Identifiable {
+        case signing
+        case comprehension
+
+        var id: String { rawValue }
+
+        var modeSelection: PracticeModeSelection {
+            switch self {
+            case .signing:
+                return PracticeModeSelection(signing: true, comprehension: false)
+            case .comprehension:
+                return PracticeModeSelection(signing: false, comprehension: true)
             }
         }
     }
@@ -404,9 +420,7 @@ struct TrainingCard: View {
 
     @ViewBuilder
     private var leftIcon: some View {
-        let symbols = ["eye", "hand.wave"]
-        let index = abs(item.id.uuidString.hashValue) % symbols.count
-        Image(systemName: symbols[index])
+        Image(systemName: item.iconName)
             .font(.system(size: 20, weight: .regular))
             .foregroundColor(Color(hex: "#FBDA92"))
             .frame(width: 28)
@@ -468,6 +482,7 @@ struct TrainingItem: Identifiable {
     let subtitle: String
     let accuracy: Double?
     let isComplete: Bool
+    let iconName: String
 
     var accuracyColor: Color {
         guard let acc = accuracy else { return Color.gray }
