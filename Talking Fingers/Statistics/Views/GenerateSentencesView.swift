@@ -10,7 +10,7 @@ import SwiftUI
 struct GenerateSentencesView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategories: Set<TermCategory> = []
-    @State private var modeSelection = PracticeModeSelection(signing: true, comprehension: false)
+    @State private var modeSelection: PracticeModeSelection
     @State private var trainingName: String = ""
     @State private var isGenerating: Bool = false
     @State private var errorMessage: String?
@@ -18,6 +18,14 @@ struct GenerateSentencesView: View {
     /// Called with generated sentences and the categories used (so Extend can generate more).
     /// Parent should dismiss the sheet and start the session.
     var onSentencesGenerated: ([AISentenceModel], Set<TermCategory>, String) -> Void
+
+    init(
+        initialModeSelection: PracticeModeSelection = PracticeModeSelection(signing: true, comprehension: false),
+        onSentencesGenerated: @escaping ([AISentenceModel], Set<TermCategory>, String) -> Void
+    ) {
+        _modeSelection = State(initialValue: initialModeSelection)
+        self.onSentencesGenerated = onSentencesGenerated
+    }
 
     private var canGenerate: Bool {
         !trainingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating
@@ -48,33 +56,6 @@ struct GenerateSentencesView: View {
                 }
             }
             
-            // MARK: - Mode Selection (multi-select, at least one required)
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Modes")
-                    .font(.headline)
-
-                HStack(spacing: 12) {
-                    ModeToggleButton(
-                        label: "Sign",
-                        isSelected: modeSelection.signing,
-                        action: {
-                            // Don't allow deselecting if it's the only one on
-                            if modeSelection.signing && !modeSelection.comprehension { return }
-                            modeSelection.signing.toggle()
-                        }
-                    )
-
-                    ModeToggleButton(
-                        label: "Comprehend",
-                        isSelected: modeSelection.comprehension,
-                        action: {
-                            if modeSelection.comprehension && !modeSelection.signing { return }
-                            modeSelection.comprehension.toggle()
-                        }
-                    )
-                }
-            }
-
             // Training Name Section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Name")
@@ -192,39 +173,6 @@ struct CategoryButton: View {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
                 )
-        }
-    }
-}
-
-// MARK: - Mode Toggle Button
-
-struct ModeToggleButton: View {
-    let label: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(label)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
-
-                Circle()
-                    .fill(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"))
-                    .frame(width: 10, height: 10)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? Color(hex: "#FDF2D8") : .white)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
-            )
         }
     }
 }
