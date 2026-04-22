@@ -23,14 +23,23 @@ struct PracticeSessionView: View {
     @State private var sessionCameraVM = CameraVM()
 
     private let completionBlue = Color(hex: "#3A5A9C")
-    private let scoreRing = Color(hex: "#F0DEB0")
-    private let scoreNumber = Color(hex: "#E8A317")
     private let accentYellow = Color(hex: "#E8A317")
     private let barBlue = Color(hex: "#58A0DA")
     private let barTrack = Color(hex: "#A9CEEC26")
     private let extendFill = Color(hex: "#D6ECC4")
     private let extendText = Color(hex: "#3D6B2A")
     private let finishGreen = Color(hex: "#97C171")
+    
+    // Accuracy color scheme
+    private let highAccuracyBg = Color(hex: "#EAF3E3")
+    private let highAccuracyBorder = Color(hex: "#A8D4A0")
+    private let highAccuracyText = Color(hex: "#4A7C3F")
+    private let medAccuracyBg = Color(hex: "#FACD6B")
+    private let medAccuracyBorder = Color(hex: "#E5B84A")
+    private let medAccuracyText = Color(hex: "#8B6914")
+    private let lowAccuracyBg = Color(hex: "#FA6B6E")
+    private let lowAccuracyBorder = Color(hex: "#E55558")
+    private let lowAccuracyText = Color(hex: "#A13B3D")
 
     init(
         sentences: Binding<[AISentenceModel]>,
@@ -68,6 +77,31 @@ struct PracticeSessionView: View {
     private var overallSessionProgress: Double {
         guard !sentences.isEmpty else { return 0 }
         return Double(sentences.filter(\.completed).count) / Double(sentences.count)
+    }
+    
+    private var sessionAccuracy: Double {
+        let completedSentences = sentences.filter(\.completed)
+        let accuracies = completedSentences.compactMap(\.accuracy)
+        guard !accuracies.isEmpty else { return 0 }
+        return accuracies.reduce(0, +) / Double(accuracies.count)
+    }
+    
+    private var accuracyBackgroundColor: Color {
+        if sessionAccuracy >= 80 { return highAccuracyBg }
+        if sessionAccuracy >= 60 { return medAccuracyBg }
+        return lowAccuracyBg
+    }
+    
+    private var accuracyBorderColor: Color {
+        if sessionAccuracy >= 80 { return highAccuracyBorder }
+        if sessionAccuracy >= 60 { return medAccuracyBorder }
+        return lowAccuracyBorder
+    }
+    
+    private var accuracyTextColor: Color {
+        if sessionAccuracy >= 80 { return highAccuracyText }
+        if sessionAccuracy >= 60 { return medAccuracyText }
+        return lowAccuracyText
     }
 
     private var encouragementHeadline: String {
@@ -112,11 +146,9 @@ struct PracticeSessionView: View {
             .padding(.bottom, 4)
 
             if currentSentenceIndex < sentences.count {
-                let currentSentence = sentences[currentSentenceIndex]
-
-                if currentSentence.practiceType == .comprehension {
+                if sentences[currentSentenceIndex].practiceType == .comprehension {
                     AISentenceComprehensionView(
-                        sentenceModel: currentSentence,
+                        sentenceModel: $sentences[currentSentenceIndex],
                         sessionProgress: sessionProgress,
                         onSentenceComplete: {
                             markCurrentSentenceCompletedAndAdvance()
@@ -125,7 +157,7 @@ struct PracticeSessionView: View {
                     .id(currentSentenceIndex)
                 } else {
                     AISentenceSigningView(
-                        sentenceModel: currentSentence,
+                        sentenceModel: $sentences[currentSentenceIndex],
                         sessionProgress: sessionProgress,
                         onSentenceComplete: {
                             markCurrentSentenceCompletedAndAdvance()
@@ -187,11 +219,16 @@ struct PracticeSessionView: View {
 
             ZStack {
                 Circle()
-                    .stroke(scoreRing, lineWidth: 14)
+                    .fill(accuracyBackgroundColor)
                     .frame(width: 196, height: 196)
-                Text("100")
+                
+                Circle()
+                    .stroke(accuracyBorderColor, lineWidth: 8)
+                    .frame(width: 196, height: 196)
+                
+                Text("\(Int(sessionAccuracy.rounded()))")
                     .font(.system(size: 56, weight: .bold))
-                    .foregroundColor(scoreNumber)
+                    .foregroundColor(accuracyTextColor)
             }
 
             Spacer(minLength: 24)

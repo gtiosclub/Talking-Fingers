@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AISentenceComprehensionView: View {
-    let sentenceModel: AISentenceModel
+    @Binding var sentenceModel: AISentenceModel
     var sessionProgress: Double = 0
     var onSentenceComplete: (() -> Void)? = nil
 
@@ -19,7 +19,7 @@ struct AISentenceComprehensionView: View {
     @State private var allChips: [CompWordChip] = []
     @State private var lineChips: [CompWordChip] = []
     @State private var submitState: CompSubmitState = .idle
-    @State private var wrongAttemptCount: Int = 0
+    @State private var totalAttemptCount: Int = 0
     @State private var solutionRevealed: Bool = false
 
     private var glossTerms: [Term] { sentenceModel.gloss }
@@ -96,7 +96,7 @@ struct AISentenceComprehensionView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.red)
                 Spacer()
-                Text("Attempt \(wrongAttemptCount)")
+                Text("Attempt \(totalAttemptCount)")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.red.opacity(0.7))
@@ -279,19 +279,20 @@ struct AISentenceComprehensionView: View {
         allChips = allWords.map { CompWordChip(text: $0) }
         lineChips = []
         submitState = .idle
-        wrongAttemptCount = 0
+        totalAttemptCount = 0
         solutionRevealed = false
     }
 
     private func submit() {
         guard lineChips.count == correctOrder.count else { return }
-
+        
+        totalAttemptCount += 1
         let userAnswer = lineChips.map { $0.text }
         if userAnswer == correctOrder {
+            sentenceModel.comprehensionAttempts = totalAttemptCount
             withAnimation { submitState = .correct }
         } else {
             withAnimation {
-                wrongAttemptCount += 1
                 solutionRevealed = false
                 submitState = .incorrect
             }
@@ -306,6 +307,9 @@ struct AISentenceComprehensionView: View {
     }
 
     private func revealSolution() {
+        // When revealing solution, count as one more attempt (they gave up)
+        totalAttemptCount += 1
+        sentenceModel.comprehensionAttempts = totalAttemptCount
         withAnimation {
             solutionRevealed = true
         }
@@ -395,12 +399,14 @@ private struct CompWrappingHStack: Layout {
 }
 
 #Preview {
+    @Previewable @State var sampleModel = AISentenceModel(
+        sentence: "Today was good, thank you.",
+        practiceType: .comprehension,
+        gloss: [.today, .good, .happy, .you]
+    )
+    
     AISentenceComprehensionView(
-        sentenceModel: AISentenceModel(
-            sentence: "Today was good, thank you.",
-            practiceType: .comprehension,
-            gloss: [.today, .good, .happy, .you]
-        ),
+        sentenceModel: $sampleModel,
         sessionProgress: 0.4
     )
 }

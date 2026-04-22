@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AISentenceSigningView: View {
-    let sentenceModel: AISentenceModel
+    @Binding var sentenceModel: AISentenceModel
     /// Session progress 0.0...1.0 (e.g. currentSentenceIndex / totalSentences). Shown in the single progress bar.
     var sessionProgress: Double = 0
     var onSentenceComplete: (() -> Void)? = nil
@@ -53,7 +53,7 @@ struct AISentenceSigningView: View {
                 )
             } else if currentPage == 2 {
                 LiveSigningView(
-                    sentenceModel: sentenceModel,
+                    sentenceModel: $sentenceModel,
                     onBack: {
                         withAnimation { currentPage = 1 }
                     },
@@ -104,7 +104,7 @@ struct PageOneContent: View {
 
                     if showGloss {
                         Text(glossLineString)
-                            .font(.system(size: 40, weight: .semibold))
+                            .font(.system(size: 35, weight: .semibold))
                             .foregroundColor(Color(white: 0.58))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .multilineTextAlignment(.leading)
@@ -148,7 +148,7 @@ struct PageOneContent: View {
 }
 
 #Preview {
-    let sampleData = AISentenceModel(
+    @Previewable @State var sampleData = AISentenceModel(
         sentence: "I went to the store yesterday.",
         score: nil,
         practiceType: .words,
@@ -156,5 +156,5 @@ struct PageOneContent: View {
         completed: false
     )
 
-    AISentenceSigningView(sentenceModel: sampleData)
+    AISentenceSigningView(sentenceModel: $sampleData)
 }

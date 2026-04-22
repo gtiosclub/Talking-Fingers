@@ -7,7 +7,7 @@
 import SwiftUI
 
 struct LiveSigningView: View {
-    let sentenceModel: AISentenceModel
+    @Binding var sentenceModel: AISentenceModel
     var onBack: () -> Void
     var onComplete: (() -> Void)? = nil
     var externalCameraVM: CameraVM? = nil
@@ -23,6 +23,10 @@ struct LiveSigningView: View {
     @State private var passedThreshold: Bool = false
     // Pending auto-advance task started when threshold is first reached.
     @State private var autoAdvanceTask: Task<Void, Never>?
+    // Max confidence score recorded for current word after passing threshold
+    @State private var currentWordMaxScore: Double = 0
+    // Stores the max score for each completed word
+    @State private var wordMaxScores: [Int: Double] = [:]
 
     /// How long to wait after reaching the threshold before auto-advancing
     /// if the user hasn't manually tapped Continue.
@@ -30,6 +34,14 @@ struct LiveSigningView: View {
 
     var glossWords: [Term] { sentenceModel.gloss }
     var isFinished: Bool { currentWordIndex >= glossWords.count }
+    
+    private var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
 
     private var currentTargetWord: String {
         glossWords[safe: currentWordIndex]?.rawValue ?? ""
@@ -46,8 +58,8 @@ struct LiveSigningView: View {
             // padding so the preview sits close to the screen edges.
             SigningPracticeView(
                 signName: currentTargetWord.lowercased(),
-                onConfidenceChange: { _ in
-                    handleThresholdReached()
+                onConfidenceChange: { confidence in
+                    handleThresholdReached(confidence: confidence)
                 },
                 usesInternalPadding: false,
                 externalCameraVM: externalCameraVM
@@ -87,7 +99,7 @@ struct LiveSigningView: View {
                 }
                 .disabled(isFinished)
 
-                // Continue button — only tappable once threshold is reached
+                // Continue button — only tappable once threshold is reached (always enabled in simulator for testing)
                 Button(action: advanceWord) {
                     Text(isFinished ? "Done ✓" : "Continue →")
                         .font(.headline)
@@ -97,7 +109,7 @@ struct LiveSigningView: View {
                         .background(continueButtonColor)
                         .cornerRadius(8)
                 }
-                .disabled(!passedThreshold && !isFinished)
+                .disabled(!passedThreshold && !isFinished && !isSimulator)
                 .animation(.easeInOut(duration: 0.2), value: passedThreshold)
             }
         }
@@ -110,7 +122,7 @@ struct LiveSigningView: View {
     // MARK: Continue Button Styling
     private var continueButtonColor: Color {
         if isFinished { return .green }
-        if passedThreshold { return Color(hex: "#97C171") }
+        if passedThreshold || isSimulator { return Color(hex: "#97C171") }
         return Color.gray.opacity(0.4)
     }
 
@@ -201,9 +213,17 @@ struct LiveSigningView: View {
     /// Called by the camera view when confidence crosses the "good" threshold.
     /// Unlocks the Continue button and schedules an auto-advance after a few
     /// seconds in case the user doesn't tap it themselves.
-    private func handleThresholdReached() {
-        guard !isFinished, !passedThreshold else { return }
+    private func handleThresholdReached(confidence: Double) {
+        guard !isFinished else { return }
+        
+        // Track max score after passing threshold
+        if passedThreshold {
+            currentWordMaxScore = max(currentWordMaxScore, confidence)
+            return
+        }
+        
         passedThreshold = true
+        currentWordMaxScore = confidence
 
         autoAdvanceTask?.cancel()
         autoAdvanceTask = Task { @MainActor in
@@ -230,24 +250,38 @@ struct LiveSigningView: View {
         autoAdvanceTask = nil
 
         guard currentWordIndex < glossWords.count else {
-            if isFinished { onComplete?() }
+            if isFinished { finalizeAndComplete() }
             return
         }
 
         withAnimation {
             switch outcome {
-            case .completed: completedWords.insert(currentWordIndex)
-            case .skipped: skippedWords.insert(currentWordIndex)
+            case .completed:
+                completedWords.insert(currentWordIndex)
+                // In simulator without real detection, give a default good score
+                let score = currentWordMaxScore > 0 ? currentWordMaxScore : (isSimulator ? 85 : 0)
+                wordMaxScores[currentWordIndex] = score
+            case .skipped:
+                skippedWords.insert(currentWordIndex)
+                wordMaxScores[currentWordIndex] = 85
             }
             currentWordIndex += 1
         }
 
-        // Reset threshold for the next word (or leave false if finished).
+        // Reset threshold and max score for the next word (or leave false if finished).
         passedThreshold = false
+        currentWordMaxScore = 0
 
         if isFinished {
-            onComplete?()
+            finalizeAndComplete()
         }
+    }
+    
+    private func finalizeAndComplete() {
+        // Build array of word scores in order
+        let scores = (0..<glossWords.count).map { wordMaxScores[$0] ?? 0 }
+        sentenceModel.wordScores = scores
+        onComplete?()
     }
 }
 

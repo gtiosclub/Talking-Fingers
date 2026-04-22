@@ -60,14 +60,19 @@ struct SavedPracticeView: View {
     private func trainingItem(for session: SavedPracticeModel) -> TrainingItem {
         let completedCount = session.sentences.filter(\.completed).count
         let totalCount = session.sentences.count
-        let score = totalCount > 0 ? (completedCount * 100 + totalCount / 2) / totalCount : 0
-        let isComprehension = session.sentences.first?.practiceType == .comprehension
+        let isComplete = completedCount == totalCount && totalCount > 0
+        
+        // Calculate average accuracy from completed sentences
+        let completedSentences = session.sentences.filter(\.completed)
+        let accuracies = completedSentences.compactMap(\.accuracy)
+        let averageAccuracy: Double? = accuracies.isEmpty ? nil : accuracies.reduce(0, +) / Double(accuracies.count)
+        
         return TrainingItem(
             id: session.id,
             title: displayTitle(for: session),
             subtitle: "Saved \(session.date.formatted(.dateTime.month().day().year()))",
-            score: score,
-            kind: score >= 100 ? .completed : (isComprehension ? .comprehension : .completed)
+            accuracy: averageAccuracy,
+            isComplete: isComplete
         )
     }
 
@@ -311,6 +316,8 @@ struct SavedPracticeView: View {
                 var copy = sentence
                 copy.completed = false
                 copy.score = nil
+                copy.wordScores = nil
+                copy.comprehensionAttempts = nil
                 return copy
             }
             savedSessionStartSentenceIndex = 0
@@ -399,9 +406,13 @@ struct TrainingCard: View {
                 leftIcon
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(item.title)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.black)
+                    HStack(spacing: 8) {
+                        Text(item.title)
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.black)
+                        
+                        completionTag
+                    }
 
                     Text(item.subtitle)
                         .font(.system(size: 15, weight: .regular))
@@ -410,7 +421,7 @@ struct TrainingCard: View {
 
                 Spacer()
 
-                rightStatusView
+                accuracyCircle
 
                 Button(action: onTapChevron) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
@@ -468,18 +479,35 @@ struct TrainingCard: View {
             .foregroundColor(Color(hex: "#FBDA92"))
             .frame(width: 30)
     }
+    
+    @ViewBuilder
+    private var completionTag: some View {
+        Text(item.isComplete ? "Complete" : "Incomplete")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(item.isComplete ? Color(hex: "#4A7C3F") : Color.gray)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(item.isComplete ? Color(hex: "#EAF3E3") : Color.gray.opacity(0.15))
+            )
+    }
 
     @ViewBuilder
-    private var rightStatusView: some View {
-        if let score = item.score {
+    private var accuracyCircle: some View {
+        if let accuracy = item.accuracy {
             ZStack {
                 Circle()
-                    .stroke(Color.gray.opacity(0.75), lineWidth: 1.5)
+                    .fill(item.accuracyColor)
+                    .frame(width: 58, height: 58)
+                
+                Circle()
+                    .stroke(item.accuracyBorderColor, lineWidth: 2)
                     .frame(width: 58, height: 58)
 
-                Text("\(score)")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.gray)
+                Text("\(Int(accuracy.rounded()))")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(item.accuracyTextColor)
             }
         } else {
             InProgressCircleView()
@@ -506,13 +534,29 @@ struct TrainingItem: Identifiable {
     let id: UUID
     let title: String
     let subtitle: String
-    let score: Int?
-    let kind: TrainingKind
-}
-
-enum TrainingKind {
-    case comprehension
-    case completed
+    let accuracy: Double?
+    let isComplete: Bool
+    
+    var accuracyColor: Color {
+        guard let acc = accuracy else { return Color.gray }
+        if acc >= 80 { return Color(hex: "#EAF3E3") }
+        if acc >= 60 { return Color(hex: "#FACD6B") }
+        return Color(hex: "#FA6B6E")
+    }
+    
+    var accuracyTextColor: Color {
+        guard let acc = accuracy else { return Color.gray }
+        if acc >= 80 { return Color(hex: "#4A7C3F") }
+        if acc >= 60 { return Color(hex: "#8B6914") }
+        return Color(hex: "#A13B3D") 
+    }
+    
+    var accuracyBorderColor: Color {
+        guard let acc = accuracy else { return Color.gray.opacity(0.75) }
+        if acc >= 80 { return Color(hex: "#A8D4A0") }
+        if acc >= 60 { return Color(hex: "#E5B84A") }
+        return Color(hex: "#E55558")
+    }
 }
 
 #Preview {
