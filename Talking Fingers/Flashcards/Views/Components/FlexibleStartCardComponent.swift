@@ -353,14 +353,35 @@ private struct ExerciseSessionFlow: View {
     }
 
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-        let distractors = pool
-            .filter { $0.id != card.id }
-            .map { $0.term.displayName }
-            .shuffled()
-            .prefix(max(0, count - 1))
-        var opts = Array(distractors)
-        opts.append(card.term.displayName)
-        return Array(Set(opts)).shuffled()
+        let correct = card.term.displayName
+        let targetCount = max(2, count)
+
+        // Keep only unique distractor labels and never include the correct label.
+        let distractors = Array(
+            Set(
+                pool
+                    .filter { $0.id != card.id }
+                    .map { $0.term.displayName }
+                    .filter { $0 != correct }
+            )
+        )
+        .shuffled()
+
+        var options = Array(distractors.prefix(max(0, targetCount - 1)))
+        options.append(correct)
+
+        // If the category pool is too small, backfill with global unique terms.
+        if options.count < targetCount {
+            let existing = Set(options)
+            let fallback = Term.allCases
+                .map(\.displayName)
+                .filter { !existing.contains($0) }
+                .shuffled()
+                .prefix(targetCount - options.count)
+            options.append(contentsOf: fallback)
+        }
+
+        return Array(Set(options)).shuffled()
     }
 }
 

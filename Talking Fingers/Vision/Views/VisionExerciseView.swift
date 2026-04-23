@@ -32,7 +32,6 @@ struct VisionExerciseView: View {
     @State private var viewHeight: CGFloat = 600
 
     // MARK: - Constants
-    private let passThreshold: Double = 70
     private let tfGreen      = Color(red: 159/255, green: 192/255, blue: 122/255)
     private let tfGreenText  = Color(red: 82/255,  green: 106/255, blue: 54/255)
 
@@ -121,7 +120,10 @@ struct VisionExerciseView: View {
             isHintActive: showHintPopup,
             onConfidenceChange: { score in
                 confidenceScore = score
-                if score >= passThreshold && !isPassed {
+                // `SigningPracticeView` already emits only once the camera VM
+                // reaches its "good" threshold, so avoid applying a second,
+                // stricter gate here.
+                if !isPassed {
                     withAnimation(.easeOut(duration: 0.3)) {
                         isPassed = true
                     }
