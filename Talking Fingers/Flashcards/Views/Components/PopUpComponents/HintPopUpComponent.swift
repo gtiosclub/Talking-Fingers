@@ -15,7 +15,7 @@ struct HintPopUpComponent: View {
     var body: some View {
         VStack(spacing: 23) {
             Text("Hint")
-                .font(.system(size: 32, weight: .bold))
+                .font(.jakarta(size: 32, weight: .bold))
                 .foregroundColor(Color(red: 0.93, green: 0.78, blue: 0.50))
                 .padding(.top, 10)
 
@@ -26,7 +26,7 @@ struct HintPopUpComponent: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
                 Text(hintText)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.jakarta(size: 22, weight: .bold))
                     .foregroundColor(.black.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
@@ -36,7 +36,7 @@ struct HintPopUpComponent: View {
                 onDismiss()
             } label: {
                 Text("Got it!")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.jakarta(size: 20, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Color(red: 159/255, green: 192/255, blue: 122/255))

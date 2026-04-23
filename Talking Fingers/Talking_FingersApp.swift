@@ -94,5 +94,8 @@ struct Talking_FingersApp: App {
                 }
         }
         .modelContainer(sharedModelContainer)
+        #if os(macOS)
+        .windowStyle(.hiddenTitleBar)
+        #endif
     }
 }

@@ -8,16 +8,18 @@
 import SwiftUI
 
 struct AISentenceSigningView: View {
-    let sentenceModel: AISentenceModel
-    /// Session progress 0.0...1.0 (e.g. currentSentenceIndex / totalSentences). Shown in the single progress bar.
-    var sessionProgress: Double = 0
+    @Binding var sentenceModel: AISentenceModel
+    @Binding var currentPage: Int
     var onSentenceComplete: (() -> Void)? = nil
+    var onSentenceFinished: ((Double) -> Void)? = nil
+    var onSubtitleChange: ((String) -> Void)? = nil
+    /// When set (e.g. during sentence completion), all gloss terms use this color.
+    var glossUniformColor: Color? = nil
     /// Optional externally-owned camera VM. When provided, the live signing
     /// step reuses it instead of creating its own, which avoids tearing the
     /// camera session down and back up between sentences.
     var externalCameraVM: CameraVM? = nil
 
-    @State private var currentPage: Int = 1
     @State private var showGloss: Bool = false
 
     var subtitle: String {
@@ -28,54 +30,42 @@ struct AISentenceSigningView: View {
         }
     }
 
-    private var subtitleColor: Color {
-        currentPage == 1 ? Color(hex: "#58A0DA") : Color.gray
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            CustomProgressBar(progress: sessionProgress)
-                .padding(.top, 20)
-
-            Text(subtitle)
-                .font(currentPage == 2 ? .title2 : .title3)
-                .fontWeight(.medium)
-                .foregroundColor(subtitleColor)
-                .animation(.easeInOut, value: currentPage)
-
             if currentPage == 1 {
                 PageOneContent(
                     sentenceModel: sentenceModel,
-                    showGloss: $showGloss,
-                    onContinue: {
-                        withAnimation { currentPage = 2 }
-                    }
+                    showGloss: $showGloss
                 )
             } else if currentPage == 2 {
                 LiveSigningView(
-                    sentenceModel: sentenceModel,
+                    sentenceModel: $sentenceModel,
                     onBack: {
                         withAnimation { currentPage = 1 }
                     },
-                    onComplete: onSentenceComplete,
+                    onSentenceFinished: onSentenceFinished,
+                    glossUniformColor: glossUniformColor,
                     externalCameraVM: externalCameraVM
                 )
             }
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 30)
+        .onAppear {
+            onSubtitleChange?(subtitle)
+        }
+        .onChange(of: currentPage) { _, _ in
+            onSubtitleChange?(subtitle)
+        }
     }
 }
 
 struct PageOneContent: View {
     let sentenceModel: AISentenceModel
     @Binding var showGloss: Bool
-    var onContinue: () -> Void
 
-    private let glossGold = Color(hex: "#F8BC3A")
-    private let glossCream = Color(hex: "#FDF2D8")
+    private let glossGold = Color(hex: "#ECA509")
 
-    /// Single-line ASL gloss, uppercase with spaces (matches design reference).
     private var glossLineString: String {
         sentenceModel.gloss
             .map(\.rawValue)
@@ -85,70 +75,49 @@ struct PageOneContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 40) {
-            Spacer()
+            Spacer(minLength: 0)
 
             Text(sentenceModel.sentence)
-                .font(.system(size: 40, weight: .bold))
-                .foregroundColor(.black)
+                .font(.jakarta(size: 40, weight: .semibold))
+                .foregroundColor(Color(hex: "#464646"))
                 .multilineTextAlignment(.leading)
 
-            Button(action: { withAnimation { showGloss.toggle() } }) {
-                VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showGloss.toggle() } }) {
                     HStack(alignment: .center, spacing: 12) {
-                        glossBulbBadge
-                        Text(showGloss ? "Hide gloss" : "Gloss")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                        Image(systemName: "wand.and.rays")
+                            .font(.jakarta(size: 20, weight: .semibold))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundColor(glossGold)
+                        Text("Gloss")
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(glossGold)
                         Spacer(minLength: 0)
                     }
-
-                    if showGloss {
-                        Text(glossLineString)
-                            .font(.system(size: 40, weight: .semibold))
-                            .foregroundColor(Color(white: 0.58))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .multilineTextAlignment(.leading)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.plain)
+
+                Text(glossLineString)
+                    .font(.jakarta(size: 35, weight: .semibold))
+                    .foregroundColor(Color(white: 0.58))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .opacity(showGloss ? 1 : 0)
+                    .allowsHitTesting(showGloss)
+                    .accessibilityHidden(!showGloss)
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            Button(action: onContinue) {
-                Text("Continue")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color(hex: "#97C171"))
-                    .cornerRadius(20)
-            }
+            Spacer(minLength: 0)
         }
-    }
-
-    /// Cream circle with golden outline-style bulb (or eye when hiding).
-    private var glossBulbBadge: some View {
-        ZStack {
-            Circle()
-                .fill(glossCream)
-                .frame(width: 40, height: 40)
-            Circle()
-                .strokeBorder(glossGold.opacity(0.55), lineWidth: 1)
-                .frame(width: 40, height: 40)
-            Image(systemName: showGloss ? "eye.slash" : "lightbulb")
-                .font(.system(size: 19, weight: .semibold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundColor(glossGold)
-        }
-        .accessibilityHidden(true)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
 #Preview {
-    let sampleData = AISentenceModel(
+    @Previewable @State var sampleData = AISentenceModel(
         sentence: "I went to the store yesterday.",
         score: nil,
         practiceType: .words,
@@ -156,5 +125,5 @@ struct PageOneContent: View {
         completed: false
     )
 
-    AISentenceSigningView(sentenceModel: sampleData)
+    AISentenceSigningView(sentenceModel: $sampleData, currentPage: .constant(1))
 }

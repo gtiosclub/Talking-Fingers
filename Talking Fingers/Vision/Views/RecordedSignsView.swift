@@ -37,23 +37,23 @@ struct RecordedSignsView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(take.displayFileName)
-                                        .font(.headline)
+                                        .font(.jakartaHeadline)
                                         .lineLimit(1)
 
                                     HStack(spacing: 8) {
                                         Text(take.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                            .font(.subheadline)
+                                            .font(.jakartaSubheadline)
                                             .foregroundStyle(.secondary)
 
                                         if take.videoAvailable {
                                             Label("Video", systemImage: "video.fill")
-                                                .font(.caption)
+                                                .font(.jakartaCaption)
                                                 .foregroundStyle(.secondary)
                                         }
 
                                         if take.frameDataAvailable {
                                             Label("Joints", systemImage: "point.3.filled.connected.trianglepath.dotted")
-                                                .font(.caption)
+                                                .font(.jakartaCaption)
                                                 .foregroundStyle(.secondary)
                                         }
                                     }

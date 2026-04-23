@@ -10,33 +10,67 @@ import SwiftUI
 struct GenerateSentencesView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedCategories: Set<TermCategory> = []
-    @State private var modeSelection = PracticeModeSelection(signing: true, comprehension: false)
+    @State private var modeSelection: PracticeModeSelection
     @State private var trainingName: String = ""
     @State private var isGenerating: Bool = false
     @State private var errorMessage: String?
+    @FocusState private var isTrainingNameFocused: Bool
     
     /// Called with generated sentences and the categories used (so Extend can generate more).
     /// Parent should dismiss the sheet and start the session.
     var onSentencesGenerated: ([AISentenceModel], Set<TermCategory>, String) -> Void
 
+    init(
+        initialModeSelection: PracticeModeSelection = PracticeModeSelection(signing: true, comprehension: false),
+        onSentencesGenerated: @escaping ([AISentenceModel], Set<TermCategory>, String) -> Void
+    ) {
+        _modeSelection = State(initialValue: initialModeSelection)
+        self.onSentencesGenerated = onSentencesGenerated
+    }
+
     private var canGenerate: Bool {
         !trainingName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating
     }
+
+    private var availableCategories: [TermCategory] {
+        TermCategory.allCases.filter { category in
+            category != .commonDescriptors
+            && category != .dateTime
+            && category != .commonObjects
+            && category != .feelingsEmotions
+        }
+    }
+
+    private var effectiveCategories: Set<TermCategory> {
+        selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories
+    }
+
+    private var isComprehensionOnlyMode: Bool {
+        modeSelection.comprehension && !modeSelection.signing
+    }
+
+    private var practiceTitle: String {
+        isComprehensionOnlyMode ? "New Comprehension Practice" : "New Signing Practice"
+    }
+
+    private var practiceTitleColor: Color {
+        Color(hex: isComprehensionOnlyMode ? "#58A0DA" : "#71A046")
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("New Practice")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(practiceTitle)
+                .font(.jakarta(size: 20, weight: .semibold))
+                .foregroundColor(practiceTitleColor)
                 .padding(.top, 20)
             
             
             VStack(alignment: .leading, spacing: 16) {
                 Text("Categories")
-                    .font(.headline)
+                    .font(.jakarta(size: 15, weight: .semibold))
                 
                 FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
-                    ForEach(TermCategory.allCases, id: \.self) { category in
+                    ForEach(availableCategories, id: \.self) { category in
                         CategoryButton(
                             category: category,
                             isSelected: selectedCategories.contains(category),
@@ -48,39 +82,15 @@ struct GenerateSentencesView: View {
                 }
             }
             
-            // MARK: - Mode Selection (multi-select, at least one required)
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Modes")
-                    .font(.headline)
-
-                HStack(spacing: 12) {
-                    ModeToggleButton(
-                        label: "Sign",
-                        isSelected: modeSelection.signing,
-                        action: {
-                            // Don't allow deselecting if it's the only one on
-                            if modeSelection.signing && !modeSelection.comprehension { return }
-                            modeSelection.signing.toggle()
-                        }
-                    )
-
-                    ModeToggleButton(
-                        label: "Comprehend",
-                        isSelected: modeSelection.comprehension,
-                        action: {
-                            if modeSelection.comprehension && !modeSelection.signing { return }
-                            modeSelection.comprehension.toggle()
-                        }
-                    )
-                }
-            }
-
-            // Training Name Section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Name")
-                    .font(.headline)
+                    .font(.jakarta(size: 15, weight: .semibold))
                 
                 TextField("Enter training name", text: $trainingName)
+                    .font(.jakarta(size: 17))
+                    .textFieldStyle(.plain)
+                    .focused($isTrainingNameFocused)
+                    .submitLabel(.done)
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 12)
@@ -88,19 +98,18 @@ struct GenerateSentencesView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.black, lineWidth: 1)
+                            .stroke(Color(hex: "#F0F0F0"), lineWidth: 1.5)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             
             if let error = errorMessage {
                 Text(error)
-                    .font(.caption)
+                    .font(.jakartaCaption)
                     .foregroundColor(.red)
                     .padding(.horizontal)
             }
             
-            Spacer()
             
             Button(action: {
                 startTraining()
@@ -109,13 +118,13 @@ struct GenerateSentencesView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 12)
                 } else {
                     Text("Start")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.jakarta(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 12)
                 }
             }
             .background(Color(hex: "#97C171").opacity(canGenerate ? 1.0 : 0.5))
@@ -123,21 +132,28 @@ struct GenerateSentencesView: View {
             .disabled(!canGenerate)
         }
         .padding(.horizontal, 24)
-        .padding(.bottom, 20)
+        .padding(.bottom, 15)
+        .padding(.top, 10)
+        .onAppear {
+            DispatchQueue.main.async {
+                isTrainingNameFocused = true
+            }
+        }
     }
     
     private var selectedGlossTerms: [Term] {
-        let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
         let terms = effectiveCategories.flatMap { Term.words(for: $0) }
         let unique = Array(Set(terms))
         return unique.sorted { $0.rawValue < $1.rawValue }
     }
     
     private func toggleCategory(_ category: TermCategory) {
-        if selectedCategories.contains(category) {
-            selectedCategories.remove(category)
-        } else {
-            selectedCategories.insert(category)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if selectedCategories.contains(category) {
+                selectedCategories.remove(category)
+            } else {
+                selectedCategories.insert(category)
+            }
         }
     }
     
@@ -147,7 +163,6 @@ struct GenerateSentencesView: View {
             errorMessage = nil
             
             do {
-                let effectiveCategories = selectedCategories.isEmpty ? Set(TermCategory.allCases) : selectedCategories
                 let sentences = try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
                 
                 await MainActor.run {
@@ -164,7 +179,14 @@ struct GenerateSentencesView: View {
 
     /// Generate 5 sentences for the given categories (e.g. for Extend in a session).
     static func generateSentences(categories: Set<TermCategory>, modeSelection: PracticeModeSelection = PracticeModeSelection(signing: true, comprehension: false)) async throws -> [AISentenceModel] {
-        let effectiveCategories = categories.isEmpty ? Set(TermCategory.allCases) : categories
+        let allowedCategories = Set(
+            TermCategory.allCases.filter { category in
+                category != .commonDescriptors
+                && category != .dateTime
+                && category != .feelingsEmotions
+            }
+        )
+        let effectiveCategories = categories.isEmpty ? allowedCategories : categories.intersection(allowedCategories)
         return try await generateSentencesForCategories(effectiveCategories, modeSelection: modeSelection)
     }
 }
@@ -179,53 +201,20 @@ struct CategoryButton: View {
     var body: some View {
         Button(action: action) {
             Text(category.rawValue.capitalized)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
+                .font(.jakarta(size: 17, weight: .medium))
+                .foregroundColor(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"))
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(isSelected ? Color(hex: "#FDF2D8") : .white)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
+                        .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#F0F0F0"), lineWidth: isSelected ? 0.5 : 1.5)
                 )
         }
-    }
-}
-
-// MARK: - Mode Toggle Button
-
-struct ModeToggleButton: View {
-    let label: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(label)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
-
-                Circle()
-                    .fill(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"))
-                    .frame(width: 10, height: 10)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? Color(hex: "#FDF2D8") : .white)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"), lineWidth: 0.5)
-            )
-        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -258,11 +247,11 @@ private func generateSentencesForCategories(_ categories: Set<TermCategory>, mod
         )
     }
     
-    // 3. Call AI generation with focus terms
-    let aiViewModel = AIViewModel()
+    // 3. Call AI generation with focus terms using the shared instance
+    let aiViewModel = AIViewModel.shared
     
-    // Wait for API key to load
-    try await Task.sleep(nanoseconds: 500_000_000)
+    // Wait for API key to be available (handles cold starts properly)
+    try await aiViewModel.waitForAPIKey()
     
     let sentences = try await aiViewModel.generateAISentences(
         from: flashcards,

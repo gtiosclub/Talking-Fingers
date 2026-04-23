@@ -65,11 +65,11 @@ struct StartCardComponent: View {
                     .frame(height: 180)
 
                 Text("Exercise")
-                    .font(.system(size: 40))
+                    .font(.jakarta(size: 40))
                     .foregroundColor(.black.opacity(0.7))
 
                 Text("Greetings!")
-                    .font(.system(size: 42, weight: .bold))
+                    .font(.jakarta(size: 42, weight: .bold))
                     .foregroundColor(Color(red: 0.58, green: 0.72, blue: 0.85))
 
                 Text("0/12 Words Completed")
@@ -84,7 +84,7 @@ struct StartCardComponent: View {
                     screen = .exercise 
                 }) {
                     Text("Begin Learn")
-                        .font(.headline)
+                        .font(.jakartaHeadline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -100,7 +100,7 @@ struct StartCardComponent: View {
                     closeAction()
                 }) {
                     Text("Go Home")
-                        .font(.headline)
+                        .font(.jakartaHeadline)
                         .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.30))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)

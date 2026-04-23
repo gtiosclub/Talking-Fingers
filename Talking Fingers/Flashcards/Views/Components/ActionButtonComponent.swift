@@ -20,7 +20,7 @@ struct ActionButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.jakarta(size: 18, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
                 .foregroundStyle(style == .primary ? .white : .black)

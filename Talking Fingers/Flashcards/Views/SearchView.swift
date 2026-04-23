@@ -22,10 +22,10 @@ struct SearchView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 15))
+                            .font(.jakarta(size: 15))
                             .foregroundColor(.gray)
                         Text("Leave")
-                            .font(.system(size: 17))
+                            .font(.jakarta(size: 17))
                             .foregroundColor(.gray)
                     }
                 }
@@ -35,7 +35,7 @@ struct SearchView: View {
                     HStack {
                         TextField("Search for a word or phrase...", text: $vm.searchText)
                             .focused($isFocused)
-                            .font(.system(size: 17))
+                            .font(.jakarta(size: 17))
                             .onChange(of: vm.searchText) {
                                 vm.performSearch()
                             }
@@ -49,7 +49,7 @@ struct SearchView: View {
                                 isFocused = false
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(.jakarta(size: 13, weight: .medium))
                                     .foregroundColor(.gray)
                             }
                         }
@@ -64,14 +64,14 @@ struct SearchView: View {
                     )
                     
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.jakarta(size: 20, weight: .medium))
                         .foregroundColor(.primary)
                 }
                 
                 if vm.isSearching {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("\(vm.results.count) results found")
-                            .font(.system(size: 14))
+                            .font(.jakarta(size: 14))
                             .foregroundColor(.gray)
                             .padding(.bottom, 8)
                         
@@ -80,7 +80,7 @@ struct SearchView: View {
                                 VStack(spacing: 0) {
                                     HStack {
                                         Text(term.displayName.capitalized)
-                                            .font(.system(size: 19))
+                                            .font(.jakarta(size: 19))
                                         Spacer()
                                     }
                                     .padding(.vertical, 14)
@@ -97,7 +97,7 @@ struct SearchView: View {
                         if !vm.recentSearches.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Recent Searches")
-                                    .font(.system(size: 15))
+                                    .font(.jakarta(size: 15))
                                     .foregroundColor(.primary)
                                 
                                 ForEach(vm.recentSearches, id: \.self) { search in
@@ -108,11 +108,11 @@ struct SearchView: View {
                                         } label: {
                                             HStack {
                                                 Text(search)
-                                                    .font(.system(size: 20, weight: .semibold))
+                                                    .font(.jakarta(size: 20, weight: .semibold))
                                                     .foregroundColor(.black)
                                                 Spacer()
                                                 Image(systemName: "arrow.up.right")
-                                                    .font(.system(size: 13))
+                                                    .font(.jakarta(size: 13))
                                                     .foregroundColor(.gray)
                                             }
                                             .padding(.vertical, 10)
@@ -127,7 +127,7 @@ struct SearchView: View {
                         }
                         
                         Text("Categories")
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.jakarta(size: 28, weight: .bold))
                             .padding(.top, vm.recentSearches.isEmpty ? 0 : 4)
                         
                         VStack(spacing: 14) {
@@ -162,17 +162,17 @@ struct SearchView: View {
                     .frame(width: 52, height: 52)
                 
                 Image(systemName: placeholderIcon(for: category))
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.jakarta(size: 24, weight: .medium))
                     .foregroundColor(.white)
             }
             
             VStack(alignment: .leading, spacing: 3) {
                 Text(category.displayName)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.jakarta(size: 20, weight: .semibold))
                     .foregroundColor(.primary)
                 
                 Text(subtitle(for: category))
-                    .font(.system(size: 17))
+                    .font(.jakarta(size: 17))
                     .foregroundColor(.secondary)
             }
             

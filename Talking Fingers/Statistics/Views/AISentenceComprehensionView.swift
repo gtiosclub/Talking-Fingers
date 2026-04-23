@@ -8,8 +8,7 @@
 import SwiftUI
 
 struct AISentenceComprehensionView: View {
-    let sentenceModel: AISentenceModel
-    var sessionProgress: Double = 0
+    @Binding var sentenceModel: AISentenceModel
     var onSentenceComplete: (() -> Void)? = nil
 
     private var correctOrder: [String] {
@@ -19,21 +18,13 @@ struct AISentenceComprehensionView: View {
     @State private var allChips: [CompWordChip] = []
     @State private var lineChips: [CompWordChip] = []
     @State private var submitState: CompSubmitState = .idle
-    @State private var wrongAttemptCount: Int = 0
+    @State private var totalAttemptCount: Int = 0
     @State private var solutionRevealed: Bool = false
 
     private var glossTerms: [Term] { sentenceModel.gloss }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            CustomProgressBar(progress: sessionProgress)
-                .padding(.top, 20)
-
-            Text("New sentence!")
-                .font(.title3)
-                .fontWeight(.medium)
-                .foregroundColor(.gray)
-
             Spacer(minLength: 0)
 
             // Sign images grid (placeholders)
@@ -70,10 +61,10 @@ struct AISentenceComprehensionView: View {
                         .fill(Color(white: 0.93))
                     VStack(spacing: 2) {
                         Image(systemName: "person.fill")
-                            .font(.system(size: 24))
+                            .font(.jakarta(size: 24))
                             .foregroundColor(.gray.opacity(0.5))
                         Text(term.rawValue.lowercased())
-                            .font(.system(size: 9))
+                            .font(.jakarta(size: 9))
                             .foregroundColor(.gray.opacity(0.65))
                             .lineLimit(1)
                     }
@@ -96,7 +87,7 @@ struct AISentenceComprehensionView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.red)
                 Spacer()
-                Text("Attempt \(wrongAttemptCount)")
+                Text("Attempt \(totalAttemptCount)")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.red.opacity(0.7))
@@ -279,19 +270,20 @@ struct AISentenceComprehensionView: View {
         allChips = allWords.map { CompWordChip(text: $0) }
         lineChips = []
         submitState = .idle
-        wrongAttemptCount = 0
+        totalAttemptCount = 0
         solutionRevealed = false
     }
 
     private func submit() {
         guard lineChips.count == correctOrder.count else { return }
-
+        
+        totalAttemptCount += 1
         let userAnswer = lineChips.map { $0.text }
         if userAnswer == correctOrder {
+            sentenceModel.comprehensionAttempts = totalAttemptCount
             withAnimation { submitState = .correct }
         } else {
             withAnimation {
-                wrongAttemptCount += 1
                 solutionRevealed = false
                 submitState = .incorrect
             }
@@ -306,6 +298,9 @@ struct AISentenceComprehensionView: View {
     }
 
     private func revealSolution() {
+        // When revealing solution, count as one more attempt (they gave up)
+        totalAttemptCount += 1
+        sentenceModel.comprehensionAttempts = totalAttemptCount
         withAnimation {
             solutionRevealed = true
         }
@@ -395,12 +390,13 @@ private struct CompWrappingHStack: Layout {
 }
 
 #Preview {
+    @Previewable @State var sampleModel = AISentenceModel(
+        sentence: "Today was good, thank you.",
+        practiceType: .comprehension,
+        gloss: [.today, .good, .happy, .you]
+    )
+    
     AISentenceComprehensionView(
-        sentenceModel: AISentenceModel(
-            sentence: "Today was good, thank you.",
-            practiceType: .comprehension,
-            gloss: [.today, .good, .happy, .you]
-        ),
-        sessionProgress: 0.4
+        sentenceModel: $sampleModel
     )
 }

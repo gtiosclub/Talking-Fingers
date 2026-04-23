@@ -55,7 +55,28 @@ extension View {
         #if os(iOS)
         self.fullScreenCover(isPresented: isPresented, content: content)
         #else
-        self.sheet(isPresented: isPresented, content: content)
+        self.overlay(alignment: .topLeading) {
+            if isPresented.wrappedValue {
+                content()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isPresented.wrappedValue)
+        #endif
+    }
+
+    @ViewBuilder
+    func macCentered(widthFraction: CGFloat = 0.75) -> some View {
+        #if os(macOS)
+        GeometryReader { proxy in
+            self
+                .frame(width: proxy.size.width * widthFraction)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        #else
+        self
         #endif
     }
 }
@@ -123,4 +144,37 @@ extension Color {
         return Color.gray.opacity(0.12)
         #endif
     }
+}
+
+// MARK: - Custom Font Extension
+extension Font {
+    static let jakartaFontName = "PlusJakartaSans"
+    
+    static func jakarta(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let weightSuffix: String
+        switch weight {
+        case .ultraLight: weightSuffix = "-ExtraLight"
+        case .thin: weightSuffix = "-ExtraLight"
+        case .light: weightSuffix = "-Light"
+        case .regular: weightSuffix = "-Regular"
+        case .medium: weightSuffix = "-Medium"
+        case .semibold: weightSuffix = "-SemiBold"
+        case .bold: weightSuffix = "-Bold"
+        case .heavy: weightSuffix = "-ExtraBold"
+        case .black: weightSuffix = "-ExtraBold"
+        default: weightSuffix = "-Regular"
+        }
+        return .custom("\(jakartaFontName)\(weightSuffix)", size: size)
+    }
+    
+    static var jakartaLargeTitle: Font { .jakarta(size: 34, weight: .bold) }
+    static var jakartaTitle: Font { .jakarta(size: 28, weight: .bold) }
+    static var jakartaTitle2: Font { .jakarta(size: 22, weight: .bold) }
+    static var jakartaTitle3: Font { .jakarta(size: 20, weight: .semibold) }
+    static var jakartaHeadline: Font { .jakarta(size: 17, weight: .semibold) }
+    static var jakartaSubheadline: Font { .jakarta(size: 15, weight: .regular) }
+    static var jakartaBody: Font { .jakarta(size: 17, weight: .regular) }
+    static var jakartaCallout: Font { .jakarta(size: 16, weight: .regular) }
+    static var jakartaCaption: Font { .jakarta(size: 12, weight: .regular) }
+    static var jakartaCaption2: Font { .jakarta(size: 11, weight: .regular) }
 }

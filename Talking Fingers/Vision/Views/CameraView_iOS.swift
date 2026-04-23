@@ -118,7 +118,7 @@ struct CameraView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: showRawConfidence ? "number" : "textformat")
                                 Text(showRawConfidence ? "Show score" : "Show label")
-                                    .font(.callout)
+                                    .font(.jakartaCallout)
                             }
                         }
                         .toggleStyle(.switch)
@@ -142,7 +142,7 @@ struct CameraView: View {
                                 .allowsHitTesting(false)
 
                             Text("\(countdown)")
-                                .font(.system(size: 120, weight: .bold, design: .rounded))
+                                .font(.jakarta(size: 120, weight: .bold))
                                 .foregroundStyle(.white)
                                 .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
                                 .contentTransition(.numericText())
@@ -153,7 +153,7 @@ struct CameraView: View {
                             VStack {
                                 Spacer()
                                 Text(confidenceDisplay)
-                                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                                    .font(.jakarta(size: 56, weight: .bold))
                                     .foregroundStyle(confidenceColor)
                                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                                     .contentTransition(.interpolate)
@@ -193,10 +193,10 @@ struct CameraView: View {
                             Text("Browse Recorded Signs")
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
+                                .font(.jakarta(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
-                        .font(.headline)
+                        .font(.jakartaHeadline)
                         .padding()
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
@@ -333,7 +333,7 @@ struct CameraView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text("\(handSide) \(joint.label)")
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
@@ -364,7 +364,7 @@ struct CameraView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text(joint.label)
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
@@ -514,21 +514,42 @@ struct CameraView: View {
         }
     }
 
+    /// Thresholds for the Good / Okay / Bad bands, relaxed proportionally to
+    /// the loaded reference's kinematic complexity (wrist path length, from
+    /// `CameraVM.referenceComplexity`).
+    ///
+    /// DTW on long-travel signs accumulates more 2D alignment error per frame
+    /// just by virtue of covering more pixels; a perfect performance of such
+    /// a sign caps lower than a tight planar sign. The shift is single-
+    /// direction (negative only) — complexity can only relax the thresholds,
+    /// never tighten them — because path length is a "cost" signal, not a
+    /// "precision" one.
+    ///
+    /// Max shift is 8 pts at complexity = 1 (`pathLength >= 0.20`), giving
+    /// a dynamic-sign Good threshold range of 62..70.
+    private var activeThresholds: (good: Double, okay: Double) {
+        let isStatic = cameraVM.activeComparisonType == .static
+        let baseGood: Double = isStatic ? 80 : 70
+        let baseOkay: Double = isStatic ? 60 : 51
+
+        let shift = -cameraVM.referenceComplexity * 8
+
+        return (good: baseGood + shift, okay: baseOkay + shift)
+    }
+
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
-        if score >= goodThreshold { return .green }
-        if score >= okayThreshold { return .yellow }
+        let t = activeThresholds
+        if score >= t.good { return .green }
+        if score >= t.okay { return .yellow }
         return .red
     }
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 62 : 50
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 46 : 27
-        if score >= goodThreshold { return "Good" }
-        if score >= okayThreshold { return "Okay" }
+        let t = activeThresholds
+        if score >= t.good { return "Good" }
+        if score >= t.okay { return "Okay" }
         return "Bad"
     }
 

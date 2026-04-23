@@ -46,7 +46,7 @@ struct RecordedSignPlaybackView: View {
                     } else {
                         VStack(spacing: 8) {
                             Image(systemName: "video.slash")
-                                .font(.largeTitle)
+                                .font(.jakartaLargeTitle)
                                 .foregroundStyle(.white.opacity(0.8))
                             Text("No recorded video available")
                                 .foregroundStyle(.white.opacity(0.8))
@@ -64,23 +64,23 @@ struct RecordedSignPlaybackView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Label(take.signName.capitalized, systemImage: "hands.sparkles.fill")
-                            .font(.headline)
+                            .font(.jakartaHeadline)
 
                         Spacer()
 
                         Text("\(frames.count) frames")
-                            .font(.subheadline)
+                            .font(.jakartaSubheadline)
                             .foregroundStyle(.secondary)
                     }
 
                     Text(take.displayFileName)
-                        .font(.subheadline)
+                        .font(.jakartaSubheadline)
                         .foregroundStyle(.secondary)
 
                     if !frames.isEmpty {
                         HStack {
                             Text("Overlay frame: \(currentFrameIndexDisplay)")
-                                .font(.subheadline)
+                                .font(.jakartaSubheadline)
                                 .foregroundStyle(.secondary)
 
                             Spacer()
@@ -96,7 +96,7 @@ struct RecordedSignPlaybackView: View {
                             seek(by: -1.0 / fallbackFPS)
                         } label: {
                             Image(systemName: "gobackward.frame")
-                                .font(.title3)
+                                .font(.jakartaTitle3)
                         }
                         .buttonStyle(.bordered)
 
@@ -104,7 +104,7 @@ struct RecordedSignPlaybackView: View {
                             togglePlayPause()
                         } label: {
                             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.title3)
+                                .font(.jakartaTitle3)
                                 .frame(minWidth: 28)
                         }
                         .buttonStyle(.borderedProminent)
@@ -113,7 +113,7 @@ struct RecordedSignPlaybackView: View {
                             seek(by: 1.0 / fallbackFPS)
                         } label: {
                             Image(systemName: "goforward.frame")
-                                .font(.title3)
+                                .font(.jakartaTitle3)
                         }
                         .buttonStyle(.bordered)
 

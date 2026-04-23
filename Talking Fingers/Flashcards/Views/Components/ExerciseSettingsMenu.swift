@@ -39,7 +39,7 @@ struct ExerciseSettingsMenu: View {
             }
         } label: {
             Image(systemName: "line.3.horizontal")
-                .font(.system(size: 18, weight: .medium))
+                .font(.jakarta(size: 18, weight: .medium))
                 .foregroundColor(.black)
         }
         .menuOrder(.fixed)

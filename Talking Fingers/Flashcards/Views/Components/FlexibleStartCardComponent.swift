@@ -160,15 +160,15 @@ struct FlexibleStartCardComponent: View {
 
                 if case .dailyChallenge = context {
                     Text(context.title)
-                        .font(.system(size: 42, weight: .bold))
+                        .font(.jakarta(size: 42, weight: .bold))
                         .foregroundColor(Color(red: 0.56, green: 0.72, blue: 0.44))
                 } else {
                     Text(context.title)
-                        .font(.system(size: 40))
+                        .font(.jakarta(size: 40))
                         .foregroundColor(.black.opacity(0.7))
                     
                     Text(context.subtitle)
-                        .font(.system(size: 42, weight: .bold))
+                        .font(.jakarta(size: 42, weight: .bold))
                         .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))
                 }
 

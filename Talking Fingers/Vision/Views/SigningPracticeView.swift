@@ -142,7 +142,7 @@ struct SigningPracticeView: View {
                                     .foregroundStyle(confidenceColor)
                                     .contentTransition(.interpolate)
                                     .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.jakarta(size: 18, weight: .bold))
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(.ultraThinMaterial)
@@ -249,7 +249,7 @@ struct SigningPracticeView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text("\(handSide) \(joint.label)")
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
@@ -280,7 +280,7 @@ struct SigningPracticeView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text(joint.label)
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
@@ -547,7 +547,7 @@ struct SigningPracticeView: View {
                                     .foregroundStyle(confidenceColor)
                                     .contentTransition(.interpolate)
                                     .animation(.easeInOut(duration: 0.15), value: confidenceLabel)
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.jakarta(size: 18, weight: .bold))
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(.ultraThinMaterial)
@@ -652,7 +652,7 @@ struct SigningPracticeView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text("\(handSide) \(joint.label)")
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
@@ -683,7 +683,7 @@ struct SigningPracticeView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text(joint.label)
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)

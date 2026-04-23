@@ -33,33 +33,27 @@ struct ContentView: View {
 struct MainNavigationView: View {
     @Environment(AuthenticationViewModel.self) var authVM
     @State private var selectedSection: NavigationSection = .home
+    #if os(macOS)
+    @State private var isSidebarCollapsed: Bool = false
+    #endif
     
     var body: some View {
         #if os(macOS)
-        NavigationSplitView {
-            // Sidebar
-            List(selection: $selectedSection) {
-                Label("home", systemImage: "house")
-                    .tag(NavigationSection.home)
-                Label("Flashcards", systemImage: "rectangle.stack.fill")
-                    .tag(NavigationSection.flashcards)
-                Label("Sentences", systemImage: "text.bubble")
-                    .tag(NavigationSection.sentences)
-                Label("Profile", systemImage: "person.circle")
-                    .tag(NavigationSection.stats)
-                Label("Vision", systemImage: "eyeglasses")
-                    .tag(NavigationSection.camera)
-                Label("Review", systemImage: "film.stack")
-                    .tag(NavigationSection.review)
-                Label("Practice Test", systemImage: "pencil.and.scribble")
-                    .tag(NavigationSection.practice)
-            }
-            .navigationTitle("Talking Fingers")
-        } detail: {
+        HStack(spacing: 0) {
+            MacSidebarView(
+                selection: $selectedSection,
+                isCollapsed: $isSidebarCollapsed,
+                userName: authVM.currentUser?.name ?? ""
+            )
+
             detailView(for: selectedSection)
                 .environment(authVM)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white.ignoresSafeArea())
+        .ignoresSafeArea(.container, edges: .top)
+        .configureMacWindowChrome()
         #else
         TabView(selection: $selectedSection) {
             detailView(for: .home)

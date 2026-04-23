@@ -14,6 +14,10 @@ import FirebaseFirestore
     let db = Firestore.firestore()
     private let openAIURL = "https://api.openai.com/v1/chat/completions"
     
+    /// Shared instance that persists across the app lifecycle.
+    /// Using a shared instance avoids repeated Firestore fetches and cold-start delays.
+    static let shared = AIViewModel()
+    
     init()  {
         fetchAPIKey()
     }
@@ -23,7 +27,7 @@ import FirebaseFirestore
             do {
                 let document = try await db.collection("API_KEYS").document("OpenAi").getDocument()
                 if let data = document.data(), let key = data["key"] as? String {
-                    DispatchQueue.main.async {
+                    await MainActor.run {
                         self.openAIKey = key
                         print("key found")
                     }
@@ -33,6 +37,22 @@ import FirebaseFirestore
             } catch {
                 print("Error fetching API key from Firestore: \(error)")
             }
+        }
+    }
+    
+    /// Waits for the API key to be available, with a timeout.
+    /// - Parameter timeout: Maximum time to wait in seconds (default 10 seconds)
+    /// - Throws: `AIError.missingAPIKey` if the key isn't available within the timeout
+    func waitForAPIKey(timeout: TimeInterval = 10) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        let pollInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
+        
+        while openAIKey == nil && Date() < deadline {
+            try await Task.sleep(nanoseconds: pollInterval)
+        }
+        
+        guard openAIKey != nil else {
+            throw AIError.missingAPIKey
         }
     }
 
