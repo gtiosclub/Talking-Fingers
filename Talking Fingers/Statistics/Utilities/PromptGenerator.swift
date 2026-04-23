@@ -131,6 +131,7 @@ struct PromptGenerator {
         2. Gloss ("sentence") MUST use only words from the ALLOWED GLOSS VOCAB list above. ASL word order: TIME + TOPIC + COMMENT + DETAILS.
         3. No repetition: a word appears at most once per sentence (EXCEPT in Alphabet-only mode, where repeating letters is allowed).
         4. One clear idea per sentence (request, event, description, etc.).
+        5. DIVERSITY (very important): All 5 sentences MUST be distinct from each other. No two items may share the same English sentence, and no two items may share the same gloss token sequence. Use different scenarios, different subjects, different verbs, and different sentence lengths across the 5 items — even when a focus-term is required in every sentence, vary everything else around it.
 
         【QUALITY】
         ✓ English: Would a native speaker say this? Clear scenario?

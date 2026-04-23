@@ -72,7 +72,7 @@ import FirebaseFirestore
                 ],
                 ["role": "user", "content": prompt]
             ],
-            "temperature": 0.7,
+            "temperature": 0.9,
             "response_format": ["type": "json_object"]
         ]
         
@@ -122,7 +122,9 @@ import FirebaseFirestore
         }
 
         var aiSentences: [AISentenceModel] = []
-        
+        var seenEnglishKeys: Set<String> = []
+        var seenGlossKeys: Set<String> = []
+
         for sentenceData in sentencesResponse {
             let glossWordStrings = sentenceData.sentence
                 .split(separator: ",")
@@ -148,6 +150,21 @@ import FirebaseFirestore
             let practiceType: PracticeType = .words
             
             let displaySentence = sentenceData.english ?? sentenceData.sentence
+
+            // Drop duplicates coming back from the model (same English text or
+            // same gloss sequence). Without this, a narrow focus-term prompt
+            // can cause back-to-back identical practice sentences.
+            let englishKey = displaySentence
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            let glossKey = glossTerms.map(\.rawValue).joined(separator: " ")
+            if seenEnglishKeys.contains(englishKey) || seenGlossKeys.contains(glossKey) {
+                print("⚠️ Dropping duplicate AI sentence: \(displaySentence)")
+                continue
+            }
+            seenEnglishKeys.insert(englishKey)
+            seenGlossKeys.insert(glossKey)
+
             let aiSentence = AISentenceModel(
                 sentence: displaySentence,
                 score: nil,

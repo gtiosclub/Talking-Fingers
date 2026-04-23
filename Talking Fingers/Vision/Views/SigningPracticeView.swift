@@ -154,6 +154,7 @@ struct SigningPracticeView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
             } else {
                 ContentUnavailableView(
                     "Camera Access Required",
