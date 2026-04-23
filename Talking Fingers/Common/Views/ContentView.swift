@@ -151,7 +151,7 @@ struct MainNavigationView: View {
             
         case .practice:
             NavigationStack {
-                SigningPracticeView()
+                OnboardingView()
                     .environment(authVM)
             }
         }
