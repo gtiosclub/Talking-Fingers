@@ -37,7 +37,7 @@ struct ModePopupView: View {
                         closePopup()
                     } label: {
                         HStack(spacing: 16) {
-                            Image("learnModeIcon")
+                            Image("SentencesComprehendFlowerFull")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 80)
@@ -64,7 +64,7 @@ struct ModePopupView: View {
                         closePopup()
                     } label: {
                         HStack(spacing: 16) {
-                            Image("exerciseModeIcon")
+                            Image("SentencesSignFlowerFull")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 80)
@@ -103,7 +103,7 @@ struct ModePopupView: View {
                         closePopup()
                     } label: {
                         VStack {
-                            Image("learnModeIcon")
+                            Image("SentencesComprehendFlowerFull")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 100)
@@ -126,7 +126,7 @@ struct ModePopupView: View {
                         closePopup()
                     } label: {
                         VStack {
-                            Image("exerciseModeIcon")
+                            Image("SentencesSignFlowerFull")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 100)

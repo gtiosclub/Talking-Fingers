@@ -26,14 +26,12 @@ struct VisionExerciseView: View {
 
     // MARK: - State
     @State private var showHintPopup: Bool = false
-    @State private var showStuckPopup: Bool = false
     @State private var isPassed: Bool = false
     @State private var confidenceScore: Double = 0
     /// Captured at runtime so the camera card scales to the available window/screen height.
     @State private var viewHeight: CGFloat = 600
 
     // MARK: - Constants
-    private let passThreshold: Double = 70
     private let tfGreen      = Color(red: 159/255, green: 192/255, blue: 122/255)
     private let tfGreenText  = Color(red: 82/255,  green: 106/255, blue: 54/255)
 
@@ -88,18 +86,6 @@ struct VisionExerciseView: View {
                 showHintPopup = false
             }
         }
-        // Stuck popup
-        .popupHost(isPresented: $showStuckPopup) {
-            StuckPopUpComponent(
-                onKeepTrying: {
-                    showStuckPopup = false
-                },
-                onNextWord: {
-                    showStuckPopup = false
-                    handleSkip()
-                }
-            )
-        }
         // Reset local state whenever the card changes
         .onChange(of: currentCard.id) { _, _ in
             isPassed = false
@@ -127,19 +113,24 @@ struct VisionExerciseView: View {
     private var cameraCard: some View {
         SigningCameraCard(
             word: currentCard.term.displayName,
+            showSaveButton: true,
+            showStuckButton: false,
+            showSkipButton: true,
             cameraHeight: cameraHeight,
             isHintActive: showHintPopup,
-            isStuckActive: showStuckPopup,
             onConfidenceChange: { score in
                 confidenceScore = score
-                if score >= passThreshold && !isPassed {
+                // `SigningPracticeView` already emits only once the camera VM
+                // reaches its "good" threshold, so avoid applying a second,
+                // stricter gate here.
+                if !isPassed {
                     withAnimation(.easeOut(duration: 0.3)) {
                         isPassed = true
                     }
                 }
             },
             onHintTap: { showHintPopup = true },
-            onStuckTap: { showStuckPopup = true }
+            onSkipTap: { handleSkip() }
         )
         .id(currentCard.id)
     }
@@ -269,6 +260,7 @@ struct SigningCameraCard: View {
     let word: String
     var showSaveButton: Bool = true
     var showStuckButton: Bool = true
+    var showSkipButton: Bool = false
     var showWordTitle: Bool = true
     /// Fixed height for the live camera feed. Pass nil to fill available space.
     var cameraHeight: CGFloat? = nil
@@ -277,6 +269,7 @@ struct SigningCameraCard: View {
     var onConfidenceChange: (Double) -> Void = { _ in }
     var onHintTap: () -> Void = {}
     var onStuckTap: () -> Void = {}
+    var onSkipTap: () -> Void = {}
 
     @State private var isSaved: Bool = false
 
@@ -292,41 +285,6 @@ struct SigningCameraCard: View {
                     .padding(.top, 4)
             }
 
-            HStack {
-                if showSaveButton {
-                    Button { isSaved.toggle() } label: {
-                        Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                            .foregroundColor(tfGreenText)
-                            .frame(width: circleSize, height: circleSize)
-                            .background(Circle().fill(tfGreen.opacity(0.25)))
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Spacer()
-
-                HStack(spacing: 12) {
-                    if showStuckButton {
-                        Button { onStuckTap() } label: {
-                            Image(systemName: "exclamationmark")
-                                .fontWeight(.bold)
-                                .foregroundColor(.orange)
-                                .frame(width: circleSize, height: circleSize)
-                                .background(Circle().fill(Color.orange.opacity(isStuckActive ? 0.3 : 0.15)))
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Button { onHintTap() } label: {
-                        Image(systemName: isHintActive ? "lightbulb.max.fill" : "lightbulb.max")
-                            .foregroundColor(.orange)
-                            .frame(width: circleSize, height: circleSize)
-                            .background(Circle().fill(Color.orange.opacity(isHintActive ? 0.3 : 0.2)))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
             SigningPracticeView(signName: word, onConfidenceChange: onConfidenceChange)
                 .frame(
                     maxWidth: .infinity,
@@ -338,6 +296,56 @@ struct SigningCameraCard: View {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
                 )
+                .overlay(alignment: .topLeading) {
+                    HStack(spacing: 10) {
+                        if showSaveButton {
+                            Button { isSaved.toggle() } label: {
+                                Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                                    .foregroundColor(tfGreenText)
+                                    .frame(width: circleSize, height: circleSize)
+                                    .background(Circle().fill(tfGreen.opacity(0.25)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Button { onHintTap() } label: {
+                            Image(systemName: isHintActive ? "lightbulb.max.fill" : "lightbulb.max")
+                                .foregroundColor(.orange)
+                                .frame(width: circleSize, height: circleSize)
+                                .background(Circle().fill(Color.orange.opacity(isHintActive ? 0.3 : 0.2)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(12)
+                }
+                .overlay(alignment: .topTrailing) {
+                    if showStuckButton {
+                        Button { onStuckTap() } label: {
+                            Image(systemName: "exclamationmark")
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                                .frame(width: circleSize, height: circleSize)
+                                .background(Circle().fill(Color.orange.opacity(isStuckActive ? 0.3 : 0.15)))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(12)
+                    }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if showSkipButton {
+                        Button { onSkipTap() } label: {
+                            Text("Skip word")
+                                .font(.jakarta(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(Color(hex: "#97C171"))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(12)
+                    }
+                }
         }
         .padding(20)
         .background(

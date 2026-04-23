@@ -15,7 +15,8 @@ struct HintPopUpComponent: View {
     var body: some View {
         VStack(spacing: 23) {
             Text("Hint")
-                .font(.jakarta(size: 32, weight: .bold))
+                .font(.jakarta(size: 32))
+                .fontWeight(.semibold)
                 .foregroundColor(Color(red: 0.93, green: 0.78, blue: 0.50))
                 .padding(.top, 10)
 
