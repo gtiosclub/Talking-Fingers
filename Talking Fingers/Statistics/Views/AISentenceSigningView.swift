@@ -11,7 +11,10 @@ struct AISentenceSigningView: View {
     @Binding var sentenceModel: AISentenceModel
     @Binding var currentPage: Int
     var onSentenceComplete: (() -> Void)? = nil
+    var onSentenceFinished: ((Double) -> Void)? = nil
     var onSubtitleChange: ((String) -> Void)? = nil
+    /// When set (e.g. during sentence completion), all gloss terms use this color.
+    var glossUniformColor: Color? = nil
     /// Optional externally-owned camera VM. When provided, the live signing
     /// step reuses it instead of creating its own, which avoids tearing the
     /// camera session down and back up between sentences.
@@ -40,7 +43,8 @@ struct AISentenceSigningView: View {
                     onBack: {
                         withAnimation { currentPage = 1 }
                     },
-                    onComplete: onSentenceComplete,
+                    onSentenceFinished: onSentenceFinished,
+                    glossUniformColor: glossUniformColor,
                     externalCameraVM: externalCameraVM
                 )
             }

@@ -33,8 +33,9 @@ struct AISentenceSigningViewMacOS: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 32) {
-            CustomProgressBarMacOS(progress: sessionProgress)
-                .padding(.top, 40)
+            if currentPage == 1 {
+                CustomProgressBarMacOS(progress: sessionProgress)
+            }
 
             Text(subtitle)
                 .font(.system(size: 24, weight: .medium))
@@ -60,6 +61,7 @@ struct AISentenceSigningViewMacOS: View {
                 )
             }
         }
+        .padding(.top, 40)
         .padding(.horizontal, 80)
         .padding(.bottom, 40)
         .frame(minWidth: 800, minHeight: 600)

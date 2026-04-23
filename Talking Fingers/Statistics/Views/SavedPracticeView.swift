@@ -62,6 +62,10 @@ struct SavedPracticeView: View {
         .sheet(item: $createPracticeSheetMode) { sheetMode in
             let initialModeSelection = sheetMode.modeSelection
             GenerateSentencesView(initialModeSelection: initialModeSelection) { sentences, categories, practiceTitle in
+                print("🟢 [SavedPracticeView] Generation callback fired")
+                print("   - practiceTitle: \(practiceTitle)")
+                print("   - categories: \(categories.map(\.rawValue))")
+                print("   - sentences count: \(sentences.count)")
                 lastModeSelection = initialModeSelection
                 lastCategories = categories
                 lastPracticeTitle = practiceTitle
@@ -69,14 +73,28 @@ struct SavedPracticeView: View {
                 savedSessionStartSentenceIndex = 0
                 practiceSessionIdentity = UUID()
                 shouldPersistSessionOnFinish = true
+                print("🟢 [SavedPracticeView] State updated, dismissing sheet")
                 createPracticeSheetMode = nil
-                showSessionView = true
+                // Wait for the sheet dismissal animation to fully complete before
+                // presenting the full screen cover. This prevents SwiftUI from
+                // capturing stale state values during the presentation transition.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    print("🟢 [SavedPracticeView] After 0.4s delay, showing session view")
+                    print("   - lastPracticeTitle: \(lastPracticeTitle)")
+                    print("   - lastCategories: \(lastCategories?.map(\.rawValue) ?? [])")
+                    showSessionView = true
+                }
             }
             .presentationDetents([.height(460), .medium])
             .presentationDragIndicator(.visible)
             .presentationBackground(Color.white)
         }
         .universalFullScreenCover(isPresented: $showSessionView) {
+            let _ = print("🔵 [SavedPracticeView] fullScreenCover content closure evaluated")
+            let _ = print("   - lastPracticeTitle: '\(lastPracticeTitle)'")
+            let _ = print("   - lastCategories: \(lastCategories?.map(\.rawValue) ?? ["nil"])")
+            let _ = print("   - sessionSentences count: \(sessionSentences.count)")
+            let _ = print("   - practiceSessionIdentity: \(practiceSessionIdentity)")
             PracticeSessionView(
                 sentences: $sessionSentences,
                 practiceTitle: lastPracticeTitle.isEmpty ? "Practice" : lastPracticeTitle,
@@ -105,6 +123,15 @@ struct SavedPracticeView: View {
                 }
             )
             .id(practiceSessionIdentity)
+        }
+        .onChange(of: showSessionView) { oldValue, newValue in
+            print("🔵 [SavedPracticeView] showSessionView changed: \(oldValue) → \(newValue)")
+        }
+        .onChange(of: practiceSessionIdentity) { oldValue, newValue in
+            print("🔵 [SavedPracticeView] practiceSessionIdentity changed: \(oldValue) → \(newValue)")
+        }
+        .onChange(of: sessionSentences.count) { oldValue, newValue in
+            print("🔵 [SavedPracticeView] sessionSentences.count changed: \(oldValue) → \(newValue)")
         }
     }
 

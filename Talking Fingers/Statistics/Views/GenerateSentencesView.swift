@@ -234,11 +234,11 @@ private func generateSentencesForCategories(_ categories: Set<TermCategory>, mod
         )
     }
     
-    // 3. Call AI generation with focus terms
-    let aiViewModel = AIViewModel()
+    // 3. Call AI generation with focus terms using the shared instance
+    let aiViewModel = AIViewModel.shared
     
-    // Wait for API key to load
-    try await Task.sleep(nanoseconds: 500_000_000)
+    // Wait for API key to be available (handles cold starts properly)
+    try await aiViewModel.waitForAPIKey()
     
     let sentences = try await aiViewModel.generateAISentences(
         from: flashcards,

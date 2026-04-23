@@ -20,6 +20,9 @@ struct PracticeSessionView: View {
     @State private var showPracticeEntry: Bool = true
     @State private var signingSubtitle: String = "New sentence!"
     @State private var signingPageIndex: Int = 1
+    @State private var showSigningSentenceCompletionOverlay: Bool = false
+    @State private var signingSentenceAverageScore: Double = 0
+    @State private var isSigningSentenceFavorited: Bool = false
 
     /// Shared camera VM kept alive for the whole session so sentence changes
     /// don't tear the AVCaptureSession down and build a new one (which was
@@ -63,6 +66,12 @@ struct PracticeSessionView: View {
         let count = sentences.wrappedValue.count
         let clamped = min(max(0, initialSentenceIndex), count)
         self._currentSentenceIndex = State(initialValue: clamped)
+        
+        print("🟡 [PracticeSessionView] init called")
+        print("   - practiceTitle: \(practiceTitle)")
+        print("   - selectedCategories: \(selectedCategories?.map(\.rawValue) ?? ["nil"])")
+        print("   - sentences count: \(count)")
+        print("   - initialSentenceIndex: \(initialSentenceIndex) → clamped: \(clamped)")
     }
 
     private var sessionProgress: Double {
@@ -129,6 +138,15 @@ struct PracticeSessionView: View {
 
     private var currentTopSubtitleColor: Color { subtitleBlue }
 
+    /// Hide the session bar while on the live camera / per-word signing step;
+    /// it returns on the sentence intro + gloss page (page 1) for the next sentence.
+    private var shouldShowSessionProgressBar: Bool {
+        if showPracticeEntry { return true }
+        guard currentSentenceIndex < sentences.count else { return true }
+        if sentences[currentSentenceIndex].practiceType == .comprehension { return true }
+        return signingPageIndex != 2
+    }
+
     private var primaryActionButtonTitle: String? {
         if showPracticeEntry { return "Start" }
         guard currentSentenceIndex < sentences.count else { return nil }
@@ -184,96 +202,130 @@ struct PracticeSessionView: View {
             }
             currentSentenceIndex += 1
             signingPageIndex = 1
+            showSigningSentenceCompletionOverlay = false
         }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: onFinish) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "door.left.hand.open")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Color(hex: "#B3B3B3"))
-                        Text("Leave")
-                            .foregroundColor(Color(hex: "#B3B3B3"))
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                Text("Practice: \(practiceTitle)")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Color(hex: "#B3B3B3"))
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
-
-            sessionTopChrome
-
-            if showPracticeEntry {
-                PracticeEntryView(
-                    practiceTitle: practiceTitle,
-                    remainingSentenceCount: remainingSentenceCount,
-                    categories: displayCategories,
-                    flowerAssetName: entryFlowerAssetName
-                )
-            } else if currentSentenceIndex < sentences.count {
-                if sentences[currentSentenceIndex].practiceType == .comprehension {
-                    AISentenceComprehensionView(
-                        sentenceModel: $sentences[currentSentenceIndex],
-                        onSentenceComplete: {
-                            markCurrentSentenceCompletedAndAdvance()
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: onFinish) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "door.left.hand.open")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(Color(hex: "#B3B3B3"))
+                            Text("Leave")
+                                .foregroundColor(Color(hex: "#B3B3B3"))
+                                .font(.system(size: 16, weight: .medium))
                         }
-                    )
-                    .id(currentSentenceIndex)
-                } else {
-                    AISentenceSigningView(
-                        sentenceModel: $sentences[currentSentenceIndex],
-                        currentPage: $signingPageIndex,
-                        onSentenceComplete: {
-                            markCurrentSentenceCompletedAndAdvance()
-                        },
-                        onSubtitleChange: { subtitle in
-                            signingSubtitle = subtitle
-                        },
-                        externalCameraVM: sessionCameraVM
-                    )
-                    .id(currentSentenceIndex)
-                }
-            } else {
-                completionContent
-            }
+                    }
+                    .buttonStyle(.plain)
 
-            if let primaryActionButtonTitle {
-                Button(action: handlePrimaryActionButtonTap) {
-                    Text(primaryActionButtonTitle)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(finishGreen)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    Spacer()
+
+                    Text("Practice: \(practiceTitle)")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(Color(hex: "#B3B3B3"))
                 }
-                .buttonStyle(.plain)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 20)
+                .padding(.top, 30)
+                .padding(.bottom, 4)
+
+                sessionTopChrome
+
+                if showPracticeEntry {
+                    PracticeEntryView(
+                        practiceTitle: practiceTitle,
+                        remainingSentenceCount: remainingSentenceCount,
+                        categories: displayCategories,
+                        flowerAssetName: entryFlowerAssetName
+                    )
+                } else if currentSentenceIndex < sentences.count {
+                    if sentences[currentSentenceIndex].practiceType == .comprehension {
+                        AISentenceComprehensionView(
+                            sentenceModel: $sentences[currentSentenceIndex],
+                            onSentenceComplete: {
+                                markCurrentSentenceCompletedAndAdvance()
+                            }
+                        )
+                        .id(currentSentenceIndex)
+                    } else {
+                        AISentenceSigningView(
+                            sentenceModel: $sentences[currentSentenceIndex],
+                            currentPage: $signingPageIndex,
+                            onSentenceComplete: {
+                                markCurrentSentenceCompletedAndAdvance()
+                            },
+                            onSentenceFinished: { average in
+                                print("🟠 [PracticeSessionView] onSentenceFinished called - average: \(average)")
+                                print("   - practiceTitle at this moment: \(practiceTitle)")
+                                print("   - showPracticeEntry: \(showPracticeEntry)")
+                                signingSentenceAverageScore = average
+                                isSigningSentenceFavorited = false
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showSigningSentenceCompletionOverlay = true
+                                }
+                                print("🟠 [PracticeSessionView] set showSigningSentenceCompletionOverlay = true")
+                            },
+                            onSubtitleChange: { subtitle in
+                                signingSubtitle = subtitle
+                            },
+                            glossUniformColor: showSigningSentenceCompletionOverlay
+                                ? SentenceCompletionOverlay.glossAndButtonColor(for: signingSentenceAverageScore)
+                                : nil,
+                            externalCameraVM: sessionCameraVM
+                        )
+                        .id(currentSentenceIndex)
+                    }
+                } else {
+                    completionContent
+                }
+
+                if let primaryActionButtonTitle {
+                    Button(action: handlePrimaryActionButtonTap) {
+                        Text(primaryActionButtonTitle)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(finishGreen)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(!showSigningSentenceCompletionOverlay)
+
+            if showSigningSentenceCompletionOverlay {
+                SentenceCompletionOverlay(
+                    averageScore: signingSentenceAverageScore,
+                    isFavorited: $isSigningSentenceFavorited,
+                    onContinue: continueAfterSigningSentenceOverlay
+                )
+                .frame(maxWidth: .infinity)
+                .ignoresSafeArea(edges: .bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             #if os(iOS)
             Color(uiColor: .systemBackground)
+                .ignoresSafeArea()
             #elseif os(macOS)
             Color(nsColor: .windowBackgroundColor)
+                .ignoresSafeArea()
             #else
             Color.white
+                .ignoresSafeArea()
             #endif
         }
         .onAppear {
+            print("🟡 [PracticeSessionView] onAppear - practiceTitle: \(practiceTitle), showPracticeEntry: \(showPracticeEntry)")
             #if os(macOS)
             sessionCameraVM.isMirrored = true
             #endif
@@ -285,6 +337,7 @@ struct PracticeSessionView: View {
             sessionCameraVM.start()
         }
         .onDisappear {
+            print("🟡 [PracticeSessionView] onDisappear - practiceTitle: \(practiceTitle)")
             sessionCameraVM.stop()
         }
     }
@@ -352,23 +405,29 @@ struct PracticeSessionView: View {
     }
 
     private var sessionTopChrome: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            CustomProgressBar(
-                progress: currentTopProgress,
-                trackColor: barTrack,
-                trackOpacity: 1.0,
-                fillColor: barBlue,
-                barHeight: 10
-            )
+        Group {
+            if shouldShowSessionProgressBar || !currentTopSubtitle.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    if shouldShowSessionProgressBar {
+                        CustomProgressBar(
+                            progress: currentTopProgress,
+                            trackColor: barTrack,
+                            trackOpacity: 1.0,
+                            fillColor: barBlue,
+                            barHeight: 10
+                        )
+                    }
 
-            if !currentTopSubtitle.isEmpty {
-                Text(currentTopSubtitle)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(currentTopSubtitleColor)
+                    if !currentTopSubtitle.isEmpty {
+                        Text(currentTopSubtitle)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(currentTopSubtitleColor)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
     }
 
     private var performanceCard: some View {
@@ -434,12 +493,16 @@ struct PracticeSessionView: View {
                 isExtending = false
                 signingPageIndex = 1
                 showPracticeEntry = true
+                showSigningSentenceCompletionOverlay = false
             }
         }
     }
 
     private func handlePrimaryActionButtonTap() {
         if showPracticeEntry {
+            print("🟡 [PracticeSessionView] Start tapped - transitioning from entry to signing")
+            print("   - practiceTitle: \(practiceTitle)")
+            print("   - selectedCategories: \(selectedCategories?.map(\.rawValue) ?? ["nil"])")
             signingSubtitle = "New sentence!"
             signingPageIndex = 1
             showPracticeEntry = false
@@ -452,5 +515,12 @@ struct PracticeSessionView: View {
                 signingPageIndex = 2
             }
         }
+    }
+
+    private func continueAfterSigningSentenceOverlay() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showSigningSentenceCompletionOverlay = false
+        }
+        markCurrentSentenceCompletedAndAdvance()
     }
 }
