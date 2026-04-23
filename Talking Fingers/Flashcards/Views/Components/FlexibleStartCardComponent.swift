@@ -57,6 +57,17 @@ enum StartContext {
         }
     }
     
+    var heroImageName: String? {
+        switch self {
+        case .learn:
+            return "SentencesComprehendFlowerFull"
+        case .exercise:
+            return "SentencesSignFlowerFull"
+        case .dailyChallenge:
+            return nil
+        }
+    }
+    
     var id: String {
         switch self {
         case .learn(let cat):
@@ -152,12 +163,20 @@ struct FlexibleStartCardComponent: View {
 
                 Spacer()
 
-                Image(systemName: context.iconName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: isDaily ? 120 : 150)
-                    .foregroundColor(isDaily ? .orange : lightGreen)
-                    .padding(.bottom, 10)
+                if let heroImageName = context.heroImageName {
+                    Image(heroImageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 165)
+                        .padding(.bottom, 6)
+                } else {
+                    Image(systemName: context.iconName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: isDaily ? 120 : 150)
+                        .foregroundColor(isDaily ? .orange : lightGreen)
+                        .padding(.bottom, 10)
+                }
 
                 if case .dailyChallenge = context {
                     Text(context.title)
@@ -173,8 +192,14 @@ struct FlexibleStartCardComponent: View {
                         .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))
                 }
 
-                Text("\(completed)/\(total) Words Completed")
-                    .foregroundColor(.black)
+                if case .dailyChallenge = context {
+                    Text("\(completed)/\(total) Words Completed")
+                        .foregroundColor(.black)
+                } else {
+                    Text("\(total) words to go!")
+                        .font(.jakarta(size: 16, weight: .medium))
+                        .foregroundColor(Color.black.opacity(0.35))
+                }
 
                 ProgressView(value: progress)
                     .tint(Color(red: 0.70, green: 0.80, blue: 0.90))
