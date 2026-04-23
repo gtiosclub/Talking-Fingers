@@ -87,6 +87,7 @@ struct GenerateSentencesView: View {
                     .font(.jakarta(size: 15, weight: .semibold))
                 
                 TextField("Enter training name", text: $trainingName)
+                    .font(.jakarta(size: 17))
                     .textFieldStyle(.plain)
                     .focused($isTrainingNameFocused)
                     .submitLabel(.done)
@@ -104,7 +105,7 @@ struct GenerateSentencesView: View {
             
             if let error = errorMessage {
                 Text(error)
-                    .font(.caption)
+                    .font(.jakartaCaption)
                     .foregroundColor(.red)
                     .padding(.horizontal)
             }
@@ -200,10 +201,10 @@ struct CategoryButton: View {
     var body: some View {
         Button(action: action) {
             Text(category.rawValue.capitalized)
-                .font(.jakarta(size: 17))
-                .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
+                .font(.jakarta(size: 17, weight: .medium))
+                .foregroundColor(isSelected ? Color(hex: "#ECA509") : Color(hex: "#464646"))
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(isSelected ? Color(hex: "#FDF2D8") : .white)
