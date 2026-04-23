@@ -416,7 +416,7 @@ private struct PracticeModeCard: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
-                        .font(.jakarta(size: 28, weight: .semibold))
+                        .font(.jakarta(size: 27, weight: .semibold))
                         .foregroundColor(tint)
 
                     #if os(iOS)
