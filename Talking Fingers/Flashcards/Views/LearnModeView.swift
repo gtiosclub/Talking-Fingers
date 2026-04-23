@@ -24,7 +24,7 @@ struct LearnModeView: View {
                 VStack(spacing: 20) {
                     if !vm.showingCamera {
                         Text(vm.word)
-                            .font(.system(size: 45, weight: .bold))
+                            .font(.jakarta(size: 45, weight: .bold))
                             .padding(.top, 10)
 
                         gifCard

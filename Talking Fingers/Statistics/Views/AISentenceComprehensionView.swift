@@ -61,10 +61,10 @@ struct AISentenceComprehensionView: View {
                         .fill(Color(white: 0.93))
                     VStack(spacing: 2) {
                         Image(systemName: "person.fill")
-                            .font(.system(size: 24))
+                            .font(.jakarta(size: 24))
                             .foregroundColor(.gray.opacity(0.5))
                         Text(term.rawValue.lowercased())
-                            .font(.system(size: 9))
+                            .font(.jakarta(size: 9))
                             .foregroundColor(.gray.opacity(0.65))
                             .lineLimit(1)
                     }

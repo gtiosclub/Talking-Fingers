@@ -60,14 +60,14 @@ struct GenerateSentencesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(practiceTitle)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.jakarta(size: 20, weight: .semibold))
                 .foregroundColor(practiceTitleColor)
                 .padding(.top, 20)
             
             
             VStack(alignment: .leading, spacing: 16) {
                 Text("Categories")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.jakarta(size: 15, weight: .semibold))
                 
                 FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
                     ForEach(availableCategories, id: \.self) { category in
@@ -84,7 +84,7 @@ struct GenerateSentencesView: View {
             
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Name")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.jakarta(size: 15, weight: .semibold))
                 
                 TextField("Enter training name", text: $trainingName)
                     .textFieldStyle(.plain)
@@ -120,7 +120,7 @@ struct GenerateSentencesView: View {
                         .padding(.vertical, 12)
                 } else {
                     Text("Start")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.jakarta(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -147,10 +147,12 @@ struct GenerateSentencesView: View {
     }
     
     private func toggleCategory(_ category: TermCategory) {
-        if selectedCategories.contains(category) {
-            selectedCategories.remove(category)
-        } else {
-            selectedCategories.insert(category)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if selectedCategories.contains(category) {
+                selectedCategories.remove(category)
+            } else {
+                selectedCategories.insert(category)
+            }
         }
     }
     
@@ -198,7 +200,7 @@ struct CategoryButton: View {
     var body: some View {
         Button(action: action) {
             Text(category.rawValue.capitalized)
-                .font(.system(size: 17))
+                .font(.jakarta(size: 17))
                 .foregroundColor(isSelected ? Color(hex: "#ECA509") : .black)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

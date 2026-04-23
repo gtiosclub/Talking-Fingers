@@ -158,10 +158,10 @@ struct MultipleChoice: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.jakarta(size: 16, weight: .medium))
 
                         Text("Leave")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.jakarta(size: 16, weight: .medium))
                     }
                     .foregroundColor(.gray)
                 }
@@ -238,7 +238,7 @@ struct MultipleChoice: View {
             // Question text (if desired)
             if !question.isEmpty {
                 Text(question)
-                    .font(.headline)
+                    .font(.jakartaHeadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -269,7 +269,7 @@ struct MultipleChoice: View {
                 .fill(color(for: currentCard.progress))
                 .frame(width: 6, height: 6)
             Text("Level: \(title(for: currentCard.progress))")
-                .font(.caption2)
+                .font(.jakartaCaption2)
                 .foregroundColor(Color.secondary.opacity(0.7))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -314,7 +314,7 @@ struct MultipleChoice: View {
         } label: {
             HStack {
                 Text(text)
-                    .font(.body.weight(isSelected ? .semibold : .regular))
+                    .font(.jakarta(size: 17, weight: isSelected ? .semibold : .regular))
                     .foregroundColor(.primary)
                 Spacer()
             }
@@ -342,7 +342,7 @@ struct MultipleChoice: View {
             handleSubmission()
         } label: {
             Text("Submit")
-                .font(.headline)
+                .font(.jakartaHeadline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -444,20 +444,20 @@ private struct ResultCard: View {
                     .foregroundColor(isCorrect ? .green : .red)
 
                 Text(isCorrect ? "Amazing!" : "Not quite!")
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.jakarta(size: 24, weight: .bold))
                     .foregroundColor(isCorrect ? Color.green : Color.red)
             }
 
             Text(message)
                 .foregroundColor(isCorrect ? Color.green : Color.red)
-                .font(.system(size: 16, weight: .medium))
+                .font(.jakarta(size: 16, weight: .medium))
 
             // BUTTON
             Button {
                 onNext()
             } label: {
                 Text("Continue")
-                    .font(.headline)
+                    .font(.jakartaHeadline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)

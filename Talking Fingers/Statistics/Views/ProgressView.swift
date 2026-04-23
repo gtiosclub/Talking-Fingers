@@ -101,7 +101,7 @@ struct TFProgressView: View {
 
                 }) {
                     Label("", systemImage: "person.crop.circle")
-                        .font(.system(size: 32))
+                        .font(.jakarta(size: 32))
                         .foregroundColor(.secondary)
                 }
             }
@@ -113,11 +113,11 @@ struct TFProgressView: View {
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Progress")
-                .font(.largeTitle)
+                .font(.jakartaLargeTitle)
                 .bold()
 
             Text(Date.now.formatted(date: .abbreviated, time: .omitted))
-                .font(.title2)
+                .font(.jakartaTitle2)
                 .foregroundColor(.secondary)
                 .fontWeight(.semibold)
         }
@@ -167,7 +167,7 @@ struct TFProgressView: View {
                         vm.requestDelete(item)
                     }) {
                         Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 22))
+                            .font(.jakarta(size: 22))
                             .foregroundColor(.red)
                     }
                     .buttonStyle(.plain)

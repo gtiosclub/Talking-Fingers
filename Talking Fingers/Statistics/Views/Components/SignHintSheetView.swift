@@ -42,14 +42,14 @@ struct SignHintSheetView: View {
             // Title row
             ZStack {
                 Text(word.uppercased())
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.jakarta(size: 28, weight: .bold))
                     .foregroundColor(.black)
 
                 HStack {
                     Spacer()
                     Button(action: onDismiss) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
+                            .font(.jakarta(size: 22))
                             .foregroundColor(Color.gray.opacity(0.5))
                             .contentShape(Circle())
                     }
@@ -70,7 +70,7 @@ struct SignHintSheetView: View {
 
             Button(action: onDismiss) {
                 Text("Got it")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.jakarta(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -104,10 +104,10 @@ struct SignHintSheetView: View {
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "hand.raised.fingers.spread")
-                        .font(.system(size: 48))
+                        .font(.jakarta(size: 48))
                         .foregroundColor(Color(hex: "#B3B3B3"))
                     Text("Sign demonstration\nnot available")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.jakarta(size: 15, weight: .medium))
                         .foregroundColor(Color(hex: "#767676"))
                         .multilineTextAlignment(.center)
                 }
@@ -130,10 +130,10 @@ struct SignHintSheetView: View {
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "camera.fill")
-                        .font(.system(size: 36))
+                        .font(.jakarta(size: 36))
                         .foregroundColor(Color(hex: "#B3B3B3"))
                     Text("Camera not available")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.jakarta(size: 15, weight: .medium))
                         .foregroundColor(Color(hex: "#767676"))
                         .multilineTextAlignment(.center)
                 }
@@ -160,7 +160,7 @@ struct SignHintSheetView: View {
                 .padding(.bottom, 16)
 
             Text(word.uppercased())
-                .font(.system(size: 28, weight: .bold))
+                .font(.jakarta(size: 28, weight: .bold))
                 .foregroundColor(.black)
                 .padding(.bottom, 16)
 
@@ -175,7 +175,7 @@ struct SignHintSheetView: View {
 
             Button(action: onDismiss) {
                 Text("Got it")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.jakarta(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -217,10 +217,10 @@ struct SignHintSheetView: View {
     private var placeholderGifView: some View {
         VStack(spacing: 12) {
             Image(systemName: "hand.raised.fingers.spread")
-                .font(.system(size: 48))
+                .font(.jakarta(size: 48))
                 .foregroundColor(Color(hex: "#B3B3B3"))
             Text("Sign demonstration\nnot available")
-                .font(.system(size: 15, weight: .medium))
+                .font(.jakarta(size: 15, weight: .medium))
                 .foregroundColor(Color(hex: "#767676"))
                 .multilineTextAlignment(.center)
         }
@@ -242,10 +242,10 @@ struct SignHintSheetView: View {
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "camera.fill")
-                        .font(.system(size: 36))
+                        .font(.jakarta(size: 36))
                         .foregroundColor(Color(hex: "#B3B3B3"))
                     Text("Camera not available")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.jakarta(size: 15, weight: .medium))
                         .foregroundColor(Color(hex: "#767676"))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

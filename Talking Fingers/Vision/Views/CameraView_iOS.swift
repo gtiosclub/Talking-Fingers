@@ -118,7 +118,7 @@ struct CameraView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: showRawConfidence ? "number" : "textformat")
                                 Text(showRawConfidence ? "Show score" : "Show label")
-                                    .font(.callout)
+                                    .font(.jakartaCallout)
                             }
                         }
                         .toggleStyle(.switch)
@@ -142,7 +142,7 @@ struct CameraView: View {
                                 .allowsHitTesting(false)
 
                             Text("\(countdown)")
-                                .font(.system(size: 120, weight: .bold, design: .rounded))
+                                .font(.jakarta(size: 120, weight: .bold))
                                 .foregroundStyle(.white)
                                 .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
                                 .contentTransition(.numericText())
@@ -153,7 +153,7 @@ struct CameraView: View {
                             VStack {
                                 Spacer()
                                 Text(confidenceDisplay)
-                                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                                    .font(.jakarta(size: 56, weight: .bold))
                                     .foregroundStyle(confidenceColor)
                                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                                     .contentTransition(.interpolate)
@@ -193,10 +193,10 @@ struct CameraView: View {
                             Text("Browse Recorded Signs")
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
+                                .font(.jakarta(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
-                        .font(.headline)
+                        .font(.jakartaHeadline)
                         .padding()
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
@@ -333,7 +333,7 @@ struct CameraView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text("\(handSide) \(joint.label)")
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)
@@ -364,7 +364,7 @@ struct CameraView: View {
                     ZStack {
                         if jointNamesVisibility {
                             Text(joint.label)
-                                .font(.caption2)
+                                .font(.jakartaCaption2)
                                 .padding(4)
                                 .background(.ultraThinMaterial, in: Capsule())
                                 .position(pos)

@@ -27,7 +27,7 @@ struct ModePopupView: View {
             VStack(spacing: 20) {
                 
                 Text("Select Mode")
-                    .font(.title)
+                    .font(.jakartaTitle)
                     .fontWeight(.semibold)
                 
 #if os(macOS)
@@ -43,7 +43,7 @@ struct ModePopupView: View {
                                 .frame(height: 80)
                             
                             Text("Learn")
-                                .font(.title)
+                                .font(.jakartaTitle)
                                 .foregroundStyle(.black)
                             
                             Spacer()
@@ -71,12 +71,12 @@ struct ModePopupView: View {
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Exercise")
-                                    .font(.title)
+                                    .font(.jakartaTitle)
                                     .foregroundStyle(.black)
                                 
                                 if !isExerciseUnlocked {
                                     Text("Complete Learn first")
-                                        .font(.caption)
+                                        .font(.jakartaCaption)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -109,7 +109,7 @@ struct ModePopupView: View {
                                 .frame(height: 100)
                             
                             Text("Learn")
-                                .font(.title2)
+                                .font(.jakartaTitle2)
                                 .foregroundStyle(.black)
                         }
                         .frame(maxWidth: .infinity, minHeight: 220)
@@ -132,12 +132,12 @@ struct ModePopupView: View {
                                 .frame(height: 100)
                             
                             Text("Exercise")
-                                .font(.title2)
+                                .font(.jakartaTitle2)
                                 .foregroundStyle(.black)
                             
                             if !isExerciseUnlocked {
                                 Text("Complete Learn first")
-                                    .font(.caption)
+                                    .font(.jakartaCaption)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -182,7 +182,7 @@ struct ModePopupView: View {
         Color.gray.opacity(0.2)
             .ignoresSafeArea()
         Text("Home Page")
-            .font(.largeTitle)
+            .font(.jakartaLargeTitle)
         
         ModePopupView(
             isPresented: .constant(true),

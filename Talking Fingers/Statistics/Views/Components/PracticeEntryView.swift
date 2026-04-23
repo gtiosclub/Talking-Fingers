@@ -13,14 +13,14 @@ struct PracticeEntryView: View {
             Spacer(minLength: 20)
 
             Text(practiceTitle)
-                .font(.system(size: 40, weight: .semibold))
+                .font(.jakarta(size: 40, weight: .bold))
                 .foregroundColor(Color(hex: "#464646"))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
 
             Text("\(remainingSentenceCount) sentence\(remainingSentenceCount == 1 ? "" : "s") to go!")
-                .font(.system(size: 20, weight: .medium))
+                .font(.jakarta(size: 20, weight: .medium))
                 .foregroundColor(Color(hex: "#767676"))
                 .padding(.top, 20)
 
@@ -57,10 +57,10 @@ struct PracticeEntryView: View {
     private func categoryChip(_ category: TermCategory) -> some View {
         HStack(spacing: 3) {
             Image(systemName: symbolName(for: category))
-                .font(.system(size: 17, weight: .regular))
+                .font(.jakarta(size: 17, weight: .regular))
                 .foregroundColor(Color(hex: "#ECA509"))
             Text(category.displayName)
-                .font(.system(size: 17, weight: .regular))
+                .font(.jakarta(size: 17, weight: .regular))
                 .foregroundColor(Color(hex: "#ECA509"))
         }
         .foregroundColor(chipTextColor)

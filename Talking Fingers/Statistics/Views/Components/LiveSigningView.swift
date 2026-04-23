@@ -55,7 +55,7 @@ struct LiveSigningView: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(sentenceModel.sentence)
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.jakarta(size: 17, weight: .medium))
                     .foregroundColor(Color(hex: "#767676"))
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,7 +83,7 @@ struct LiveSigningView: View {
                 if !isFinished {
                     Button(action: skipWord) {
                         Text("Skip word")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
@@ -125,7 +125,7 @@ struct LiveSigningView: View {
                 HStack(spacing: 6) {
                     ForEach(Array(glossWords.enumerated()), id: \.offset) { index, term in
                         Text(term.rawValue)
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.jakarta(size: 28, weight: .bold))
                             .foregroundColor(colorForWord(at: index))
                             .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
                             .id("gloss-\(index)")
@@ -182,19 +182,19 @@ struct LiveSigningView: View {
 
                 if isCompleted {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(Color(hex: "#71A046"))
                 } else if isSkipped {
                     Image(systemName: "forward.fill")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(.gray)
                 } else if isCurrent {
                     Image(systemName: "lightbulb.max")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(Color(hex: "#F8BC3A"))
                 } else {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(Color(hex: "#B3B3B3"))
                 }
             }
@@ -207,7 +207,7 @@ struct LiveSigningView: View {
             }
 
             Text(wordLabel)
-                .font(.system(size: 17, weight: .bold))
+                .font(.jakarta(size: 17, weight: .bold))
                 .foregroundColor(Color(hex: "#767676"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)

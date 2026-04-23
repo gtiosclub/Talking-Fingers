@@ -255,11 +255,11 @@ struct PracticeSessionView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "door.left.hand.open")
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.jakarta(size: 16, weight: .medium))
                                 .foregroundColor(Color(hex: "#B3B3B3"))
                             Text("Leave")
                                 .foregroundColor(Color(hex: "#B3B3B3"))
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.jakarta(size: 16, weight: .medium))
                         }
                     }
                     .buttonStyle(.plain)
@@ -267,7 +267,7 @@ struct PracticeSessionView: View {
                     Spacer()
 
                     Text("Practice: \(practiceTitle)")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.jakarta(size: 16, weight: .medium))
                         .foregroundColor(Color(hex: "#B3B3B3"))
                 }
                 .padding(.horizontal, 24)
@@ -355,7 +355,7 @@ struct PracticeSessionView: View {
                 if let primaryActionButtonTitle {
                     Button(action: handlePrimaryActionButtonTap) {
                         Text(primaryActionButtonTitle)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.jakarta(size: 17, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -446,7 +446,7 @@ struct PracticeSessionView: View {
             HStack(spacing: 14) {
                 Button(action: extendTapped) {
                     Text("Extend")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.jakarta(size: 17, weight: .semibold))
                         .foregroundColor(extendText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -461,7 +461,7 @@ struct PracticeSessionView: View {
                     onFinish(true)
                 } label: {
                     Text("Finish")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.jakarta(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -496,16 +496,16 @@ struct PracticeSessionView: View {
 
                     VStack(spacing: 2) {
                         Text("\(scoreInt)")
-                            .font(.system(size: 76, weight: .semibold))
+                            .font(.jakarta(size: 76, weight: .semibold))
                             .foregroundColor(completionScoreInnerText)
                         Text("of 100")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(completionScoreInnerText.opacity(0.92))
                     }
                 }
 
                 Text(completionTopMessage(for: tier))
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.jakarta(size: 20, weight: .semibold))
                     .foregroundColor(completionTierAccent(for: tier))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
@@ -518,7 +518,7 @@ struct PracticeSessionView: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 Text(tier.bloomMessage)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.jakarta(size: 20, weight: .semibold))
                     .foregroundColor(completionTierAccent(for: tier))
 
                 ForEach(completionBarRowSpecs, id: \.key) { spec in
@@ -597,7 +597,7 @@ struct PracticeSessionView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 15, weight: .medium))
+                .font(.jakarta(size: 15, weight: .medium))
                 .foregroundColor(Color(hex: "#464646"))
 
             HStack(alignment: .center, spacing: 12) {
@@ -614,7 +614,7 @@ struct PracticeSessionView: View {
                 .frame(height: 8)
 
                 Image(systemName: "medal.fill")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.jakarta(size: 18, weight: .medium))
                     .foregroundColor(Color(hex: "#A9CEEC"))
                     .frame(width: 22, alignment: .center)
             }
@@ -637,7 +637,7 @@ struct PracticeSessionView: View {
 
                     if !currentTopSubtitle.isEmpty {
                         Text(currentTopSubtitle)
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(currentTopSubtitleColor)
                     }
                 }
@@ -704,18 +704,18 @@ struct LeaveConfirmationSheet: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 Text("Leave this practice?")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.jakarta(size: 22, weight: .bold))
                     .foregroundColor(.black)
 
                 Text("If you'd like to be able to come back to this practice, tap Save.")
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.jakarta(size: 15, weight: .regular))
                     .foregroundColor(Color(hex: "#767676"))
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
                     Button(action: onDontSave) {
                         Text("Don't save")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.jakarta(size: 17, weight: .semibold))
                             .foregroundColor(dontSaveRed)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -726,7 +726,7 @@ struct LeaveConfirmationSheet: View {
 
                     Button(action: onSave) {
                         Text("Save")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.jakarta(size: 17, weight: .semibold))
                             .foregroundColor(saveGreen)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)

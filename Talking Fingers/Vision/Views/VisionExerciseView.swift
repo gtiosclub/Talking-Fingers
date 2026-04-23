@@ -150,7 +150,7 @@ struct VisionExerciseView: View {
             handlePass()
         } label: {
             Text("Next Word")
-                .font(.headline)
+                .font(.jakartaHeadline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -222,9 +222,9 @@ struct SessionTopBar<Trailing: View>: View {
                 Button { onLeave() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.jakarta(size: 16, weight: .medium))
                         Text("Leave")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.jakarta(size: 16, weight: .medium))
                     }
                     .foregroundColor(.gray)
                 }
@@ -288,7 +288,7 @@ struct SigningCameraCard: View {
         VStack(spacing: 16) {
             if showWordTitle {
                 Text(word)
-                    .font(.system(size: 45, weight: .bold))
+                    .font(.jakarta(size: 45, weight: .bold))
                     .padding(.top, 4)
             }
 
@@ -364,19 +364,19 @@ private struct StuckPopUpComponent: View {
         VStack(spacing: 20) {
 
             Text("Stuck?")
-                .font(.system(size: 28, weight: .bold))
+                .font(.jakarta(size: 28, weight: .bold))
                 .foregroundColor(Color(red: 0.93, green: 0.78, blue: 0.50))
                 .padding(.top, 8)
 
             Text("Would you like to move on?")
-                .font(.system(size: 20, weight: .medium))
+                .font(.jakarta(size: 20, weight: .medium))
                 .foregroundColor(.black.opacity(0.8))
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 12) {
                 Button(action: onKeepTrying) {
                     Text("Keep Trying")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.jakarta(size: 16, weight: .semibold))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -393,7 +393,7 @@ private struct StuckPopUpComponent: View {
 
                 Button(action: onNextWord) {
                     Text("Next Word")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.jakarta(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)

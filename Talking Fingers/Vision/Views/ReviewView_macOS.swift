@@ -40,7 +40,7 @@ struct ReviewView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Review")
-                            .font(.system(size: 28, weight: .semibold))
+                            .font(.jakarta(size: 28, weight: .semibold))
                         Text("Record and instantly replay a sign take")
                             .foregroundStyle(.secondary)
                     }
@@ -58,7 +58,7 @@ struct ReviewView: View {
                                 .allowsHitTesting(false)
 
                             Text("\(countdown)")
-                                .font(.system(size: 120, weight: .bold, design: .rounded))
+                                .font(.jakarta(size: 120, weight: .bold))
                                 .foregroundStyle(.white)
                                 .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
                         }
@@ -86,7 +86,7 @@ struct ReviewView: View {
                     Image(systemName: cameraVM.isRecording ? "stop.circle.fill" : "record.circle")
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(.red, .white)
-                        .font(.system(size: 72))
+                        .font(.jakarta(size: 72))
                 }
                 .buttonStyle(.plain)
                 .disabled(countdown > 0 || signName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -244,9 +244,9 @@ private struct ReviewPlaybackView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(take.signName.capitalized)
-                        .font(.headline)
+                        .font(.jakartaHeadline)
                     Text(take.displayFileName)
-                        .font(.subheadline)
+                        .font(.jakartaSubheadline)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()

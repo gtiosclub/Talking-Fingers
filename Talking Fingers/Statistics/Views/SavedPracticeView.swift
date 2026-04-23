@@ -187,7 +187,7 @@ struct SavedPracticeView: View {
 
     private var headerSection: some View {
         Text("Practice")
-            .font(.system(size: 32, weight: .bold))
+            .font(.jakarta(size: 32, weight: .bold))
             .foregroundColor(Color(hex: "#2A7BBC"))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
@@ -214,7 +214,7 @@ struct SavedPracticeView: View {
     private var startNewPracticeSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Start a new practice")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.jakarta(size: 20, weight: .semibold))
                 .foregroundColor(.black.opacity(0.78))
 
             #if os(macOS)
@@ -294,7 +294,7 @@ struct SavedPracticeView: View {
 
     private var trainingSectionTitle: some View {
         Text("My Practices")
-            .font(.system(size: 20, weight: .semibold))
+            .font(.jakarta(size: 20, weight: .semibold))
             .foregroundColor(.black.opacity(0.78))
             .padding(.top, 6)
     }
@@ -416,17 +416,17 @@ private struct PracticeModeCard: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
-                        .font(.system(size: 28, weight: .medium))
+                        .font(.jakarta(size: 28, weight: .semibold))
                         .foregroundColor(tint)
 
                     #if os(iOS)
                     Text(subtitle)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.jakarta(size: 15, weight: .medium))
                         .foregroundColor(.black.opacity(0.78))
                         .multilineTextAlignment(.leading)
                     #else
                     Text(subtitle)
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.jakarta(size: 17, weight: .medium))
                         .foregroundColor(.black.opacity(0.78))
                         .multilineTextAlignment(.leading)
                     #endif
@@ -485,12 +485,12 @@ struct TrainingCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
                         Text(item.title)
-                            .font(.system(size: 17, weight: .medium))
+                            .font(.jakarta(size: 17, weight: .medium))
                             .foregroundColor(.black)
                         completionTag
                     }
                     Text(item.subtitle)
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.jakarta(size: 16, weight: .regular))
                         .foregroundColor(.gray)
                 }
 
@@ -512,7 +512,7 @@ struct TrainingCard: View {
                     }
                 } label: {
                     Text(actionType == .continueSession ? "Continue" : "Retry")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.jakarta(size: 17, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -545,7 +545,7 @@ struct TrainingCard: View {
     @ViewBuilder
     private var leftIcon: some View {
         Image(systemName: item.iconName)
-            .font(.system(size: 20, weight: .regular))
+            .font(.jakarta(size: 20, weight: .regular))
             .foregroundColor(Color(hex: "#FBDA92"))
             .frame(width: 28)
     }
@@ -553,7 +553,7 @@ struct TrainingCard: View {
     @ViewBuilder
     private var completionTag: some View {
         Text(item.isComplete ? "Complete" : "Incomplete")
-            .font(.system(size: 11, weight: .medium))
+            .font(.jakarta(size: 11, weight: .medium))
             .foregroundColor(item.isComplete ? Color(hex: "#4A7C3F") : Color.gray)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -576,7 +576,7 @@ struct TrainingCard: View {
                     .frame(width: 54, height: 54)
 
                 Text("\(Int(accuracy.rounded()))")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.jakarta(size: 17, weight: .semibold))
                     .foregroundColor(item.accuracyTextColor)
             }
         } else {

@@ -43,24 +43,24 @@ struct EndCardComponent: View {
             
             if case .learn(let cat) = context {
                 Text("\(cat.displayName) Exercise")
-                    .font(.system(size: 32))
+                    .font(.jakarta(size: 32))
                     .foregroundColor(.black.opacity(0.7))
                 
                 Text("Unlocked!")
-                    .font(.system(size: 35, weight: .bold))
+                    .font(.jakarta(size: 35, weight: .bold))
                     .foregroundColor(Color(red: 0.93, green: 0.78, blue: 0.50))
                 
             } else {
                 Text("Congrats!")
-                    .font(.system(size: 36, weight: .bold))
+                    .font(.jakarta(size: 36, weight: .bold))
                 
                 if case .exercise(let cat) = context {
                     VStack(spacing: 6) {
                         Text("You have completed")
-                            .font(.system(size: 31))
+                            .font(.jakarta(size: 31))
                             .foregroundColor(.black.opacity(0.8))
                         Text("\(cat.displayName)!")
-                            .font(.system(size: 31, weight: .bold))
+                            .font(.jakarta(size: 31, weight: .bold))
                             .foregroundColor(Color(red: 0.93, green: 0.78, blue: 0.50))
                     }
                 }
@@ -68,7 +68,7 @@ struct EndCardComponent: View {
                 Spacer().frame(height: 10)
                 
                 Text("\(total)/\(total) Words Completed")
-                    .font(.subheadline)
+                    .font(.jakartaSubheadline)
                     .foregroundColor(.black.opacity(0.8))
                 
                 ProgressView(value: 1.0)
@@ -82,7 +82,7 @@ struct EndCardComponent: View {
             if case .learn = context {
                 Button(action: onGoToExercise) {
                     Text("Go to Exercise")
-                        .font(.headline)
+                        .font(.jakartaHeadline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -95,7 +95,7 @@ struct EndCardComponent: View {
             Button(action: onGoHome) {
                 let myColor = Color(red: 0.30, green: 0.55, blue: 0.30)
                 Text("Go Home")
-                    .font(.headline)
+                    .font(.jakartaHeadline)
                     .foregroundColor(isLearnMode ? myColor : .white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)

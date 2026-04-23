@@ -18,7 +18,7 @@ struct AddWidgetSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Add Widget")
-                .font(.title)
+                .font(.jakartaTitle)
                 .fontWeight(.semibold)
             TextField("Widget name", text: $name)
                 .textFieldStyle(.roundedBorder)

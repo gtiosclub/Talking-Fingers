@@ -21,16 +21,16 @@ struct CategoryComponent: View {
                 
                 Image(systemName: iconName(for: title))
                     .foregroundColor(.white)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.jakarta(size: 20, weight: .semibold))
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.jakarta(size: 18, weight: .semibold))
                     .foregroundStyle(.black)
                 
                 Text(subtitle(for: title))
-                    .font(.system(size: 14))
+                    .font(.jakarta(size: 14))
                     .foregroundStyle(.gray)
             }
             

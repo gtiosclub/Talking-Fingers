@@ -17,7 +17,7 @@ struct QuestionMarkPopUpComponent: View {
             Spacer()
                 .frame(height: 1)
             Text(explanationText)
-                .font(.system(size: 27, weight: .bold))
+                .font(.jakarta(size: 27, weight: .bold))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 1)
                 
@@ -27,7 +27,7 @@ struct QuestionMarkPopUpComponent: View {
                 onDismiss()
             } label: {
                 Text("Yes")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.jakarta(size: 18, weight: .semibold))
                     .padding(.vertical, 10)
                     .padding(.horizontal, 132)
                     .background(Color.white)
@@ -42,7 +42,7 @@ struct QuestionMarkPopUpComponent: View {
                 onDismiss()
             } label: {
                 Text("No")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.jakarta(size: 18, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(Color(red: 0.2, green: 0.2, blue: 0.2))

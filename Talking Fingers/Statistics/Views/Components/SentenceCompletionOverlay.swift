@@ -72,9 +72,9 @@ struct SentenceCompletionOverlay: View {
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
                     Image(systemName: roundedScore >= 75 ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.jakarta(size: 24, weight: .semibold))
                     Text(titleText)
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.jakarta(size: 24, weight: .semibold))
                 }
                 .foregroundColor(textAccent)
 
@@ -82,19 +82,19 @@ struct SentenceCompletionOverlay: View {
 
                 Button(action: { isFavorited.toggle() }) {
                     Image(systemName: isFavorited ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 22, weight: .medium))
+                        .font(.jakarta(size: 22, weight: .medium))
                         .foregroundColor(textAccent)
                 }
                 .buttonStyle(.plain)
             }
 
             Text("Accuracy: \(roundedScore)%")
-                .font(.system(size: 17, weight: .regular))
+                .font(.jakarta(size: 17, weight: .regular))
                 .foregroundColor(textAccent)
 
             Button(action: onContinue) {
                 Text("Continue")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.jakarta(size: 20, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)

@@ -27,7 +27,7 @@ struct AISentenceSigningViewMacOS: View {
     }
 
     private var subtitleColor: Color {
-        currentPage == 1 ? Color(hex: "#58A0DA") : Color.secondary
+        currentPage == 1 ? Color(hex: "#2A7BBC") : Color.secondary
     }
 
     var body: some View {
@@ -37,7 +37,7 @@ struct AISentenceSigningViewMacOS: View {
                     CustomProgressBarMacOS(progress: sessionProgress)
 
                     Text(subtitle)
-                        .font(.system(size: 24, weight: .medium))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(subtitleColor)
 
                     PageOneContentMacOS(
@@ -93,7 +93,7 @@ struct PageOneContentMacOS: View {
             Spacer(minLength: 0)
 
             Text(sentenceModel.sentence)
-                .font(.system(size: 48, weight: .semibold))
+                .font(.jakarta(size: 40, weight: .semibold))
                 .foregroundColor(Color(hex: "#464646"))
                 .multilineTextAlignment(.leading)
 
@@ -103,11 +103,11 @@ struct PageOneContentMacOS: View {
                 }) {
                     HStack(alignment: .center, spacing: 12) {
                         Image(systemName: "wand.and.rays")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .symbolRenderingMode(.monochrome)
                             .foregroundColor(glossGold)
                         Text("Gloss")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(glossGold)
                         Spacer(minLength: 0)
                     }
@@ -117,7 +117,7 @@ struct PageOneContentMacOS: View {
                 .buttonStyle(.plain)
 
                 Text(glossLineString)
-                    .font(.system(size: 38, weight: .semibold))
+                    .font(.jakarta(size: 35, weight: .semibold))
                     .foregroundColor(Color(white: 0.58))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .multilineTextAlignment(.leading)
@@ -166,8 +166,10 @@ struct LiveSigningViewMacOS: View {
             // English sentence + scrollable gloss row (left-aligned)
             VStack(alignment: .leading, spacing: 8) {
                 Text(sentenceModel.sentence)
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.jakarta(size: 17, weight: .medium))
                     .foregroundColor(Color(hex: "#767676"))
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 glossRow
             }
@@ -193,9 +195,9 @@ struct LiveSigningViewMacOS: View {
                 if !isFinished {
                     Button(action: skipWord) {
                         Text("Skip word")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 16)
                             .padding(.vertical, 10)
                             .background(Color(hex: "#97C171"))
                             .clipShape(Capsule())
@@ -297,10 +299,10 @@ struct LiveSigningViewMacOS: View {
     private var glossRow: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(Array(glossWords.enumerated()), id: \.offset) { index, term in
                         Text(term.rawValue)
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.jakarta(size: 28, weight: .bold))
                             .foregroundColor(glossWordColor(at: index))
                             .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
                             .id("mac-gloss-\(index)")
@@ -320,8 +322,8 @@ struct LiveSigningViewMacOS: View {
         if let c = glossUniformColor { return c }
         if completedWords.contains(index) { return .gray }
         if skippedWords.contains(index)   { return .gray.opacity(0.55) }
-        if index == currentWordIndex      { return .primary }
-        return Color(hex: "#D0D0D0")
+        if index == currentWordIndex      { return .black }
+        return Color(hex: "#F0F0F0")
     }
 
     // MARK: Word Progress Circles
@@ -347,44 +349,38 @@ struct LiveSigningViewMacOS: View {
                 Circle()
                     .fill(circleFill(isCompleted: isCompleted, isSkipped: isSkipped, isCurrent: isCurrent))
                     .frame(width: diameter, height: diameter)
-                    .overlay {
-                        if isCurrent {
-                            Circle()
-                                .strokeBorder(Color(hex: "#F8BC3A"), lineWidth: 1.5)
-                                .frame(width: diameter, height: diameter)
-                        }
-                    }
 
                 if isCompleted {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(Color(hex: "#71A046"))
                 } else if isSkipped {
                     Image(systemName: "forward.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(.gray)
                 } else if isCurrent {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 20, weight: .medium))
+                    Image(systemName: "lightbulb.max")
+                        .font(.jakarta(size: 20, weight: .semibold))
                         .foregroundColor(Color(hex: "#F8BC3A"))
                 } else {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.gray.opacity(0.5))
+                        .font(.jakarta(size: 20, weight: .semibold))
+                        .foregroundColor(Color(hex: "#B3B3B3"))
                 }
             }
+            .frame(width: 72, height: 72, alignment: .center)
             .contentShape(Circle())
             .onTapGesture {
                 if isCurrent { showHintSheet = true }
             }
 
             Text(wordLabel)
-                .font(.system(size: 13, weight: .bold))
+                .font(.jakarta(size: 17, weight: .bold))
                 .foregroundColor(Color(hex: "#767676"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .opacity(isCurrent ? 1 : 0)
-                .frame(height: 17)
+                .frame(height: 20)
         }
         .frame(width: 72)
         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)

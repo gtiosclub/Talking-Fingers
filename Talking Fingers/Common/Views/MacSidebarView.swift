@@ -87,7 +87,7 @@ struct MacSidebarView: View {
             withAnimation(.easeInOut(duration: 0.22)) { isCollapsed.toggle() }
         } label: {
             Image(systemName: "sidebar.left")
-                .font(.system(size: 14, weight: .regular))
+                .font(.jakarta(size: 14, weight: .regular))
                 .foregroundColor(Color(hex: "#767676"))
                 .padding(6)
                 .contentShape(Rectangle())
@@ -106,7 +106,7 @@ struct MacSidebarView: View {
 
             if !isCollapsed {
                 Text(displayUserName)
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.jakarta(size: 15, weight: .regular))
                     .foregroundColor(.black)
                     .lineLimit(1)
                 Spacer(minLength: 0)
@@ -175,13 +175,13 @@ struct MacSidebarNavItem: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.jakarta(size: 16, weight: .medium))
                     .frame(width: 22, alignment: .center)
                     .foregroundColor(isSelected ? selectedTint : neutralIcon)
 
                 if !isCollapsed {
                     Text(title)
-                        .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
+                        .font(.jakarta(size: 15, weight: isSelected ? .semibold : .regular))
                         .foregroundColor(isSelected ? selectedTint : neutralText)
                         .lineLimit(1)
                     Spacer(minLength: 0)

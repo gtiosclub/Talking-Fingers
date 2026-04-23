@@ -11,7 +11,7 @@ struct WordChipView: View {
 
     var body: some View {
         Text(text)
-            .font(.subheadline.weight(.semibold))
+            .font(.jakarta(size: 15, weight: .semibold))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(Color(hex: 0xF2F2F7))

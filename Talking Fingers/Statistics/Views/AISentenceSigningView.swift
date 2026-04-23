@@ -78,7 +78,7 @@ struct PageOneContent: View {
             Spacer(minLength: 0)
 
             Text(sentenceModel.sentence)
-                .font(.system(size: 40, weight: .semibold))
+                .font(.jakarta(size: 40, weight: .semibold))
                 .foregroundColor(Color(hex: "#464646"))
                 .multilineTextAlignment(.leading)
 
@@ -86,11 +86,11 @@ struct PageOneContent: View {
                 Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showGloss.toggle() } }) {
                     HStack(alignment: .center, spacing: 12) {
                         Image(systemName: "wand.and.rays")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .symbolRenderingMode(.monochrome)
                             .foregroundColor(glossGold)
                         Text("Gloss")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(glossGold)
                         Spacer(minLength: 0)
                     }
@@ -100,7 +100,7 @@ struct PageOneContent: View {
                 .buttonStyle(.plain)
 
                 Text(glossLineString)
-                    .font(.system(size: 35, weight: .semibold))
+                    .font(.jakarta(size: 35, weight: .semibold))
                     .foregroundColor(Color(white: 0.58))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .multilineTextAlignment(.leading)
