@@ -514,21 +514,42 @@ struct CameraView: View {
         }
     }
 
+    /// Thresholds for the Good / Okay / Bad bands, relaxed proportionally to
+    /// the loaded reference's kinematic complexity (wrist path length, from
+    /// `CameraVM.referenceComplexity`).
+    ///
+    /// DTW on long-travel signs accumulates more 2D alignment error per frame
+    /// just by virtue of covering more pixels; a perfect performance of such
+    /// a sign caps lower than a tight planar sign. The shift is single-
+    /// direction (negative only) — complexity can only relax the thresholds,
+    /// never tighten them — because path length is a "cost" signal, not a
+    /// "precision" one.
+    ///
+    /// Max shift is 8 pts at complexity = 1 (`pathLength >= 0.20`), giving
+    /// a dynamic-sign Good threshold range of 62..70.
+    private var activeThresholds: (good: Double, okay: Double) {
+        let isStatic = cameraVM.activeComparisonType == .static
+        let baseGood: Double = isStatic ? 80 : 70
+        let baseOkay: Double = isStatic ? 60 : 51
+
+        let shift = -cameraVM.referenceComplexity * 8
+
+        return (good: baseGood + shift, okay: baseOkay + shift)
+    }
+
     private var confidenceColor: Color {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 70
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 51
-        if score >= goodThreshold { return .green }
-        if score >= okayThreshold { return .yellow }
+        let t = activeThresholds
+        if score >= t.good { return .green }
+        if score >= t.okay { return .yellow }
         return .red
     }
 
     private var confidenceLabel: String {
         let score = cameraVM.confidenceScore
-        let goodThreshold: Double = cameraVM.activeComparisonType == .static ? 80 : 70
-        let okayThreshold: Double = cameraVM.activeComparisonType == .static ? 60 : 51
-        if score >= goodThreshold { return "Good" }
-        if score >= okayThreshold { return "Okay" }
+        let t = activeThresholds
+        if score >= t.good { return "Good" }
+        if score >= t.okay { return "Okay" }
         return "Bad"
     }
 
