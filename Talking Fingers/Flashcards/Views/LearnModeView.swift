@@ -34,12 +34,17 @@ struct LearnModeView: View {
                             word: vm.word,
                             showSaveButton: false,
                             showStuckButton: false,
+                            showSkipButton: true,
                             showWordTitle: true,
                             isHintActive: showHintPopup,
                             onConfidenceChange: { vm.updateConfidence($0) },
                             onHintTap: {
                                 vm.tapHint()
                                 showHintPopup = true
+                            },
+                            onSkipTap: {
+                                showHintPopup = false
+                                vm.skipWord()
                             }
                         )
                         .padding(.top, 16)

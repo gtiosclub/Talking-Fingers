@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 enum StartContext {
     case learn(TermCategory)
@@ -370,6 +371,8 @@ private struct LearnFlow: View {
     let vm: FlashcardVM
     let onLeave: () -> Void
     let onFinished: () -> Void
+    @Environment(SwiftDataVM.self) private var dataVM
+    @Query private var users: [User]
     
     init(initialCard: FlashcardModel, targetCount: Int, vm: FlashcardVM, onLeave: @escaping () -> Void, onFinished: @escaping () -> Void) {
         _currentCard = State(initialValue: initialCard)
@@ -381,7 +384,12 @@ private struct LearnFlow: View {
     
     var body: some View {
         let learnVM = LearnModeVM(flashcard: currentCard)
-        learnVM.onNextCard = { advance() }
+        learnVM.onAnswer = { wasCorrect in
+            if let currentUser = users.first {
+                vm.handleAnswer(for: currentCard, correct: wasCorrect, user: currentUser, dataVM: dataVM)
+            }
+            advance()
+        }
         
         return LearnModeView(vm: learnVM, progress: Double(completedCount) / Double(max(targetCount, 1)), onClose: onLeave)
             .id(currentCard.id)
