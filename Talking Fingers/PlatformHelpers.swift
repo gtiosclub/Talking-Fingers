@@ -148,8 +148,9 @@ extension Color {
 
 // MARK: - Custom Font Extension
 extension Font {
+    /// Base PostScript name prefix; each weight is a separate file bundled at the app root (e.g. `PlusJakartaSans-SemiBold.ttf` in `UIAppFonts`).
     static let jakartaFontName = "PlusJakartaSans"
-    
+
     static func jakarta(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         let weightSuffix: String
         switch weight {
@@ -166,7 +167,7 @@ extension Font {
         }
         return .custom("\(jakartaFontName)\(weightSuffix)", size: size)
     }
-    
+
     static var jakartaLargeTitle: Font { .jakarta(size: 34, weight: .bold) }
     static var jakartaTitle: Font { .jakarta(size: 28, weight: .bold) }
     static var jakartaTitle2: Font { .jakarta(size: 22, weight: .bold) }
