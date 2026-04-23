@@ -29,6 +29,8 @@ struct LiveSigningView: View {
     @State private var currentWordMaxScore: Double = 0
     // Stores the max score for each completed word
     @State private var wordMaxScores: [Int: Double] = [:]
+    // Controls visibility of the hint sheet
+    @State private var showHintSheet: Bool = false
 
     /// How long to wait after reaching the threshold before auto-advancing
     /// if the user hasn't manually tapped Continue.
@@ -65,53 +67,54 @@ struct LiveSigningView: View {
             // Live camera tied to the current target word.
             // Negative horizontal padding extends past the parent's 24pt
             // padding so the preview sits close to the screen edges.
-            SigningPracticeView(
-                signName: currentTargetWord.lowercased(),
-                onConfidenceChange: { confidence in
-                    handleThresholdReached(confidence: confidence)
-                },
-                usesInternalPadding: false,
-                externalCameraVM: externalCameraVM
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: 480)
+            ZStack(alignment: .bottomTrailing) {
+                SigningPracticeView(
+                    signName: currentTargetWord.lowercased(),
+                    onConfidenceChange: { confidence in
+                        handleThresholdReached(confidence: confidence)
+                    },
+                    usesInternalPadding: false,
+                    externalCameraVM: externalCameraVM
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 480)
+
+                // Skip word button overlay
+                if !isFinished {
+                    Button(action: skipWord) {
+                        Text("Skip word")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color(hex: "#97C171"))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+                }
+            }
             .padding(.horizontal, -16)
             .padding(.bottom, 24)
 
             // Word progress circles
             wordProgressCircles
                 .padding(.bottom, 24)
-
-            // Simulator-only controls
-            if isSimulator {
-                HStack(spacing: 12) {
-                    Button(action: onBack) {
-                        Image(systemName: "chevron.left")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.gray.opacity(0.6))
-                            .cornerRadius(8)
-                    }
-                    .frame(maxWidth: 64)
-
-                    Button(action: skipWord) {
-                        Text("Skip")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.gray.opacity(0.15))
-                            .cornerRadius(8)
-                    }
-                    .disabled(isFinished)
-                }
-            }
         }
         .onDisappear {
             autoAdvanceTask?.cancel()
             autoAdvanceTask = nil
+        }
+        .sheet(isPresented: $showHintSheet) {
+            SignHintSheetView(
+                word: currentTargetWord,
+                onDismiss: {
+                    showHintSheet = false
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
         }
     }
 
@@ -196,6 +199,12 @@ struct LiveSigningView: View {
                 }
             }
             .frame(width: Self.progressCircleColumnWidth, height: Self.progressCircleColumnWidth, alignment: .center)
+            .contentShape(Circle())
+            .onTapGesture {
+                if isCurrent {
+                    showHintSheet = true
+                }
+            }
 
             Text(wordLabel)
                 .font(.system(size: 17, weight: .bold))
@@ -285,7 +294,7 @@ struct LiveSigningView: View {
                 wordMaxScores[currentWordIndex] = score
             case .skipped:
                 skippedWords.insert(currentWordIndex)
-                wordMaxScores[currentWordIndex] = 85
+                wordMaxScores[currentWordIndex] = Self.skippedWordRawScore
             }
             currentWordIndex += 1
         }
@@ -314,6 +323,9 @@ struct LiveSigningView: View {
     private static func userFacingSigningScore(from raw: Double) -> Double {
         min(100, raw * 1.2)
     }
+
+    /// Raw score that becomes exactly 50 after +20% inflation.
+    private static let skippedWordRawScore: Double = 50.0 / 1.2
 }
 
 extension Array {

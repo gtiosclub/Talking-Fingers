@@ -14,6 +14,7 @@ struct GenerateSentencesView: View {
     @State private var trainingName: String = ""
     @State private var isGenerating: Bool = false
     @State private var errorMessage: String?
+    @FocusState private var isTrainingNameFocused: Bool
     
     /// Called with generated sentences and the categories used (so Extend can generate more).
     /// Parent should dismiss the sheet and start the session.
@@ -86,6 +87,8 @@ struct GenerateSentencesView: View {
                     .font(.system(size: 15, weight: .semibold))
                 
                 TextField("Enter training name", text: $trainingName)
+                    .focused($isTrainingNameFocused)
+                    .submitLabel(.done)
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 12)
@@ -129,6 +132,11 @@ struct GenerateSentencesView: View {
         .padding(.horizontal, 24)
         .padding(.bottom, 15)
         .padding(.top, 10)
+        .onAppear {
+            DispatchQueue.main.async {
+                isTrainingNameFocused = true
+            }
+        }
     }
     
     private var selectedGlossTerms: [Term] {

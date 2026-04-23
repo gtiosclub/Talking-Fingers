@@ -179,6 +179,7 @@ struct LiveSigningViewMacOS: View {
     @State private var skippedWords: Set<Int> = []
     @State private var passedThreshold: Bool = false
     @State private var autoAdvanceTask: Task<Void, Never>?
+    @State private var showHintSheet: Bool = false
 
     /// How long to wait after reaching the threshold before auto-advancing
     /// if the user hasn't manually tapped Continue.
@@ -263,6 +264,15 @@ struct LiveSigningViewMacOS: View {
         .onDisappear {
             autoAdvanceTask?.cancel()
             autoAdvanceTask = nil
+        }
+        .sheet(isPresented: $showHintSheet) {
+            SignHintSheetView(
+                word: currentTargetWord,
+                onDismiss: {
+                    showHintSheet = false
+                }
+            )
+            .frame(minWidth: 500, minHeight: 700)
         }
     }
 
@@ -351,6 +361,12 @@ struct LiveSigningViewMacOS: View {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 16))
                     .foregroundColor(.gray.opacity(0.5))
+            }
+        }
+        .contentShape(Circle())
+        .onTapGesture {
+            if isCurrent {
+                showHintSheet = true
             }
         }
         .animation(.easeInOut(duration: 0.3), value: currentWordIndex)

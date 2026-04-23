@@ -15,6 +15,7 @@ struct SavedPracticeView: View {
     @State private var savedSessionStartSentenceIndex: Int = 0
     @State private var practiceSessionIdentity = UUID()
     @State private var shouldPersistSessionOnFinish = true
+    @State private var isExistingSavedPractice = false
 
     private func displayTitle(for session: SavedPracticeModel) -> String {
         if let t = session.title?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty {
@@ -31,7 +32,11 @@ struct SavedPracticeView: View {
 
         let completedSentences = session.sentences.filter(\.completed)
         let accuracies = completedSentences.compactMap(\.accuracy)
-        let averageAccuracy: Double? = accuracies.isEmpty ? nil : accuracies.reduce(0, +) / Double(accuracies.count)
+        let averageAccuracy: Double? = {
+            guard isComplete, !accuracies.isEmpty else { return nil }
+            return accuracies.reduce(0, +) / Double(accuracies.count)
+        }()
+        let completionProgress: Double = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0
 
         return TrainingItem(
             id: session.id,
@@ -39,6 +44,7 @@ struct SavedPracticeView: View {
             subtitle: session.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()),
             accuracy: averageAccuracy,
             isComplete: isComplete,
+            completionProgress: completionProgress,
             iconName: sessionModeSelection.comprehension && !sessionModeSelection.signing ? "eye" : "hand.wave"
         )
     }
@@ -73,6 +79,7 @@ struct SavedPracticeView: View {
                 savedSessionStartSentenceIndex = 0
                 practiceSessionIdentity = UUID()
                 shouldPersistSessionOnFinish = true
+                isExistingSavedPractice = false
                 print("🟢 [SavedPracticeView] State updated, dismissing sheet")
                 createPracticeSheetMode = nil
                 // Wait for the sheet dismissal animation to fully complete before
@@ -100,8 +107,9 @@ struct SavedPracticeView: View {
                 practiceTitle: lastPracticeTitle.isEmpty ? "Practice" : lastPracticeTitle,
                 selectedCategories: lastCategories,
                 initialSentenceIndex: savedSessionStartSentenceIndex,
-                onFinish: {
-                    if shouldPersistSessionOnFinish {
+                isExistingSavedPractice: isExistingSavedPractice,
+                onFinish: { shouldSave in
+                    if shouldSave && shouldPersistSessionOnFinish {
                         saveSessionToDatabase()
                     }
                     showSessionView = false
@@ -270,6 +278,7 @@ struct SavedPracticeView: View {
         lastPracticeTitle = session.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         lastModeSelection = modeSelection(for: session)
         practiceSessionIdentity = UUID()
+        isExistingSavedPractice = true
         showSessionView = true
     }
 
@@ -485,16 +494,26 @@ struct TrainingCard: View {
                     .foregroundColor(item.accuracyTextColor)
             }
         } else {
-            InProgressCircleView()
+            InProgressCircleView(progress: item.completionProgress)
         }
     }
 }
 
 struct InProgressCircleView: View {
+    var progress: Double
+
+    private var clampedProgress: Double {
+        min(max(progress, 0), 1)
+    }
+
     var body: some View {
         ZStack {
             Circle()
-                .trim(from: 0, to: 0.85)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 10)
+                .frame(width: 46, height: 46)
+
+            Circle()
+                .trim(from: 0, to: max(clampedProgress, 0.02))
                 .stroke(
                     Color.gray,
                     style: StrokeStyle(lineWidth: 10, lineCap: .butt)
@@ -511,6 +530,7 @@ struct TrainingItem: Identifiable {
     let subtitle: String
     let accuracy: Double?
     let isComplete: Bool
+    let completionProgress: Double
     let iconName: String
 
     var accuracyColor: Color {

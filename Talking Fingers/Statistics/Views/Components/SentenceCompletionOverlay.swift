@@ -7,36 +7,65 @@ struct SentenceCompletionOverlay: View {
 
     private var roundedScore: Int { Int(averageScore.rounded()) }
 
-    /// Title, accuracy line, and bookmark: original overlay text accents.
-    private static func textAccentColor(for averageScore: Double) -> Color {
-        let s = Int(averageScore.rounded())
-        if s >= 80 { return Color(hex: "#71A046") }
-        if s >= 60 { return Color(hex: "#ECA509") }
-        return Color(hex: "#EF1013")
+    private enum CompletionTier {
+        case high
+        case medium
+        case low
+
+        init(score: Int) {
+            if score >= 75 {
+                self = .high
+            } else if score >= 50 {
+                self = .medium
+            } else {
+                self = .low
+            }
+        }
+
+        var textAccent: Color {
+            switch self {
+            case .high: return Color(hex: "#71A046")
+            case .medium: return Color(hex: "#ECA509")
+            case .low: return Color(hex: "#EF1013")
+            }
+        }
+
+        var buttonAndGloss: Color {
+            switch self {
+            case .high: return Color(hex: "#97C171")
+            case .medium: return Color(hex: "#ECA509")
+            case .low: return Color(hex: "#F46769")
+            }
+        }
+
+        var background: Color {
+            switch self {
+            case .high: return Color(hex: "#EAF3E3")
+            case .medium: return Color(hex: "#FEF7E7")
+            case .low: return Color(hex: "#FFE0E1")
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .high: return "Amazing!"
+            case .medium: return "Almost!"
+            case .low: return "Not Quite!"
+            }
+        }
     }
 
     /// Continue button and live gloss row only (separate from overlay copy color).
     static func glossAndButtonColor(for averageScore: Double) -> Color {
-        let s = Int(averageScore.rounded())
-        if s >= 75 { return Color(hex: "#97C171") }
-        if s >= 50 { return Color(hex: "#ECA509") }
-        return Color(hex: "#F46769")
+        CompletionTier(score: Int(averageScore.rounded())).buttonAndGloss
     }
 
-    private var titleText: String {
-        if roundedScore >= 75 { return "Amazing!" }
-        if roundedScore >= 50 { return "Almost!" }
-        return "Not Quite!"
-    }
+    private var tier: CompletionTier { CompletionTier(score: roundedScore) }
 
-    private var overlayBackground: Color {
-        if roundedScore >= 75 { return Color(hex: "#EAF3E3") }
-        if roundedScore >= 50 { return Color(hex: "#FEF7E7") }
-        return Color(hex: "#FFE0E1")
-    }
-
-    private var textAccent: Color { Self.textAccentColor(for: averageScore) }
-    private var continueButtonColor: Color { Self.glossAndButtonColor(for: averageScore) }
+    private var textAccent: Color { tier.textAccent }
+    private var continueButtonColor: Color { tier.buttonAndGloss }
+    private var overlayBackground: Color { tier.background }
+    private var titleText: String { tier.title }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -80,7 +109,10 @@ struct SentenceCompletionOverlay: View {
         // Inset content from the home indicator; the fill extends under it (see below).
         .safeAreaPadding(.bottom, 12)
         .frame(maxWidth: .infinity, alignment: .top)
-        .background {
+        .background(alignment: .bottom) {
+            overlayBackground
+                .ignoresSafeArea(edges: .bottom)
+
             UnevenRoundedRectangle(
                 cornerRadii: RectangleCornerRadii(
                     topLeading: 26,

@@ -12,11 +12,14 @@ struct PracticeSessionView: View {
     @Binding var sentences: [AISentenceModel]
     var practiceTitle: String
     var selectedCategories: Set<TermCategory>?
-    var onFinish: () -> Void
+    var isExistingSavedPractice: Bool = false
+    var onFinish: (_ shouldSave: Bool) -> Void
     var onExtend: () async -> Void
 
     @State private var currentSentenceIndex: Int
     @State private var isExtending: Bool = false
+    @State private var isLeaving: Bool = false
+    @State private var showLeaveConfirmation: Bool = false
     @State private var showPracticeEntry: Bool = true
     @State private var signingSubtitle: String = "New sentence!"
     @State private var signingPageIndex: Int = 1
@@ -79,12 +82,14 @@ struct PracticeSessionView: View {
         practiceTitle: String = "Practice",
         selectedCategories: Set<TermCategory>? = nil,
         initialSentenceIndex: Int = 0,
-        onFinish: @escaping () -> Void,
+        isExistingSavedPractice: Bool = false,
+        onFinish: @escaping (_ shouldSave: Bool) -> Void,
         onExtend: @escaping () async -> Void
     ) {
         self._sentences = sentences
         self.practiceTitle = practiceTitle
         self.selectedCategories = selectedCategories
+        self.isExistingSavedPractice = isExistingSavedPractice
         self.onFinish = onFinish
         self.onExtend = onExtend
         let count = sentences.wrappedValue.count
@@ -226,7 +231,14 @@ struct PracticeSessionView: View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 HStack {
-                    Button(action: onFinish) {
+                    Button {
+                        if isExistingSavedPractice {
+                            isLeaving = true
+                            onFinish(true)
+                        } else {
+                            showLeaveConfirmation = true
+                        }
+                    } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "door.left.hand.open")
                                 .font(.system(size: 16, weight: .medium))
@@ -294,7 +306,7 @@ struct PracticeSessionView: View {
                         )
                         .id(currentSentenceIndex)
                     }
-                } else {
+                } else if !isLeaving {
                     completionContent
                 }
 
@@ -356,6 +368,23 @@ struct PracticeSessionView: View {
             print("🟡 [PracticeSessionView] onDisappear - practiceTitle: \(practiceTitle)")
             sessionCameraVM.stop()
         }
+        .sheet(isPresented: $showLeaveConfirmation) {
+            LeaveConfirmationSheet(
+                onDontSave: {
+                    showLeaveConfirmation = false
+                    isLeaving = true
+                    onFinish(false)
+                },
+                onSave: {
+                    showLeaveConfirmation = false
+                    isLeaving = true
+                    onFinish(true)
+                }
+            )
+            .presentationDetents([.height(220)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.white)
+        }
     }
 
     private var completionContent: some View {
@@ -380,7 +409,10 @@ struct PracticeSessionView: View {
                 .buttonStyle(.plain)
                 .disabled(isExtending)
 
-                Button(action: onFinish) {
+                Button {
+                    isLeaving = true
+                    onFinish(true)
+                } label: {
                     Text("Finish")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
@@ -606,5 +638,62 @@ struct PracticeSessionView: View {
             showSigningSentenceCompletionOverlay = false
         }
         markCurrentSentenceCompletedAndAdvance()
+    }
+}
+
+// MARK: - Leave Confirmation Sheet
+
+struct LeaveConfirmationSheet: View {
+    var onDontSave: () -> Void
+    var onSave: () -> Void
+
+    private let dontSaveRed = Color(hex: "#E85C5C")
+    private let saveGreen = Color(hex: "#97C171")
+
+    var body: some View {
+        ZStack {
+            Color.white
+                .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Leave this practice?")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.black)
+
+                Text("If you'd like to be able to come back to this practice, tap Save.")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(Color(hex: "#767676"))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 12) {
+                    Button(action: onDontSave) {
+                        Text("Don't save")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(dontSaveRed)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(dontSaveRed.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onSave) {
+                        Text("Save")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(saveGreen)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(saveGreen.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 8)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
     }
 }
