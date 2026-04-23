@@ -142,15 +142,12 @@ enum Term: String, CaseIterable, Codable {
     case child = "CHILD"
     case son = "SON"
     case daughter = "DAUGHTER"
-    case grandson = "GRANDSON"
-    case granddaughter = "GRANDDAUGHTER"
-    case grandchild = "GRANDCHILD"
 
     // MARK: - Verbs
 //    case go = "GO"
     case come = "COME"
     case want = "WANT"
-    case dontLike = "DON’T-LIKE"
+//    case dontLike = "DON’T-LIKE"
     case eat = "EAT"
     case drink = "DRINK"
     case study = "STUDY"
@@ -270,10 +267,10 @@ enum Term: String, CaseIterable, Codable {
 
         case .family, .mother, .father, .mom, .dad, .sister,
              .brother, .grandmother, .grandfather, .husband,
-             .wife, .child, .son, .daughter, .grandson, .granddaughter, .grandchild:
+             .wife, .child, .son, .daughter:
             return .family
 
-        case .go, .come, .want, .dontLike, .eat, .drink,
+        case .go, .come, .want, .eat, .drink,
              .study, .finish, .help, .play, .watch,
              .learn, .teach, .visit, .talk, .see, .make, .take,
              .give, .get, .know, .think, .feel, .say, .tell:
