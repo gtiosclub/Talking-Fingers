@@ -23,6 +23,7 @@ struct PopupHostModifier<PopupContent: View>: ViewModifier {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .transition(.opacity)
+                    .allowsHitTesting(isPresented)
                     .onTapGesture {
                         dismiss()
                     }
@@ -36,6 +37,7 @@ struct PopupHostModifier<PopupContent: View>: ViewModifier {
                 }
                 .transition(.move(edge: .bottom))
                 .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(isPresented)
                 .zIndex(2)
             }
         }
@@ -50,6 +52,8 @@ struct PopupHostModifier<PopupContent: View>: ViewModifier {
                     showPopupContainer = false
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    // If the popup re-opened quickly, do not hide the dimmer.
+                    guard !isPresented else { return }
                     withAnimation(.easeInOut(duration: 0.35)) {
                         showDim = false
                     }

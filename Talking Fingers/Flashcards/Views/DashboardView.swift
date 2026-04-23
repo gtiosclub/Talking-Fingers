@@ -156,7 +156,8 @@ struct DashboardView: View {
                         HStack {
                             Spacer()
                             Text("Talking Fingers")
-                                .font(.jakarta(size: 18, weight: .medium))
+                                .font(.jakarta(size: 18))
+                                .fontWeight(.medium)
                                 .foregroundColor(Color.gray.opacity(0.8))
                                 .padding(.leading, 24)
                             Spacer()
@@ -175,22 +176,25 @@ struct DashboardView: View {
                         
                         // MARK: - Welcome Header
                         HStack(spacing: 16) {
-                            Image(systemName: "camera.macro")
+                            Image("DashboardWelcome")
                                 .font(.jakarta(size: 45))
                                 .foregroundColor(Color(red: 0.85, green: 0.8, blue: 0.3))
                             
                             VStack(alignment: .leading, spacing: 0) {
                                 if let userName = users.first?.name, !userName.isEmpty {
                                     Text("Welcome back,")
-                                        .font(.jakarta(size: 26, weight: .bold))
+                                        .font(.jakarta(size: 26))
+                                        .fontWeight(.semibold)
                                         .foregroundColor(Color.black.opacity(0.7))
                                     
                                     Text(userName)
-                                        .font(.jakarta(size: 26, weight: .bold))
+                                        .font(.jakarta(size: 26))
+                                        .fontWeight(.semibold)
                                         .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
                                 } else {
                                     Text("Welcome back!")
-                                        .font(.jakarta(size: 26, weight: .bold))
+                                        .font(.jakarta(size: 26))
+                                        .fontWeight(.semibold)
                                         .foregroundColor(Color.black.opacity(0.7))
                                 }
                             }
@@ -202,7 +206,8 @@ struct DashboardView: View {
                         if !inProgressCategories.isEmpty {
                             VStack(alignment: .leading, spacing: 16) {
                                 Text("Jump back in!")
-                                    .font(.jakarta(size: 20, weight: .bold))
+                                    .font(.jakarta(size: 20))
+                                    .fontWeight(.semibold)
                                     .foregroundColor(Color.black.opacity(0.8))
                                     .padding(.horizontal, 20)
                                     .padding(.top, 20)
@@ -243,7 +248,8 @@ struct DashboardView: View {
                         
                         // MARK: - Daily Challenge
                         Text("Keep up your streak!")
-                            .font(.jakarta(size: 20, weight: .bold))
+                            .font(.jakarta(size: 20))
+                            .fontWeight(.semibold)
                             .foregroundColor(Color.black.opacity(0.8))
                             .padding(.horizontal)
                         
@@ -261,7 +267,8 @@ struct DashboardView: View {
                         
                         // MARK: - Categories
                         Text("Categories")
-                            .font(.jakarta(size: 20, weight: .bold))
+                            .font(.jakarta(size: 20))
+                            .fontWeight(.semibold)
                             .foregroundColor(Color.black.opacity(0.8))
                             .padding(.horizontal)
                         
@@ -368,22 +375,25 @@ struct DashboardView: View {
                 
                 // MARK: - Welcome Header
                 HStack(spacing: 16) {
-                    Image(systemName: "camera.macro")
+                    Image(systemName: "DashboardWelcome")
                         .font(.jakarta(size: 45))
                         .foregroundColor(Color(red: 0.85, green: 0.8, blue: 0.3))
                     
                     VStack(alignment: .leading, spacing: 0) {
                         if let userName = users.first?.name, !userName.isEmpty {
                             Text("Welcome back,")
-                                .font(.jakarta(size: 26, weight: .bold))
+                                .font(.jakarta(size: 26))
+                                .fontWeight(.semibold)
                                 .foregroundColor(Color.black.opacity(0.7))
                             
                             Text(userName)
-                                .font(.jakarta(size: 26, weight: .bold))
+                                .font(.jakarta(size: 26))
+                                .fontWeight(.semibold)
                                 .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
                         } else {
                             Text("Welcome back!")
-                                .font(.jakarta(size: 26, weight: .bold))
+                                .font(.jakarta(size: 26))
+                                .fontWeight(.semibold)
                                 .foregroundColor(Color.black.opacity(0.7))
                         }
                     }
@@ -479,7 +489,7 @@ struct DashboardView: View {
     
     func categoryDetailView(_ category: String) -> some View {
         VStack {
-            HStack {
+             HStack {
                 Button {
                     currentView = "Home"
                 } label: {
@@ -538,7 +548,8 @@ private struct InProgressCard: View {
                     .foregroundStyle(.secondary)
 
                 Text(category.displayName.capitalized)
-                    .font(.jakarta(size: 20, weight: .bold))
+                    .font(.jakarta(size: 20))
+                    .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
             }
 
@@ -558,7 +569,8 @@ private struct InProgressCard: View {
                 .frame(height: 8)
 
                 Text("\(Int(progress))%")
-                    .font(.jakarta(size: 12, weight: .medium))
+                    .font(.jakarta(size: 12))
+                    .fontWeight(.medium)
                     .foregroundStyle(.secondary)
             }
         }
@@ -589,7 +601,8 @@ private struct DailyChallengeCard: View {
                     Text("🔥")
                         .font(.jakarta(size: 14))
                     Text("\(streak) Day Streak")
-                        .font(.jakarta(size: 14, weight: .medium))
+                        .font(.jakarta(size: 14))
+                        .fontWeight(.medium)
                         .foregroundColor(Color(red: 0.5, green: 0.35, blue: 0.1))
                 }
                 .padding(.horizontal, 12)
@@ -601,11 +614,13 @@ private struct DailyChallengeCard: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Practice Missed Signs")
-                        .font(.jakarta(size: 22, weight: .bold))
+                        .font(.jakarta(size: 22))
+                        .fontWeight(.semibold)
                         .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
 
                     Text("+20XP")
-                        .font(.jakarta(size: 15, weight: .medium))
+                        .font(.jakarta(size: 15))
+                        .fontWeight(.medium)
                         .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3).opacity(0.8))
                 }
 
@@ -680,7 +695,8 @@ private struct TabBarButton: View {
                 Image(systemName: icon)
                     .font(.jakarta(size: 22))
                 Text(title)
-                    .font(.jakarta(size: 10, weight: .bold))
+                    .font(.jakarta(size: 10))
+                    .fontWeight(.semibold)
             }
             .foregroundColor(isSelected ? Color(red: 0.30, green: 0.55, blue: 0.85) : Color.gray.opacity(0.6))
             .padding(.horizontal, 16)

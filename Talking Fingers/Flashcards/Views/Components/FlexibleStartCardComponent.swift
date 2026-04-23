@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 enum StartContext {
     case learn(TermCategory)
@@ -53,6 +54,17 @@ enum StartContext {
             }
         case .dailyChallenge:
             return "flame.fill"
+        }
+    }
+    
+    var heroImageName: String? {
+        switch self {
+        case .learn:
+            return "SentencesComprehendFlowerFull"
+        case .exercise:
+            return "SentencesSignFlowerFull"
+        case .dailyChallenge:
+            return nil
         }
     }
     
@@ -151,12 +163,20 @@ struct FlexibleStartCardComponent: View {
 
                 Spacer()
 
-                Image(systemName: context.iconName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: isDaily ? 120 : 150)
-                    .foregroundColor(isDaily ? .orange : lightGreen)
-                    .padding(.bottom, 10)
+                if let heroImageName = context.heroImageName {
+                    Image(heroImageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 165)
+                        .padding(.bottom, 6)
+                } else {
+                    Image(systemName: context.iconName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: isDaily ? 120 : 150)
+                        .foregroundColor(isDaily ? .orange : lightGreen)
+                        .padding(.bottom, 10)
+                }
 
                 if case .dailyChallenge = context {
                     Text(context.title)
@@ -172,8 +192,14 @@ struct FlexibleStartCardComponent: View {
                         .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))
                 }
 
-                Text("\(completed)/\(total) Words Completed")
-                    .foregroundColor(.black)
+                if case .dailyChallenge = context {
+                    Text("\(completed)/\(total) Words Completed")
+                        .foregroundColor(.black)
+                } else {
+                    Text("\(total) words to go!")
+                        .font(.jakarta(size: 16, weight: .medium))
+                        .foregroundColor(Color.black.opacity(0.35))
+                }
 
                 ProgressView(value: progress)
                     .tint(Color(red: 0.70, green: 0.80, blue: 0.90))
@@ -352,14 +378,35 @@ private struct ExerciseSessionFlow: View {
     }
 
     private func buildOptions(for card: FlashcardModel, from pool: [FlashcardModel], count: Int = 4) -> [String] {
-        let distractors = pool
-            .filter { $0.id != card.id }
-            .map { $0.term.displayName }
-            .shuffled()
-            .prefix(max(0, count - 1))
-        var opts = Array(distractors)
-        opts.append(card.term.displayName)
-        return Array(Set(opts)).shuffled()
+        let correct = card.term.displayName
+        let targetCount = max(2, count)
+
+        // Keep only unique distractor labels and never include the correct label.
+        let distractors = Array(
+            Set(
+                pool
+                    .filter { $0.id != card.id }
+                    .map { $0.term.displayName }
+                    .filter { $0 != correct }
+            )
+        )
+        .shuffled()
+
+        var options = Array(distractors.prefix(max(0, targetCount - 1)))
+        options.append(correct)
+
+        // If the category pool is too small, backfill with global unique terms.
+        if options.count < targetCount {
+            let existing = Set(options)
+            let fallback = Term.allCases
+                .map(\.displayName)
+                .filter { !existing.contains($0) }
+                .shuffled()
+                .prefix(targetCount - options.count)
+            options.append(contentsOf: fallback)
+        }
+
+        return Array(Set(options)).shuffled()
     }
 }
 
@@ -370,6 +417,8 @@ private struct LearnFlow: View {
     let vm: FlashcardVM
     let onLeave: () -> Void
     let onFinished: () -> Void
+    @Environment(SwiftDataVM.self) private var dataVM
+    @Query private var users: [User]
     
     init(initialCard: FlashcardModel, targetCount: Int, vm: FlashcardVM, onLeave: @escaping () -> Void, onFinished: @escaping () -> Void) {
         _currentCard = State(initialValue: initialCard)
@@ -381,7 +430,12 @@ private struct LearnFlow: View {
     
     var body: some View {
         let learnVM = LearnModeVM(flashcard: currentCard)
-        learnVM.onNextCard = { advance() }
+        learnVM.onAnswer = { wasCorrect in
+            if let currentUser = users.first {
+                vm.handleAnswer(for: currentCard, correct: wasCorrect, user: currentUser, dataVM: dataVM)
+            }
+            advance()
+        }
         
         return LearnModeView(vm: learnVM, progress: Double(completedCount) / Double(max(targetCount, 1)), onClose: onLeave)
             .id(currentCard.id)

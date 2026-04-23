@@ -19,7 +19,7 @@ class LearnModeVM: ObservableObject {
     @Published var state: LearnState = .initial
     @Published private(set) var hasGoodConfidence: Bool = false
     
-    var onNextCard: (() -> Void)? = nil
+    var onAnswer: ((Bool) -> Void)? = nil
 
     let flashcard: FlashcardModel
     
@@ -91,7 +91,7 @@ class LearnModeVM: ObservableObject {
             state = .practicing
         case .practicing, .showingHint:
             guard hasGoodConfidence else { return }
-            nextWord()
+            submitAnswer(correct: true)
         }
     }
     
@@ -101,11 +101,14 @@ class LearnModeVM: ObservableObject {
         if !hasGoodConfidence { hasGoodConfidence = true }
     }
 
-    func nextWord() {
-        print("next word")
+    func skipWord() {
+        submitAnswer(correct: false)
+    }
+
+    private func submitAnswer(correct: Bool) {
         // reset for next flashcard later
         state = .initial
         hasGoodConfidence = false
-        onNextCard?()
+        onAnswer?(correct)
     }
 }
