@@ -172,7 +172,8 @@ struct LiveSigningView: View {
             if isCompleted {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(hex: "#71A046"))
+                    .background(Color(hex: "#EAF3E3"))
             } else if isSkipped {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 13, weight: .semibold))

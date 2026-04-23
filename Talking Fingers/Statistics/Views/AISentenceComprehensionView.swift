@@ -9,7 +9,6 @@ import SwiftUI
 
 struct AISentenceComprehensionView: View {
     @Binding var sentenceModel: AISentenceModel
-    var sessionProgress: Double = 0
     var onSentenceComplete: (() -> Void)? = nil
 
     private var correctOrder: [String] {
@@ -26,14 +25,6 @@ struct AISentenceComprehensionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            CustomProgressBar(progress: sessionProgress)
-                .padding(.top, 20)
-
-            Text("New sentence!")
-                .font(.title3)
-                .fontWeight(.medium)
-                .foregroundColor(.gray)
-
             Spacer(minLength: 0)
 
             // Sign images grid (placeholders)
@@ -406,7 +397,6 @@ private struct CompWrappingHStack: Layout {
     )
     
     AISentenceComprehensionView(
-        sentenceModel: $sampleModel,
-        sessionProgress: 0.4
+        sentenceModel: $sampleModel
     )
 }

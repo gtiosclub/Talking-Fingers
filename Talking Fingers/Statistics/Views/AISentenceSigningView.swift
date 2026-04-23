@@ -9,15 +9,14 @@ import SwiftUI
 
 struct AISentenceSigningView: View {
     @Binding var sentenceModel: AISentenceModel
-    /// Session progress 0.0...1.0 (e.g. currentSentenceIndex / totalSentences). Shown in the single progress bar.
-    var sessionProgress: Double = 0
+    @Binding var currentPage: Int
     var onSentenceComplete: (() -> Void)? = nil
+    var onSubtitleChange: ((String) -> Void)? = nil
     /// Optional externally-owned camera VM. When provided, the live signing
     /// step reuses it instead of creating its own, which avoids tearing the
     /// camera session down and back up between sentences.
     var externalCameraVM: CameraVM? = nil
 
-    @State private var currentPage: Int = 1
     @State private var showGloss: Bool = false
 
     var subtitle: String {
@@ -28,28 +27,12 @@ struct AISentenceSigningView: View {
         }
     }
 
-    private var subtitleColor: Color {
-        currentPage == 1 ? Color(hex: "#58A0DA") : Color.gray
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            CustomProgressBar(progress: sessionProgress)
-                .padding(.top, 20)
-
-            Text(subtitle)
-                .font(currentPage == 2 ? .title2 : .title3)
-                .fontWeight(.medium)
-                .foregroundColor(subtitleColor)
-                .animation(.easeInOut, value: currentPage)
-
             if currentPage == 1 {
                 PageOneContent(
                     sentenceModel: sentenceModel,
-                    showGloss: $showGloss,
-                    onContinue: {
-                        withAnimation { currentPage = 2 }
-                    }
+                    showGloss: $showGloss
                 )
             } else if currentPage == 2 {
                 LiveSigningView(
@@ -64,13 +47,18 @@ struct AISentenceSigningView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 30)
+        .onAppear {
+            onSubtitleChange?(subtitle)
+        }
+        .onChange(of: currentPage) { _, _ in
+            onSubtitleChange?(subtitle)
+        }
     }
 }
 
 struct PageOneContent: View {
     let sentenceModel: AISentenceModel
     @Binding var showGloss: Bool
-    var onContinue: () -> Void
 
     private let glossGold = Color(hex: "#F8BC3A")
     private let glossCream = Color(hex: "#FDF2D8")
@@ -116,16 +104,6 @@ struct PageOneContent: View {
             .buttonStyle(.plain)
 
             Spacer()
-
-            Button(action: onContinue) {
-                Text("Continue")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(Color(hex: "#97C171"))
-                    .cornerRadius(20)
-            }
         }
     }
 
@@ -156,5 +134,5 @@ struct PageOneContent: View {
         completed: false
     )
 
-    AISentenceSigningView(sentenceModel: $sampleData)
+    AISentenceSigningView(sentenceModel: $sampleData, currentPage: .constant(1))
 }
