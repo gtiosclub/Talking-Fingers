@@ -13,8 +13,22 @@ struct EndCardComponent: View {
     let onGoHome: () -> Void
     let onGoToExercise: () -> Void
     
+    #if os(macOS)
+    private let verticalStackSpacing: CGFloat = 34
+    private let sectionGap: CGFloat = 18
+    private let buttonVerticalPadding: CGFloat = 20
+    private let contentVerticalPadding: CGFloat = 28
+    private let bottomSpacerHeight: CGFloat = 58
+    #else
+    private let verticalStackSpacing: CGFloat = 24
+    private let sectionGap: CGFloat = 10
+    private let buttonVerticalPadding: CGFloat = 16
+    private let contentVerticalPadding: CGFloat = 0
+    private let bottomSpacerHeight: CGFloat = 40
+    #endif
+    
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: verticalStackSpacing) {
             let isLearnMode = context.title == "Learn"
             
             Spacer()
@@ -55,7 +69,7 @@ struct EndCardComponent: View {
                     .font(.jakarta(size: 36, weight: .bold))
                 
                 if case .exercise(let cat) = context {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 10) {
                         Text("You have completed")
                             .font(.jakarta(size: 31))
                             .foregroundColor(.black.opacity(0.8))
@@ -65,7 +79,7 @@ struct EndCardComponent: View {
                     }
                 }
                 
-                Spacer().frame(height: 10)
+                Spacer().frame(height: sectionGap)
                 
                 Text("\(total)/\(total) Words Completed")
                     .font(.jakartaSubheadline)
@@ -85,7 +99,7 @@ struct EndCardComponent: View {
                         .font(.jakartaHeadline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, buttonVerticalPadding)
                         .background(RoundedRectangle(cornerRadius: 16).fill(Color(red: 0.56, green: 0.72, blue: 0.44)))
                 }
                 .buttonStyle(.plain)
@@ -98,7 +112,7 @@ struct EndCardComponent: View {
                     .font(.jakartaHeadline)
                     .foregroundColor(isLearnMode ? myColor : .white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, buttonVerticalPadding)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
                             .fill(isLearnMode ? Color(red: 0.56, green: 0.72, blue: 0.44).opacity(0.25) : Color(red: 0.56, green: 0.72, blue: 0.44))
@@ -107,8 +121,9 @@ struct EndCardComponent: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 40)
             
-            Spacer().frame(height: 40)
+            Spacer().frame(height: bottomSpacerHeight)
         }
         .padding(.horizontal, 16)
+        .padding(.vertical, contentVerticalPadding)
     }
 }

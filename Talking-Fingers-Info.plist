@@ -4,7 +4,13 @@
 <dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>PlusJakartaSans-VariableFont_wght.ttf</string>
+		<string>PlusJakartaSans-Bold.ttf</string>
+		<string>PlusJakartaSans-ExtraBold.ttf</string>
+		<string>PlusJakartaSans-ExtraLight.ttf</string>
+		<string>PlusJakartaSans-Light.ttf</string>
+		<string>PlusJakartaSans-Medium.ttf</string>
+		<string>PlusJakartaSans-Regular.ttf</string>
+		<string>PlusJakartaSans-SemiBold.ttf</string>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

@@ -77,6 +77,9 @@ struct Talking_FingersApp: App {
     }()
         
     init() {
+        #if os(macOS)
+        MacOSBundledFontRegistration.registerPlusJakartaSansTTFs()
+        #endif
         FirebaseApp.configure()
         _authVM = State(initialValue: AuthenticationViewModel())
     }

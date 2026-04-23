@@ -148,8 +148,9 @@ extension Color {
 
 // MARK: - Custom Font Extension
 extension Font {
+    /// Base PostScript name prefix; each weight is a separate `.ttf` at the bundle resource root (`UIAppFonts` on iOS; macOS also registers via `MacOSBundledFontRegistration` at launch).
     static let jakartaFontName = "PlusJakartaSans"
-    
+
     static func jakarta(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         let weightSuffix: String
         switch weight {
@@ -166,7 +167,7 @@ extension Font {
         }
         return .custom("\(jakartaFontName)\(weightSuffix)", size: size)
     }
-    
+
     static var jakartaLargeTitle: Font { .jakarta(size: 34, weight: .bold) }
     static var jakartaTitle: Font { .jakarta(size: 28, weight: .bold) }
     static var jakartaTitle2: Font { .jakarta(size: 22, weight: .bold) }
@@ -178,3 +179,24 @@ extension Font {
     static var jakartaCaption: Font { .jakarta(size: 12, weight: .regular) }
     static var jakartaCaption2: Font { .jakarta(size: 11, weight: .regular) }
 }
+
+#if os(macOS)
+import CoreText
+
+/// Native macOS apps often do not load `UIAppFonts` the same way as iOS; register faces explicitly once at launch.
+enum MacOSBundledFontRegistration {
+    static func registerPlusJakartaSansTTFs() {
+        let suffixes = ["Bold", "ExtraBold", "ExtraLight", "Light", "Medium", "Regular", "SemiBold"]
+        for suffix in suffixes {
+            guard let url = Bundle.main.url(forResource: "PlusJakartaSans-\(suffix)", withExtension: "ttf") else {
+                continue
+            }
+            var error: Unmanaged<CFError>?
+            if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error),
+               let err = error?.takeRetainedValue() {
+                print("⚠️ Plus Jakarta font register failed (\(url.lastPathComponent)): \(err.localizedDescription)")
+            }
+        }
+    }
+}
+#endif
