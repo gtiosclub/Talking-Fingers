@@ -50,22 +50,8 @@ struct SavedPracticeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            headerSection
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-                    startNewPracticeSection
-                    trainingSectionTitle
-                    trainingCardsSection
-                }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 24)
-            }
-        }
-        .background(Color.white.ignoresSafeArea())
-        .sheet(item: $createPracticeSheetMode) { sheetMode in
+        mainContent
+            .sheet(item: $createPracticeSheetMode) { sheetMode in
             let initialModeSelection = sheetMode.modeSelection
             GenerateSentencesView(initialModeSelection: initialModeSelection) { sentences, categories, practiceTitle in
                 print("🟢 [SavedPracticeView] Generation callback fired")
@@ -143,14 +129,75 @@ struct SavedPracticeView: View {
         }
     }
 
+    @ViewBuilder
+    private var mainContent: some View {
+        #if os(macOS)
+        // On macOS, only the "My trainings" list scrolls — the header,
+        // "Start a new practice" cards, and section title stay pinned.
+        VStack(alignment: .leading, spacing: 0) {
+            headerSection
+
+            VStack(alignment: .leading, spacing: 20) {
+                startNewPracticeSection
+                trainingSectionTitle
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+
+            ScrollView(showsIndicators: false) {
+                trainingCardsSection
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 24)
+            }
+        }
+        .macCentered(widthFraction: 0.75)
+        // Edge-to-edge gradient behind the header on macOS, rendered
+        // *outside* the centered content so it spans the full window width
+        // and extends into the top safe area.
+        .background(alignment: .top) {
+            LinearGradient(
+                colors: [Color(hex: "#EEF6FB"), Color(hex: "#DEECF8")],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 125)
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea(edges: .top)
+        }
+        .background(Color.white.ignoresSafeArea())
+        #else
+        VStack(alignment: .leading, spacing: 0) {
+            headerSection
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    startNewPracticeSection
+                    trainingSectionTitle
+                    trainingCardsSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
+            }
+        }
+        .background(Color.white.ignoresSafeArea())
+        #endif
+    }
+
     private var headerSection: some View {
         Text("Practice")
             .font(.system(size: 32, weight: .bold))
             .foregroundColor(Color(hex: "#2A7BBC"))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
+            #if os(macOS)
+            .padding(.top, 80)
+            #else
             .padding(.top, 8)
             .padding(.bottom, 14)
+            #endif
+            #if os(iOS)
             .background(
                 LinearGradient(
                     colors: [Color(hex: "#EEF6FB"), Color(hex: "#DEECF8")],
@@ -161,6 +208,7 @@ struct SavedPracticeView: View {
                 .ignoresSafeArea(edges: .top),
                 alignment: .top
             )
+            #endif
     }
 
     private var startNewPracticeSection: some View {
@@ -169,6 +217,36 @@ struct SavedPracticeView: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.black.opacity(0.78))
 
+            #if os(macOS)
+            // Side-by-side on the wider macOS layout
+            HStack(spacing: 20) {
+                PracticeModeCard(
+                    title: "Sign",
+                    subtitle: "Sign sentences to someone else",
+                    tint: Color(hex: "#71A046"),
+                    backgroundTop: Color(hex: "#F4F9F1"),
+                    backgroundBottom: Color(hex: "#EAF3E3"),
+                    border: Color(hex: "#ADCE8F"),
+                    imageAssetName: "SentencesSignFlowerPartial",
+                    placeholderOnLeading: true
+                ) {
+                    createPracticeSheetMode = .signing
+                }
+
+                PracticeModeCard(
+                    title: "Comprehend",
+                    subtitle: "Understand sentences signed to you",
+                    tint: Color(hex: "#5E9ECC"),
+                    backgroundTop: Color(hex: "#EEF6FB"),
+                    backgroundBottom: Color(hex: "#E6F1F9"),
+                    border: Color(hex: "#A5C1D8"),
+                    imageAssetName: "SentencesComprehendFlowerPartial",
+                    placeholderOnLeading: false
+                ) {
+                    createPracticeSheetMode = .comprehension
+                }
+            }
+            #else
             PracticeModeCard(
                 title: "Sign",
                 subtitle: "Sign sentences to\nsomeone else",
@@ -194,6 +272,7 @@ struct SavedPracticeView: View {
             ) {
                 createPracticeSheetMode = .comprehension
             }
+            #endif
         }
     }
 
@@ -340,10 +419,17 @@ private struct PracticeModeCard: View {
                         .font(.system(size: 28, weight: .medium))
                         .foregroundColor(tint)
 
+                    #if os(iOS)
                     Text(subtitle)
-                        .font(.system(size: 15, weight: .regular))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(.black.opacity(0.78))
                         .multilineTextAlignment(.leading)
+                    #else
+                    Text(subtitle)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.black.opacity(0.78))
+                        .multilineTextAlignment(.leading)
+                    #endif
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 

@@ -55,7 +55,28 @@ extension View {
         #if os(iOS)
         self.fullScreenCover(isPresented: isPresented, content: content)
         #else
-        self.sheet(isPresented: isPresented, content: content)
+        self.overlay(alignment: .topLeading) {
+            if isPresented.wrappedValue {
+                content()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isPresented.wrappedValue)
+        #endif
+    }
+
+    @ViewBuilder
+    func macCentered(widthFraction: CGFloat = 0.75) -> some View {
+        #if os(macOS)
+        GeometryReader { proxy in
+            self
+                .frame(width: proxy.size.width * widthFraction)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        #else
+        self
         #endif
     }
 }

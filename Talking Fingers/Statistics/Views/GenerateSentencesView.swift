@@ -87,6 +87,7 @@ struct GenerateSentencesView: View {
                     .font(.system(size: 15, weight: .semibold))
                 
                 TextField("Enter training name", text: $trainingName)
+                    .textFieldStyle(.plain)
                     .focused($isTrainingNameFocused)
                     .submitLabel(.done)
                     .padding()
@@ -210,6 +211,7 @@ struct CategoryButton: View {
                         .strokeBorder(isSelected ? Color(hex: "#ECA509") : Color(hex: "#F0F0F0"), lineWidth: isSelected ? 0.5 : 1.5)
                 )
         }
+        .buttonStyle(.plain)
     }
 }
 

@@ -20,9 +20,9 @@ struct PracticeEntryView: View {
                 .minimumScaleFactor(0.8)
 
             Text("\(remainingSentenceCount) sentence\(remainingSentenceCount == 1 ? "" : "s") to go!")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(Color(hex: "#464646"))
-                .padding(.top, 10)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(Color(hex: "#767676"))
+                .padding(.top, 20)
 
             if !categories.isEmpty {
                 FlowLayout(verticalSpacing: 8, horizontalSpacing: 8) {
@@ -30,6 +30,10 @@ struct PracticeEntryView: View {
                         categoryChip(category)
                     }
                 }
+                #if os(macOS)
+                .frame(maxWidth: 500)
+                .frame(maxWidth: .infinity)
+                #endif
                 .padding(.top, 20)
             }
 
@@ -38,7 +42,11 @@ struct PracticeEntryView: View {
             Image(flowerAssetName)
                 .resizable()
                 .scaledToFit()
+                #if os(macOS)
+                .frame(width: 340, height: 420)
+                #else
                 .frame(width: 240, height: 300)
+                #endif
 
             Spacer()
         }

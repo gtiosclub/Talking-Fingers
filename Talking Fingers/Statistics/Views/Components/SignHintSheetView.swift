@@ -28,6 +28,130 @@ struct SignHintSheetView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        macOSBody
+        #else
+        iOSBody
+        #endif
+    }
+
+    // MARK: macOS layout — title + side-by-side equal panels + Got it button
+    #if os(macOS)
+    private var macOSBody: some View {
+        VStack(spacing: 0) {
+            // Title row
+            ZStack {
+                Text(word.uppercased())
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(.black)
+
+                HStack {
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color.gray.opacity(0.5))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
+
+            // Side-by-side panels — both fill available height equally
+            HStack(spacing: 16) {
+                macOSGifSection
+                macOSCameraSection
+            }
+            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Button(action: onDismiss) {
+                Text("Got it")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(greenButton)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.white)
+        .onAppear {
+            hintCameraVM.isMirrored = true
+            hintCameraVM.checkPermission()
+            hintCameraVM.start()
+        }
+        .onDisappear {
+            hintCameraVM.stop()
+        }
+    }
+
+    /// GIF reference panel — fills available height (no fixed 200pt constraint).
+    private var macOSGifSection: some View {
+        Group {
+            if let gifFileName {
+                GIFView(gifFileName: gifFileName)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(hex: "#FAFAFA"))
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "hand.raised.fingers.spread")
+                        .font(.system(size: 48))
+                        .foregroundColor(Color(hex: "#B3B3B3"))
+                    Text("Sign demonstration\nnot available")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(hex: "#767676"))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(hex: "#F5F5F5"))
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(hex: "#E8E8E8"), lineWidth: 1)
+        )
+    }
+
+    /// Live camera mirror panel — fills available height.
+    private var macOSCameraSection: some View {
+        Group {
+            if hintCameraVM.isAuthorized {
+                CameraPreviewView(session: hintCameraVM.session, isMirrored: hintCameraVM.isMirrored)
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(Color(hex: "#B3B3B3"))
+                    Text("Camera not available")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Color(hex: "#767676"))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(hex: "#F5F5F5"))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(hex: "#E8E8E8"), lineWidth: 1)
+        )
+    }
+    #endif
+
+    // MARK: iOS layout — stacked GIF then camera
+    private var iOSBody: some View {
         VStack(spacing: 0) {
             Capsule()
                 .fill(Color.gray.opacity(0.4))
@@ -65,9 +189,6 @@ struct SignHintSheetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
         .onAppear {
-            #if os(macOS)
-            hintCameraVM.isMirrored = true
-            #endif
             hintCameraVM.checkPermission()
             hintCameraVM.start()
         }
