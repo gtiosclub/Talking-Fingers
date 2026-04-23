@@ -23,6 +23,8 @@ struct PracticeSessionView: View {
     @State private var showSigningSentenceCompletionOverlay: Bool = false
     @State private var signingSentenceAverageScore: Double = 0
     @State private var isSigningSentenceFavorited: Bool = false
+    /// Random category bar targets (0…1); animated values climb from 0 on the completion screen.
+    @State private var completionBarAnimatedProgress: [String: Double] = [:]
 
     /// Shared camera VM kept alive for the whole session so sentence changes
     /// don't tear the AVCaptureSession down and build a new one (which was
@@ -30,25 +32,47 @@ struct PracticeSessionView: View {
     /// sentence transition).
     @State private var sessionCameraVM = CameraVM()
 
-    private let completionBlue = Color(hex: "#3A5A9C")
-    private let accentYellow = Color(hex: "#E8A317")
     private let barBlue = Color(hex: "#58A0DA")
     private let barTrack = Color(hex: "#A9CEEC26")
     private let extendFill = Color(hex: "#D6ECC4")
     private let extendText = Color(hex: "#3D6B2A")
     private let finishGreen = Color(hex: "#97C171")
     private let subtitleBlue = Color(hex: "#2A7BBC")
-    
-    // Accuracy color scheme
-    private let highAccuracyBg = Color(hex: "#EAF3E3")
-    private let highAccuracyBorder = Color(hex: "#A8D4A0")
-    private let highAccuracyText = Color(hex: "#4A7C3F")
-    private let medAccuracyBg = Color(hex: "#FACD6B")
-    private let medAccuracyBorder = Color(hex: "#E5B84A")
-    private let medAccuracyText = Color(hex: "#8B6914")
-    private let lowAccuracyBg = Color(hex: "#FA6B6E")
-    private let lowAccuracyBorder = Color(hex: "#E55558")
-    private let lowAccuracyText = Color(hex: "#A13B3D")
+
+    // MARK: Completion screen — score tier (same cutoffs: ≥80 / ≥60 / else)
+    private let completionCardShadow = Color.black.opacity(0.12)
+    private let completionAccentHigh = Color(hex: "#71A046")
+    private let completionAccentMed = Color(hex: "#ECA509")
+    private let completionAccentLow = Color(hex: "#F46769")
+    /// Fills only the large session score ring (softer than accent).
+    private let completionScoreRingFillHigh = Color(hex: "#B1D094")
+    private let completionScoreRingFillMed = Color(hex: "#FACD6B")
+    private let completionScoreRingFillLow = Color(hex: "#FF6F71")
+    private let completionScoreInnerText = Color.white
+    private let completionGradientTopHigh = Color(hex: "#F0F6EA")
+    private let completionGradientBottomHigh = Color(hex: "#FAFCF8")
+    private let completionGradientTopMed = Color(hex: "#FFF5E0")
+    private let completionGradientBottomMed = Color(hex: "#FFFCF5")
+    private let completionGradientTopLow = Color(hex: "#FFE0E0")
+    private let completionGradientBottomLow = Color(hex: "#FFF5F5")
+
+    private enum SessionScoreTier {
+        case high, medium, low
+
+        init(accuracy: Double) {
+            if accuracy >= 80 { self = .high }
+            else if accuracy >= 60 { self = .medium }
+            else { self = .low }
+        }
+
+        var bloomMessage: String {
+            switch self {
+            case .high: return "You're in full bloom!"
+            case .medium: return "You're growing!"
+            case .low: return "You're getting there!"
+            }
+        }
+    }
 
     init(
         sentences: Binding<[AISentenceModel]>,
@@ -90,14 +114,6 @@ struct PracticeSessionView: View {
             return TermCategory.allCases.filter { selectedCategories.contains($0) }
         }
         return sessionCategories
-    }
-
-    private func progressInCategory(_ category: TermCategory) -> Double {
-        let relevant = sentences.filter { sentence in
-            sentence.gloss.contains { $0.category == category }
-        }
-        guard !relevant.isEmpty else { return 0 }
-        return Double(relevant.filter(\.completed).count) / Double(relevant.count)
     }
 
     private var overallSessionProgress: Double {
@@ -163,34 +179,34 @@ struct PracticeSessionView: View {
         guard !accuracies.isEmpty else { return 0 }
         return accuracies.reduce(0, +) / Double(accuracies.count)
     }
-    
-    private var accuracyBackgroundColor: Color {
-        if sessionAccuracy >= 80 { return highAccuracyBg }
-        if sessionAccuracy >= 60 { return medAccuracyBg }
-        return lowAccuracyBg
-    }
-    
-    private var accuracyBorderColor: Color {
-        if sessionAccuracy >= 80 { return highAccuracyBorder }
-        if sessionAccuracy >= 60 { return medAccuracyBorder }
-        return lowAccuracyBorder
-    }
-    
-    private var accuracyTextColor: Color {
-        if sessionAccuracy >= 80 { return highAccuracyText }
-        if sessionAccuracy >= 60 { return medAccuracyText }
-        return lowAccuracyText
+
+    private var sessionScoreTier: SessionScoreTier {
+        SessionScoreTier(accuracy: sessionAccuracy)
     }
 
-    private var encouragementHeadline: String {
-        let ratio = overallSessionProgress
-        if ratio >= 1.0 {
-            return "🔥 You're heating up!"
+    private var completionBarRowSpecs: [(key: String, title: String)] {
+        let fromDisplay = displayCategories
+        if !fromDisplay.isEmpty {
+            return fromDisplay.map { ($0.rawValue, $0.displayName) }
         }
-        if ratio >= 0.5 {
-            return "🔥 Great momentum!"
+        if !sessionCategories.isEmpty {
+            return sessionCategories.map { ($0.rawValue, $0.displayName) }
         }
-        return "💪 Keep practicing!"
+        return [("practice", "Practice")]
+    }
+
+    private func runCompletionBarIntroAnimation() {
+        let specs = completionBarRowSpecs
+        var targets: [String: Double] = [:]
+        for spec in specs {
+            targets[spec.key] = Double.random(in: 0.18 ... 0.97)
+        }
+        completionBarAnimatedProgress = Dictionary(uniqueKeysWithValues: specs.map { ($0.key, 0) })
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 1.05)) {
+                completionBarAnimatedProgress = targets
+            }
+        }
     }
 
     private func markCurrentSentenceCompletedAndAdvance() {
@@ -344,36 +360,12 @@ struct PracticeSessionView: View {
 
     private var completionContent: some View {
         VStack(spacing: 0) {
+            Spacer(minLength: 8)
+
+            completionResultsCard
+                .padding(.horizontal, 20)
+
             Spacer(minLength: 12)
-
-            Text("Practice completed!")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(completionBlue)
-                .multilineTextAlignment(.center)
-                .padding(.top, 8)
-
-            Spacer(minLength: 20)
-
-            ZStack {
-                Circle()
-                    .fill(accuracyBackgroundColor)
-                    .frame(width: 196, height: 196)
-                
-                Circle()
-                    .stroke(accuracyBorderColor, lineWidth: 8)
-                    .frame(width: 196, height: 196)
-                
-                Text("\(Int(sessionAccuracy.rounded()))")
-                    .font(.system(size: 56, weight: .bold))
-                    .foregroundColor(accuracyTextColor)
-            }
-
-            Spacer(minLength: 24)
-
-            performanceCard
-                .padding(.horizontal, 24)
-
-            Spacer()
 
             HStack(spacing: 14) {
                 Button(action: extendTapped) {
@@ -402,6 +394,152 @@ struct PracticeSessionView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 28)
         }
+        .onAppear {
+            runCompletionBarIntroAnimation()
+        }
+        .onChange(of: currentSentenceIndex) { _, newValue in
+            if newValue >= sentences.count {
+                runCompletionBarIntroAnimation()
+            }
+        }
+    }
+
+    private var completionResultsCard: some View {
+        let tier = sessionScoreTier
+        let scoreInt = Int(min(100, max(0, sessionAccuracy.rounded())))
+
+        return VStack(spacing: 0) {
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(completionScoreRingFill(for: tier))
+                        .frame(width: 180, height: 180)
+
+                    VStack(spacing: 2) {
+                        Text("\(scoreInt)")
+                            .font(.system(size: 76, weight: .semibold))
+                            .foregroundColor(completionScoreInnerText)
+                        Text("of 100")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(completionScoreInnerText.opacity(0.92))
+                    }
+                }
+
+                Text(completionTopMessage(for: tier))
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(completionTierAccent(for: tier))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 10)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 20)
+            .background { completionTopSectionBackground(for: tier) }
+
+            VStack(alignment: .leading, spacing: 18) {
+                Text(tier.bloomMessage)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(completionTierAccent(for: tier))
+
+                ForEach(completionBarRowSpecs, id: \.key) { spec in
+                    completionAnimatedCategoryRow(
+                        tier: tier,
+                        title: spec.title,
+                        progress: completionBarAnimatedProgress[spec.key] ?? 0
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+            .background(Color.white)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color(hex: "#F0F0F0"), lineWidth: 1.5)
+        )
+    }
+
+    @ViewBuilder
+    private func completionTopSectionBackground(for tier: SessionScoreTier) -> some View {
+        let gradient = LinearGradient(
+            colors: completionGradientPair(for: tier),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        gradient
+    }
+
+    private func completionGradientPair(for tier: SessionScoreTier) -> [Color] {
+        switch tier {
+        case .high:
+            return [completionGradientTopHigh, completionGradientBottomHigh]
+        case .medium:
+            return [completionGradientTopMed, completionGradientBottomMed]
+        case .low:
+            return [completionGradientTopLow, completionGradientBottomLow]
+        }
+    }
+
+    private func completionScoreRingFill(for tier: SessionScoreTier) -> Color {
+        switch tier {
+        case .high: return completionScoreRingFillHigh
+        case .medium: return completionScoreRingFillMed
+        case .low: return completionScoreRingFillLow
+        }
+    }
+
+    /// Message shown directly below the large score ring.
+    private func completionTopMessage(for tier: SessionScoreTier) -> String {
+        switch tier {
+        case .high: return "Superb work!"
+        case .medium: return "Solid stuff!"
+        case .low: return "Room to improve!"
+        }
+    }
+
+    private func completionTierAccent(for tier: SessionScoreTier) -> Color {
+        switch tier {
+        case .high: return completionAccentHigh
+        case .medium: return completionAccentMed
+        case .low: return completionAccentLow
+        }
+    }
+
+    private func completionBarTrackColor(for tier: SessionScoreTier) -> Color {
+        completionTierAccent(for: tier).opacity(0.22)
+    }
+
+    private func completionAnimatedCategoryRow(
+        tier: SessionScoreTier,
+        title: String,
+        progress: Double
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(Color(hex: "#464646"))
+
+            HStack(alignment: .center, spacing: 12) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color(hex: "#A9CEEC26"))
+                            .frame(height: 8)
+                        Capsule()
+                            .fill(Color(hex: "#58A0DA"))
+                            .frame(width: max(6, CGFloat(progress) * geo.size.width), height: 8)
+                    }
+                }
+                .frame(height: 8)
+
+                Image(systemName: "medal.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(Color(hex: "#A9CEEC"))
+                    .frame(width: 22, alignment: .center)
+            }
+        }
     }
 
     private var sessionTopChrome: some View {
@@ -427,60 +565,6 @@ struct PracticeSessionView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 12)
             }
-        }
-    }
-
-    private var performanceCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(encouragementHeadline)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(accentYellow)
-
-            if sessionCategories.isEmpty {
-                categoryRow(title: "Practice", progress: overallSessionProgress)
-            } else {
-                ForEach(sessionCategories, id: \.self) { category in
-                    categoryRow(title: category.displayName, progress: progressInCategory(category))
-                }
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.gray.opacity(0.35), lineWidth: 1)
-        )
-    }
-
-    private func categoryRow(title: String, progress: Double) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.black)
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(barTrack)
-                            .frame(height: 8)
-                        Capsule()
-                            .fill(barBlue)
-                            .frame(width: max(8, CGFloat(progress) * geo.size.width), height: 8)
-                    }
-                }
-                .frame(height: 8)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Image(systemName: "medal.fill")
-                .font(.system(size: 22))
-                .foregroundColor(barBlue.opacity(0.85))
-                .frame(width: 28, alignment: .center)
         }
     }
 

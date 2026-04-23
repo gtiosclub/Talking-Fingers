@@ -88,16 +88,14 @@ struct PageOneContentMacOS: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 48) {
-            Spacer()
-
             Text(sentenceModel.sentence)
                 .font(.system(size: 56, weight: .bold))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.leading)
                 .lineSpacing(8)
 
-            Button(action: { withAnimation { showGloss.toggle() } }) {
-                VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showGloss.toggle() } }) {
                     HStack(alignment: .center, spacing: 14) {
                         glossBulbBadge
                         Text(showGloss ? "Hide gloss" : "Gloss")
@@ -105,21 +103,23 @@ struct PageOneContentMacOS: View {
                             .foregroundColor(glossGold)
                         Spacer(minLength: 0)
                     }
-
-                    if showGloss {
-                        Text(glossLineString)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(Color(white: 0.58))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .multilineTextAlignment(.leading)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
 
-            Spacer()
+                Text(glossLineString)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(white: 0.58))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .opacity(showGloss ? 1 : 0)
+                    .allowsHitTesting(showGloss)
+                    .accessibilityHidden(!showGloss)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 0)
 
             HStack(spacing: 16) {
                 Button(action: {

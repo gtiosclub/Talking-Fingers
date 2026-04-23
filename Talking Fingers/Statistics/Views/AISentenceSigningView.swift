@@ -64,10 +64,8 @@ struct PageOneContent: View {
     let sentenceModel: AISentenceModel
     @Binding var showGloss: Bool
 
-    private let glossGold = Color(hex: "#F8BC3A")
-    private let glossCream = Color(hex: "#FDF2D8")
+    private let glossGold = Color(hex: "#ECA509")
 
-    /// Single-line ASL gloss, uppercase with spaces (matches design reference).
     private var glossLineString: String {
         sentenceModel.gloss
             .map(\.rawValue)
@@ -77,55 +75,44 @@ struct PageOneContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 40) {
-            Spacer()
+            Spacer(minLength: 0)
 
             Text(sentenceModel.sentence)
-                .font(.system(size: 40, weight: .bold))
-                .foregroundColor(.black)
+                .font(.system(size: 40, weight: .semibold))
+                .foregroundColor(Color(hex: "#464646"))
                 .multilineTextAlignment(.leading)
 
-            Button(action: { withAnimation { showGloss.toggle() } }) {
-                VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.25)) { showGloss.toggle() } }) {
                     HStack(alignment: .center, spacing: 12) {
-                        glossBulbBadge
-                        Text(showGloss ? "Hide gloss" : "Gloss")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                        Image(systemName: "wand.and.rays")
+                            .font(.system(size: 20, weight: .semibold))
+                            .symbolRenderingMode(.monochrome)
+                            .foregroundColor(glossGold)
+                        Text("Gloss")
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(glossGold)
                         Spacer(minLength: 0)
                     }
-
-                    if showGloss {
-                        Text(glossLineString)
-                            .font(.system(size: 35, weight: .semibold))
-                            .foregroundColor(Color(white: 0.58))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .multilineTextAlignment(.leading)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.plain)
+
+                Text(glossLineString)
+                    .font(.system(size: 35, weight: .semibold))
+                    .foregroundColor(Color(white: 0.58))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .opacity(showGloss ? 1 : 0)
+                    .allowsHitTesting(showGloss)
+                    .accessibilityHidden(!showGloss)
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-    }
-
-    /// Cream circle with golden outline-style bulb (or eye when hiding).
-    private var glossBulbBadge: some View {
-        ZStack {
-            Circle()
-                .fill(glossCream)
-                .frame(width: 40, height: 40)
-            Circle()
-                .strokeBorder(glossGold.opacity(0.55), lineWidth: 1)
-                .frame(width: 40, height: 40)
-            Image(systemName: showGloss ? "eye.slash" : "lightbulb")
-                .font(.system(size: 19, weight: .semibold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundColor(glossGold)
-        }
-        .accessibilityHidden(true)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
