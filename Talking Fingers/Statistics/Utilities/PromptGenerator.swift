@@ -8,12 +8,16 @@ import Foundation
 
 struct PromptGenerator {
 
-    /// Generates prompt for LLM to create 5 ASL practice sentences
+    /// Generates prompt for LLM to create ASL practice sentences
     /// - Parameters:
     ///   - flashcards: All user's flashcards with progress info
     ///   - focusTerms: Specific terms to prioritize in sentences (based on selected categories)
     /// - Returns: Formatted prompt string
-    static func generatePromptForLLM(from flashcards: [FlashcardModel], focusTerms: [Term] = []) -> String {
+    static func generatePromptForLLM(
+        from flashcards: [FlashcardModel],
+        focusTerms: [Term] = [],
+        sentenceCount: Int = 5
+    ) -> String {
         let learningAnalysis = analyzeLearningState(from: flashcards)
         // Full app vocabulary – gloss is allowed to use ANY of these terms,
         // but should prioritize the focusTerms (selected categories).
@@ -124,7 +128,7 @@ struct PromptGenerator {
         【ALLOWED GLOSS VOCAB】
         You may ONLY use these tokens in the gloss (\"sentence\"):
         \(allowedTerms.map { $0.rawValue }.sorted().joined(separator: ", "))
-        The focus terms listed above MUST appear frequently across the 5 sentences, but you can also use other tokens from this list.
+        The focus terms listed above MUST appear frequently across the \(sentenceCount) sentences, but you can also use other tokens from this list.
 
         【CRITICAL RULES】
         1. English MUST be a normal, grammatical sentence that makes sense. No random words.
@@ -144,7 +148,7 @@ struct PromptGenerator {
         Step 3: Convert to ASL gloss using ONLY words from the flashcard list, in correct ASL order.
         Step 4: Verify every gloss word is in the list and the two parts match in meaning.
 
-        Generate exactly 5 sentences. Vary length and scenarios.
+        Generate exactly \(sentenceCount) sentences. Vary length and scenarios.
         Output format (no markdown, raw JSON only):
         {"sentences": [{"english": "Natural English sentence here.", "sentence": "GLOSS WORD ORDER"}, ...]}
         """

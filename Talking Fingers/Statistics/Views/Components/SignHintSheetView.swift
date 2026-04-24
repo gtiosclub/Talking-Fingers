@@ -16,15 +16,10 @@ struct SignHintSheetView: View {
 
     private let greenButton = Color(hex: "#97C171")
 
+    /// Resolves bundled GIFs the same way as flashcards / comprehension: `Term` raw values are
+    /// uppercase gloss tokens (e.g. `HELLO`, `0`). Callers often pass `Term.rawValue` directly.
     private var gifFileName: String? {
-        if let term = Term(rawValue: word.lowercased()) {
-            return term.defaultGifFileName
-        }
-        let capitalizedWord = word.prefix(1).uppercased() + word.dropFirst().lowercased()
-        if let term = Term(rawValue: capitalizedWord) {
-            return term.defaultGifFileName
-        }
-        return nil
+        Term.from(word)?.defaultGifFileName
     }
 
     var body: some View {

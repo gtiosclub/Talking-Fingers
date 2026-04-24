@@ -34,8 +34,20 @@ struct AISentenceModel: Identifiable, Codable {
     var wordScores: [Double]?
     /// For comprehension: number of attempts taken (1 = first try correct, 2+ = needed retries)
     var comprehensionAttempts: Int?
+    /// For comprehension: whether the submitted answer was correct.
+    /// Optional for backward compatibility with older saved sessions.
+    var comprehensionWasCorrect: Bool?
 
-    init(sentence: String, score: Int? = nil, practiceType: PracticeType, gloss: [Term], completed: Bool = false, wordScores: [Double]? = nil, comprehensionAttempts: Int? = nil) {
+    init(
+        sentence: String,
+        score: Int? = nil,
+        practiceType: PracticeType,
+        gloss: [Term],
+        completed: Bool = false,
+        wordScores: [Double]? = nil,
+        comprehensionAttempts: Int? = nil,
+        comprehensionWasCorrect: Bool? = nil
+    ) {
         self.id = UUID()
         self.sentence = sentence
         self.score = score
@@ -44,6 +56,7 @@ struct AISentenceModel: Identifiable, Codable {
         self.completed = completed
         self.wordScores = wordScores
         self.comprehensionAttempts = comprehensionAttempts
+        self.comprehensionWasCorrect = comprehensionWasCorrect
     }
     
     var glossStrings: [String] {
@@ -56,6 +69,9 @@ struct AISentenceModel: Identifiable, Codable {
         
         switch practiceType {
         case .comprehension:
+            if let comprehensionWasCorrect, !comprehensionWasCorrect {
+                return 0
+            }
             guard let attempts = comprehensionAttempts else { return nil }
             // First try = 100%, second try = 70%, third+ = 40%
             switch attempts {

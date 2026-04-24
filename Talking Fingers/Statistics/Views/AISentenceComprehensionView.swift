@@ -19,105 +19,130 @@ struct AISentenceComprehensionView: View {
     @State private var lineChips: [CompWordChip] = []
     @State private var submitState: CompSubmitState = .idle
     @State private var totalAttemptCount: Int = 0
-    @State private var solutionRevealed: Bool = false
+    @State private var isResultBookmarked: Bool = false
+
+    private let chipTextColor = Color(hex: "#464646")
+    private let chipBorderColor = Color(hex: "#F0F0F0")
+    private let chipPlaceholderColor = Color(hex: "#FDF2D8")
 
     private var glossTerms: [Term] { sentenceModel.gloss }
 
+    private var canSubmitAnswer: Bool { lineChips.count == correctOrder.count }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Spacer(minLength: 0)
+        ZStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 14) {
+                Spacer(minLength: 0)
 
-            // Sign images grid (placeholders)
-            signImagesGrid
+                signImagesGrid
 
-            // Status label row: "INCORRECT 1/2" or "CORRECT"
-            statusLabelRow
+                answerArea
 
-            // Answer area — bordered box, border colour changes on submit
-            answerArea
+                wordBankView
 
-            // Word bank
-            wordBankView
+                Spacer(minLength: 0)
 
-            Spacer(minLength: 0)
+                if submitState == .idle {
+                    actionButton(
+                        title: "Submit",
+                        foreground: .white,
+                        background: Color(hex: "#97C171")
+                    ) { submit() }
+                    .opacity(canSubmitAnswer ? 1.0 : 0.5)
+                    .disabled(!canSubmitAnswer)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 30)
+            .allowsHitTesting(submitState == .idle)
 
-            // Bottom: solution (if 2nd incorrect) + buttons
-            bottomArea
+            if submitState != .idle {
+                ComprehensionAnswerFeedbackOverlay(
+                    isCorrect: submitState == .correct,
+                    answerPhrase: correctOrder.joined(separator: " "),
+                    isBookmarked: $isResultBookmarked,
+                    onContinue: { onSentenceComplete?() }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 30)
+        .animation(.easeInOut(duration: 0.2), value: submitState)
         .onAppear { setupChips() }
     }
 
     // MARK: - Sign Images Grid
 
     private var signImagesGrid: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 6),
-                            count: min(max(glossTerms.count, 1), 4))
-        return LazyVGrid(columns: columns, spacing: 6) {
+        TabView {
             ForEach(Array(glossTerms.enumerated()), id: \.offset) { _, term in
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(white: 0.93))
+                signPlaceholderCard(for: term)
+#if os(macOS)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+#else
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 6)
+#endif
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .automatic))
+#if os(macOS)
+        .frame(height: 300)
+#else
+        .frame(height: 180)
+#endif
+        .padding(.bottom, 4)
+    }
+    
+    private func signPlaceholderCard(for term: Term) -> some View {
+        VStack(spacing: 4) {
+            Group {
+                if let gifFileName = term.defaultGifFileName {
+                    GIFView(gifFileName: gifFileName)
+                        .id(gifFileName)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
                     VStack(spacing: 2) {
                         Image(systemName: "person.fill")
                             .font(.jakarta(size: 24))
                             .foregroundColor(.gray.opacity(0.5))
-                        Text(term.rawValue.lowercased())
+                        Text("No GIF")
                             .font(.jakarta(size: 9))
                             .foregroundColor(.gray.opacity(0.65))
-                            .lineLimit(1)
                     }
                 }
-                .aspectRatio(1, contentMode: .fit)
             }
-        }
-        .padding(.bottom, 4)
-    }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-    // MARK: - Status Label Row (INCORRECT / CORRECT)
-
-    @ViewBuilder
-    private var statusLabelRow: some View {
-        switch submitState {
-        case .incorrect:
-            HStack {
-                Text("INCORRECT")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.red)
-                Spacer()
-                Text("Attempt \(totalAttemptCount)")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.red.opacity(0.7))
-            }
-        case .correct:
-            HStack {
-                Text("CORRECT")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color(red: 0.30, green: 0.69, blue: 0.31))
-                Spacer()
-            }
-        case .idle:
-            EmptyView()
+            Text(term.rawValue.lowercased())
+                .font(.jakarta(size: 9))
+                .foregroundColor(.gray.opacity(0.65))
+                .lineLimit(1)
         }
+        .padding(6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(white: 0.93))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Answer Area (bordered box — red/green/gray border)
 
     private var answerArea: some View {
         VStack(alignment: .leading, spacing: 0) {
-            CompWrappingHStack(horizontalSpacing: 8, verticalSpacing: 8) {
+            CompWrappingHStack(horizontalSpacing: 10, verticalSpacing: 10) {
                 ForEach(lineChips) { chip in
-                    chipView(chip.text, background: answerChipBg)
-                        .onTapGesture {
-                            guard submitState == .idle else { return }
-                            withAnimation(.spring()) {
-                                lineChips.removeAll { $0.id == chip.id }
-                            }
+                    chipView(
+                        chip.text,
+                        background: .white,
+                        borderColor: answerChipBorderColor,
+                        foregroundColor: answerChipForegroundColor
+                    )
+                    .onTapGesture {
+                        guard submitState == .idle else { return }
+                        withAnimation(.spring()) {
+                            lineChips.removeAll { $0.id == chip.id }
                         }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -132,41 +157,61 @@ struct AISentenceComprehensionView: View {
 
     private var answerBorderColor: Color {
         switch submitState {
-        case .correct:   return Color(red: 0.30, green: 0.69, blue: 0.31)
-        case .incorrect: return .red
-        case .idle:      return Color.gray.opacity(0.35)
+        case .correct:
+            return Color(hex: "#EAF3E3")
+        case .incorrect:
+            return Color(hex: "#FFE0E1")
+        case .idle:
+            return Color.gray.opacity(0.35)
         }
     }
 
-    private var answerChipBg: Color {
+    private var answerChipBackground: Color {
+        submitState == .idle ? .white : answerHighlightFill
+    }
+
+    private var answerChipBorderColor: Color {
         switch submitState {
-        case .correct:   return Color(red: 0.78, green: 0.93, blue: 0.78)
-        case .incorrect: return Color(red: 0.96, green: 0.82, blue: 0.82)
-        case .idle:      return Color(white: 0.91)
+        case .idle:
+            return chipBorderColor
+        case .correct:
+            return Color(hex: "#689F38")
+        case .incorrect:
+            return Color(hex: "#E53935")
         }
+    }
+
+    private var answerChipForegroundColor: Color {
+        submitState == .idle ? chipTextColor : answerChipBorderColor
     }
 
     // MARK: - Word Bank
 
     private var wordBankView: some View {
-        CompWrappingHStack(horizontalSpacing: 8, verticalSpacing: 8) {
+        CompWrappingHStack(horizontalSpacing: 10, verticalSpacing: 10) {
             ForEach(allChips) { chip in
                 if lineChips.contains(where: { $0.id == chip.id }) {
                     // Shadow placeholder
                     Text(chip.text)
-                        .font(.subheadline)
+                        .font(.jakarta(size: 17))
+                        .foregroundColor(chipTextColor)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                         .opacity(0)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
+                        .padding(.top, 8)
+                        .padding(.bottom, 10)
                         .frame(minHeight: 40)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(white: 0.55).opacity(0.45))
+                                .fill(chipPlaceholderColor)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(chipBorderColor, lineWidth: 1.5)
                         )
                 } else {
-                    chipView(chip.text, background: Color(white: 0.91))
+                    chipView(chip.text, background: .white, borderColor: chipBorderColor, foregroundColor: chipTextColor)
                         .onTapGesture {
                             guard submitState == .idle else { return }
                             withAnimation(.spring()) {
@@ -181,80 +226,27 @@ struct AISentenceComprehensionView: View {
 
     // MARK: - Chip
 
-    private func chipView(_ text: String, background: Color) -> some View {
+    private func chipView(
+        _ text: String,
+        background: Color,
+        borderColor: Color,
+        foregroundColor: Color
+    ) -> some View {
         Text(text)
-            .font(.subheadline)
+            .font(.jakarta(size: 17))
+            .foregroundColor(foregroundColor)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
             .frame(minHeight: 40)
             .background(background)
             .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    // MARK: - Bottom Area
-
-    @ViewBuilder
-    private var bottomArea: some View {
-        switch submitState {
-        case .idle:
-            let canSubmit = lineChips.count == correctOrder.count
-            actionButton(
-                title: "Submit",
-                foreground: .white,
-                background: Color(hex: "#97C171")
-            ) { submit() }
-            .opacity(canSubmit ? 1.0 : 0.5)
-            .disabled(!canSubmit)
-
-        case .incorrect:
-            VStack(spacing: 10) {
-                if solutionRevealed {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("SOLUTION:")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.gray)
-                        Text(correctOrder.joined(separator: " "))
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.red.opacity(0.05))
-                    .cornerRadius(8)
-
-                    actionButton(
-                        title: "Continue",
-                        foreground: .white,
-                        background: Color(hex: "#97C171")
-                    ) { onSentenceComplete?() }
-                } else {
-                    HStack(spacing: 16) {
-                        actionButton(
-                            title: "Reveal Solution",
-                            foreground: Color(red: 0.34, green: 0.50, blue: 0.27),
-                            background: Color(red: 0.92, green: 0.96, blue: 0.88)
-                        ) { revealSolution() }
-
-                        actionButton(
-                            title: "Try again",
-                            foreground: .white,
-                            background: Color(red: 0.60, green: 0.76, blue: 0.44)
-                        ) { tryAgain() }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-
-        case .correct:
-            actionButton(
-                title: "Continue",
-                foreground: .white,
-                background: Color(hex: "#97C171")
-            ) { onSentenceComplete?() }
-        }
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(borderColor, lineWidth: 1.5)
+            )
     }
 
     // MARK: - Logic
@@ -271,38 +263,21 @@ struct AISentenceComprehensionView: View {
         lineChips = []
         submitState = .idle
         totalAttemptCount = 0
-        solutionRevealed = false
+        isResultBookmarked = false
     }
 
     private func submit() {
         guard lineChips.count == correctOrder.count else { return }
-        
+
         totalAttemptCount += 1
         let userAnswer = lineChips.map { $0.text }
-        if userAnswer == correctOrder {
-            sentenceModel.comprehensionAttempts = totalAttemptCount
+        let isCorrect = userAnswer == correctOrder
+        sentenceModel.comprehensionAttempts = totalAttemptCount
+        sentenceModel.comprehensionWasCorrect = isCorrect
+        if isCorrect {
             withAnimation { submitState = .correct }
         } else {
-            withAnimation {
-                solutionRevealed = false
-                submitState = .incorrect
-            }
-        }
-    }
-
-    private func tryAgain() {
-        withAnimation {
-            lineChips = []
-            submitState = .idle
-        }
-    }
-
-    private func revealSolution() {
-        // When revealing solution, count as one more attempt (they gave up)
-        totalAttemptCount += 1
-        sentenceModel.comprehensionAttempts = totalAttemptCount
-        withAnimation {
-            solutionRevealed = true
+            withAnimation { submitState = .incorrect }
         }
     }
 
@@ -322,6 +297,7 @@ struct AISentenceComprehensionView: View {
                 .background(background)
                 .cornerRadius(20)
         }
+        .buttonStyle(.plain)
     }
 }
 

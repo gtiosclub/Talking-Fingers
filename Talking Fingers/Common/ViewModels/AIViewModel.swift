@@ -13,6 +13,8 @@ import FirebaseFirestore
     var openAIKey: String?
     let db = Firestore.firestore()
     private let openAIURL = "https://api.openai.com/v1/chat/completions"
+    private let requestedSentenceCount = 7
+    private let targetValidSentenceCount = 5
     
     /// Shared instance that persists across the app lifecycle.
     /// Using a shared instance avoids repeated Firestore fetches and cold-start delays.
@@ -62,7 +64,19 @@ import FirebaseFirestore
         }
         
         let prompt = generatePrompt(from: flashcards, focusTerms: focusTerms)
-        
+        let sentencesResponse = try await requestSentences(prompt: prompt, apiKey: apiKey)
+        return convertToAISentences(sentencesResponse)
+    }
+
+    private func generatePrompt(from flashcards: [FlashcardModel], focusTerms: [Term]) -> String {
+        return PromptGenerator.generatePromptForLLM(
+            from: flashcards,
+            focusTerms: focusTerms,
+            sentenceCount: requestedSentenceCount
+        )
+    }
+    
+    private func requestSentences(prompt: String, apiKey: String) async throws -> [SentenceData] {
         let requestBody: [String: Any] = [
             "model": "gpt-4o",
             "messages": [
@@ -72,7 +86,7 @@ import FirebaseFirestore
                 ],
                 ["role": "user", "content": prompt]
             ],
-            "temperature": 0.7,
+            "temperature": 0.2,
             "response_format": ["type": "json_object"]
         ]
         
@@ -109,10 +123,9 @@ import FirebaseFirestore
             throw AIError.decodingError
         }
         
-        let sentencesResponse: [SentenceData]
         do {
             let wrapper = try JSONDecoder().decode(SentencesWrapper.self, from: contentData)
-            sentencesResponse = wrapper.sentences
+            return wrapper.sentences
         } catch {
             print("❌ DECODING ERROR:")
             print("Raw content from OpenAI:")
@@ -120,50 +133,50 @@ import FirebaseFirestore
             print("Decoding error: \(error)")
             throw AIError.decodingError
         }
-
+    }
+    
+    private func convertToAISentences(_ sentencesResponse: [SentenceData]) -> [AISentenceModel] {
+        let allowedTokenSet = Set(Term.allCases.map(\.rawValue))
         var aiSentences: [AISentenceModel] = []
         
         for sentenceData in sentencesResponse {
-            let glossWordStrings = sentenceData.sentence
-                .split(separator: ",")
-                .flatMap { $0.split(separator: " ") }
-                .map { word in
-                    // Remove punctuation and convert to uppercase
-                    String(word)
-                        .trimmingCharacters(in: .whitespaces)
-                        .trimmingCharacters(in: .punctuationCharacters)
-                        .uppercased()
-                }
-                .filter { !$0.isEmpty }
+            let glossWordStrings = tokenizeGloss(sentenceData.sentence)
+            guard !glossWordStrings.isEmpty else { continue }
+            guard glossWordStrings.allSatisfy({ allowedTokenSet.contains($0) }) else { continue }
             
             let glossTerms = Term.fromStrings(glossWordStrings)
-            
-            guard glossTerms.count == glossWordStrings.count else {
-                print("⚠️ Warning: Could not convert all words to Terms for sentence: \(sentenceData.sentence)")
-                print("Converted \(glossTerms.count)/\(glossWordStrings.count) words")
-                print("Unrecognized words: \(Set(glossWordStrings).subtracting(glossTerms.map { $0.rawValue }))")
-                continue
-            }
-            
-            let practiceType: PracticeType = .words
+            guard glossTerms.count == glossWordStrings.count else { continue }
             
             let displaySentence = sentenceData.english ?? sentenceData.sentence
             let aiSentence = AISentenceModel(
                 sentence: displaySentence,
                 score: nil,
-                practiceType: practiceType,
+                practiceType: .words,
                 gloss: glossTerms,
                 completed: false
             )
             
             aiSentences.append(aiSentence)
+            
+            if aiSentences.count == targetValidSentenceCount {
+                break
+            }
         }
         
         return aiSentences
     }
-
-    private func generatePrompt(from flashcards: [FlashcardModel], focusTerms: [Term]) -> String {
-        return PromptGenerator.generatePromptForLLM(from: flashcards, focusTerms: focusTerms)
+    
+    private func tokenizeGloss(_ gloss: String) -> [String] {
+        gloss
+            .split(separator: ",")
+            .flatMap { $0.split(separator: " ") }
+            .map { token in
+                String(token)
+                    .trimmingCharacters(in: .whitespaces)
+                    .trimmingCharacters(in: .punctuationCharacters)
+                    .uppercased()
+            }
+            .filter { !$0.isEmpty }
     }
 }
 
