@@ -145,28 +145,41 @@ struct LiveSigningView: View {
 
     // MARK: Word Progress Circles
     private var wordProgressCircles: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(Array(glossWords.enumerated()), id: \.offset) { index, _ in
-                        circleIcon(for: index)
-                            .id("circle-\(index)")
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
+        HStack(spacing: 0) {
+            ForEach(-1...1, id: \.self) { offset in
+                progressCarouselSlot(for: centeredProgressIndex + offset)
+                    .frame(maxWidth: .infinity)
             }
-            .onChange(of: currentWordIndex) { _, newIndex in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo("circle-\(newIndex)", anchor: .center)
-                }
-            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
+    }
+
+    private var centeredProgressIndex: Int {
+        guard !glossWords.isEmpty else { return 0 }
+        return min(currentWordIndex, glossWords.count - 1)
+    }
+
+    @ViewBuilder
+    private func progressCarouselSlot(for index: Int) -> some View {
+        if glossWords.indices.contains(index) {
+            circleIcon(for: index)
+        } else {
+            Color.clear
+                .frame(
+                    width: Self.progressCircleColumnWidth,
+                    height: Self.progressCircleColumnHeight
+                )
+                .accessibilityHidden(true)
         }
     }
 
-    /// Fixed column width so horizontal spacing between steps stays visually even
-    /// (same circle size for every state; current is highlighted with a ring).
-    private static let progressCircleColumnWidth: CGFloat = 72
+    /// Fixed carousel slot sizing keeps the current word centered while showing
+    /// at most the previous and next progress circles.
+    private static let progressCircleColumnWidth: CGFloat = 92
+    private static let progressCircleColumnHeight: CGFloat = 104
     private static let progressCircleDiameter: CGFloat = 52
+    private static let currentProgressCircleDiameter: CGFloat = 68
 
     @ViewBuilder
     private func circleIcon(for index: Int) -> some View {
@@ -174,13 +187,13 @@ struct LiveSigningView: View {
         let isSkipped = skippedWords.contains(index)
         let isCurrent = index == currentWordIndex && !isFinished
         let wordLabel = glossWords[safe: index]?.rawValue ?? ""
-        let d = Self.progressCircleDiameter
+        let d = isCurrent ? Self.currentProgressCircleDiameter : Self.progressCircleDiameter
 
         VStack(spacing: 6) {
             ZStack {
                 Circle()
                     .fill(circleFill(isCompleted: isCompleted, isSkipped: isSkipped, isCurrent: isCurrent))
-                    .frame(width: isCurrent ? d + 10 : d, height: isCurrent ? d + 10 : d)
+                    .frame(width: d, height: d)
 
                 if isCompleted {
                     Image(systemName: "checkmark")
