@@ -7,8 +7,7 @@
 
 import SwiftUI
 
-#if os(iOS)
-private enum TFWidgetColors {
+enum TFWidgetColors {
     static let gold = Color(hex: 0xF8BC3A)
     static let black = Color(hex: 0x000000)
     static let green = Color(hex: 0x97C171)
@@ -37,6 +36,7 @@ private enum TFWidgetColors {
     static let controlGray = Color(hex: 0x646464)
 }
 
+#if os(iOS)
 struct ProfileWidgetsView: View {
     enum PresentationStyle {
         case profile
@@ -276,6 +276,7 @@ struct ProfileWidgetsView: View {
         return formatter.string(from: Date())
     }
 }
+#endif
 
 struct ProfileHeaderView: View {
     let user: User?
@@ -381,6 +382,7 @@ struct WidgetCardView: View {
                 .offset(x: -8, y: -8)
             }
         }
+        .modifier(WidgetWiggleModifier(isActive: isEditMode))
     }
     
     private var isRemovable: Bool {
@@ -417,6 +419,33 @@ struct WidgetCardView: View {
         case .streak:
             return ""
         }
+    }
+}
+
+// Home-screen style jiggle applied to each widget card while edit mode is on.
+// Small per-widget phase offset keeps neighbours out of sync.
+struct WidgetWiggleModifier: ViewModifier {
+    let isActive: Bool
+    @State private var angle: Double = 0
+
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(angle))
+            .task(id: isActive) {
+                if isActive {
+                    angle = Double.random(in: 0.2...0.4)
+                    try? await Task.sleep(nanoseconds: UInt64.random(in: 0...120_000_000))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(
+                        .easeInOut(duration: 0.15)
+                            .repeatForever(autoreverses: true)
+                    ) {
+                        angle = -0.4
+                    }
+                } else {
+                    withAnimation(.easeInOut(duration: 0.18)) { angle = 0 }
+                }
+            }
     }
 }
 
@@ -613,7 +642,8 @@ struct MasteryBadgesWidgetContent: View {
             let interItem: CGFloat = 10
             let columns: CGFloat = 4
             let usableWidth = max(0, proxy.size.width - horizontalPadding * 2 - interItem * (columns - 1))
-            let side = floor(usableWidth / columns)
+            // Cap tile size so two rows + labels don't overflow at wide macOS windows.
+            let side = min(floor(usableWidth / columns), 100)
             
             VStack(spacing: 14) {
                 HStack(spacing: interItem) {
@@ -696,6 +726,7 @@ struct AccuracyWidgetContent: View {
                         .background(TFWidgetColors.practiceGreen)
                         .clipShape(Capsule())
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -841,6 +872,7 @@ private struct WeeklyActivityChartView: View {
     private var chartInnerHeight: CGFloat { chartOuterHeight - 32 }
 }
 
+#if os(iOS)
 struct AddWidgetsView: View {
     @ObservedObject var vm: ProfileWidgetsVM
     @Binding var isPresented: Bool
@@ -869,6 +901,7 @@ struct AddWidgetsView: View {
         }
     }
 }
+#endif
 
 struct AddWidgetCardView: View {
     let type: WidgetType
@@ -958,11 +991,13 @@ struct AccuracyPreview: View {
                         .background(TFWidgetColors.practiceGreen)
                         .clipShape(Capsule())
                 }
+                .buttonStyle(.plain)
             }
         }
     }
 }
 
+#if os(iOS)
 #Preview {
     ProfileWidgetsView()
 }

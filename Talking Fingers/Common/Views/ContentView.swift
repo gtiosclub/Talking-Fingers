@@ -160,11 +160,7 @@ struct StatsView: View {
         #if os(iOS)
         ProfileWidgetsView(presentation: .embedded)
         #else
-        Text("Profile widgets are available in the iOS app.")
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        MacProfileView()
         #endif
     }
 }
