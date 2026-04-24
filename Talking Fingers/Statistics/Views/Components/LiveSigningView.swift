@@ -65,8 +65,6 @@ struct LiveSigningView: View {
             .padding(.vertical, 10)
 
             // Live camera tied to the current target word.
-            // Negative horizontal padding extends past the parent's 24pt
-            // padding so the preview sits close to the screen edges.
             ZStack(alignment: .bottomTrailing) {
                 SigningPracticeView(
                     signName: currentTargetWord.lowercased(),
@@ -95,7 +93,11 @@ struct LiveSigningView: View {
                     .padding(.bottom, 16)
                 }
             }
-            .padding(.horizontal, -16)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(.white.opacity(0.15), lineWidth: 1)
+            )
             .padding(.bottom, 24)
 
             // Word progress circles
