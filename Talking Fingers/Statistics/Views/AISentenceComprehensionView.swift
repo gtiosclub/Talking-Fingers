@@ -20,6 +20,7 @@ struct AISentenceComprehensionView: View {
     @State private var submitState: CompSubmitState = .idle
     @State private var totalAttemptCount: Int = 0
     @State private var isResultBookmarked: Bool = false
+    @State private var macCarouselIndex: Int = 0
 
     private let chipTextColor = Color(hex: "#464646")
     private let chipBorderColor = Color(hex: "#F0F0F0")
@@ -73,25 +74,73 @@ struct AISentenceComprehensionView: View {
     // MARK: - Sign Images Grid
 
     private var signImagesGrid: some View {
+#if os(macOS)
+        VStack(spacing: 10) {
+            if !glossTerms.isEmpty {
+                signPlaceholderCard(for: glossTerms[clampedMacCarouselIndex])
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .frame(height: 300)
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    guard !glossTerms.isEmpty else { return }
+                    macCarouselIndex = max(0, clampedMacCarouselIndex - 1)
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.jakarta(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Color(hex: "#97C171"))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(clampedMacCarouselIndex == 0)
+                .opacity(clampedMacCarouselIndex == 0 ? 0.4 : 1)
+
+                HStack(spacing: 6) {
+                    ForEach(Array(glossTerms.enumerated()), id: \.offset) { index, _ in
+                        Circle()
+                            .fill(index == clampedMacCarouselIndex ? Color(hex: "#97C171") : Color.gray.opacity(0.3))
+                            .frame(width: 7, height: 7)
+                    }
+                }
+
+                Button {
+                    guard !glossTerms.isEmpty else { return }
+                    macCarouselIndex = min(glossTerms.count - 1, clampedMacCarouselIndex + 1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.jakarta(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Color(hex: "#97C171"))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(clampedMacCarouselIndex == max(glossTerms.count - 1, 0))
+                .opacity(clampedMacCarouselIndex == max(glossTerms.count - 1, 0) ? 0.4 : 1)
+            }
+        }
+        .padding(.bottom, 4)
+#else
         TabView {
             ForEach(Array(glossTerms.enumerated()), id: \.offset) { _, term in
                 signPlaceholderCard(for: term)
-#if os(macOS)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-#else
                     .padding(.horizontal, 4)
                     .padding(.bottom, 6)
-#endif
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .automatic))
-#if os(macOS)
-        .frame(height: 300)
-#else
         .frame(height: 180)
-#endif
         .padding(.bottom, 4)
+#endif
+    }
+
+    private var clampedMacCarouselIndex: Int {
+        guard !glossTerms.isEmpty else { return 0 }
+        return min(max(0, macCarouselIndex), glossTerms.count - 1)
     }
     
     private func signPlaceholderCard(for term: Term) -> some View {
@@ -164,10 +213,6 @@ struct AISentenceComprehensionView: View {
         case .idle:
             return Color.gray.opacity(0.35)
         }
-    }
-
-    private var answerChipBackground: Color {
-        submitState == .idle ? .white : answerHighlightFill
     }
 
     private var answerChipBorderColor: Color {
@@ -264,6 +309,7 @@ struct AISentenceComprehensionView: View {
         submitState = .idle
         totalAttemptCount = 0
         isResultBookmarked = false
+        macCarouselIndex = 0
     }
 
     private func submit() {
