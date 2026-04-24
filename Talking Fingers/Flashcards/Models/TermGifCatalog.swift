@@ -347,6 +347,8 @@ enum TermGifCatalog {
             return "water.gif"
         case .brother:
             return "brother.gif"
+        case .cat:
+            return "cat.gif"
         
 
         
