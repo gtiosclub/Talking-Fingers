@@ -570,10 +570,17 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func convertVisionPointToScreenPosition(visionPoint: CGPoint, viewSize: CGSize) -> CGPoint {
+        // Match AVCaptureVideoPreviewLayer(videoGravity: .resizeAspectFill).
+        // On macOS the camera buffer is 1280x720 landscape; on iOS the output
+        // connection is rotated to .portrait, so Vision coordinates are in a
+        // 720x1280 portrait frame of reference. Without accounting for the
+        // aspect-fill crop, joint overlays drift whenever the view's aspect
+        // ratio doesn't match the buffer's (e.g. a 480pt-tall preview).
         #if os(macOS)
-        // Match AVCaptureVideoPreviewLayer(videoGravity: .resizeAspectFill)
-        // on macOS, where the camera buffer is 1280x720 landscape.
         let sourceSize = CGSize(width: 1280, height: 720)
+        #else
+        let sourceSize = CGSize(width: 720, height: 1280)
+        #endif
 
         let scale = max(viewSize.width / sourceSize.width,
                         viewSize.height / sourceSize.height)
@@ -588,11 +595,6 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let y = (1 - visionPoint.y) * scaledHeight - yCrop
 
         return CGPoint(x: x, y: y)
-        #else
-        let x = visionPoint.x * viewSize.width
-        let y = (1 - visionPoint.y) * viewSize.height
-        return CGPoint(x: x, y: y)
-        #endif
     }
     
     // Returns translated list that treats some anchor joint (e.g. wrist) as the origin (0,0)

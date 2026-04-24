@@ -18,7 +18,8 @@ struct CorrectAnswerPopUpComponent: View {
                 .frame(height: 5)
             
             Text("Great Job!")
-                .font(.jakarta(size: 28, weight: .bold))
+                .font(.jakarta(size: 28))
+                .fontWeight(.bold)
                 .multilineTextAlignment(.center)
             Spacer()
                 .frame(height: 2)
@@ -26,7 +27,8 @@ struct CorrectAnswerPopUpComponent: View {
                 onNext()
             } label: {
                 Text("Next Word")
-                    .font(.jakarta(size: 18, weight: .semibold))
+                    .font(.jakarta(size: 18))
+                    .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(Color(red: 0.2, green: 0.2, blue: 0.2))
