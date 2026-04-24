@@ -146,38 +146,37 @@ struct LiveSigningView: View {
     // MARK: Word Progress Circles
     private var wordProgressCircles: some View {
         HStack(spacing: 0) {
-            ForEach(-1...1, id: \.self) { offset in
-                progressCarouselSlot(for: centeredProgressIndex + offset)
+            ForEach(visibleProgressIndices, id: \.self) { index in
+                circleIcon(for: index)
                     .frame(maxWidth: .infinity)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        )
+                    )
             }
         }
         .frame(maxWidth: .infinity)
-        .animation(.easeInOut(duration: 0.3), value: currentWordIndex)
+        .clipped()
+        .animation(.easeInOut(duration: 0.3), value: visibleProgressIndices)
     }
 
-    private var centeredProgressIndex: Int {
-        guard !glossWords.isEmpty else { return 0 }
-        return min(currentWordIndex, glossWords.count - 1)
-    }
-
-    @ViewBuilder
-    private func progressCarouselSlot(for index: Int) -> some View {
-        if glossWords.indices.contains(index) {
-            circleIcon(for: index)
-        } else {
-            Color.clear
-                .frame(
-                    width: Self.progressCircleColumnWidth,
-                    height: Self.progressCircleColumnHeight
-                )
-                .accessibilityHidden(true)
+    private var visibleProgressIndices: [Int] {
+        let visibleCount = min(4, glossWords.count)
+        guard visibleCount > 0 else { return [] }
+        guard glossWords.count > visibleCount else {
+            return Array(0..<visibleCount)
         }
+
+        let activeIndex = min(currentWordIndex, glossWords.count - 1)
+        let maxStartIndex = glossWords.count - visibleCount
+        let startIndex = activeIndex < 3 ? 0 : min(activeIndex - 2, maxStartIndex)
+        return Array(startIndex..<(startIndex + visibleCount))
     }
 
-    /// Fixed carousel slot sizing keeps the current word centered while showing
-    /// at most the previous and next progress circles.
+    /// Fixed carousel slot sizing keeps 1-4 visible dots evenly distributed.
     private static let progressCircleColumnWidth: CGFloat = 92
-    private static let progressCircleColumnHeight: CGFloat = 104
     private static let progressCircleDiameter: CGFloat = 52
     private static let currentProgressCircleDiameter: CGFloat = 68
 
