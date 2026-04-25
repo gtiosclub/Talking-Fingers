@@ -17,6 +17,9 @@ struct VisionExerciseView: View {
     /// Called when the user taps Leave; on macOS (inline) this replaces dismiss().
     var onLeave: (() -> Void)? = nil
     var onNext: (FlashcardModel) -> Void = { _ in }
+    var onFinished: (() -> Void)? = nil
+    var finishAfterCurrentCard: Bool = false
+    var nextButtonTitle: String = "Next Word"
 
     // MARK: - Environment
     @Environment(FlashcardVM.self) private var flashcardVM
@@ -140,7 +143,7 @@ struct VisionExerciseView: View {
         Button {
             handlePass()
         } label: {
-            Text("Next Word")
+            Text(nextButtonTitle)
                 .font(.jakartaHeadline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -175,15 +178,28 @@ struct VisionExerciseView: View {
     private func advanceToNext() {
         isPassed = false
         confidenceScore = 0
+        if finishAfterCurrentCard {
+            if let onFinished {
+                onFinished()
+            } else {
+                finishSession()
+            }
+            return
+        }
+        
         if let next = flashcardVM.nextCard() {
             onNext(next)
         } else {
-            #if os(macOS)
-            onLeave?()
-            #else
-            dismiss()
-            #endif
+            finishSession()
         }
+    }
+    
+    private func finishSession() {
+        #if os(macOS)
+        onLeave?()
+        #else
+        dismiss()
+        #endif
     }
 }
 
