@@ -230,7 +230,8 @@ struct DashboardView: View {
                                                     category: item.category,
                                                     mode: item.mode,
                                                     progress: item.progress,
-                                                    backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
+                                                    backgroundColor: item.mode == "Exercise" ? Color(red: 0.931, green: 0.956, blue: 0.981) : Color(red: 0.942, green: 0.964, blue: 0.942),
+                                                    borderColor: item.mode == "Exercise" ? Color(red: 0.691, green: 0.803, blue: 0.914) : Color(red: 0.704, green: 0.804, blue: 0.585)
                                                 )
                                                 .frame(width: 155) // Keeps cards properly sized within the bubble
                                                 .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
@@ -245,6 +246,10 @@ struct DashboardView: View {
                             }
                             .background(Color.white)
                             .cornerRadius(24)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .strokeBorder(Color.gray.opacity(0.6), lineWidth: 2)
+                            )
                             .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
                             .padding(.horizontal, 16)
                         }
@@ -437,7 +442,8 @@ struct DashboardView: View {
                                         category: item.category,
                                         mode: item.mode,
                                         progress: item.progress,
-                                        backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
+                                        backgroundColor: item.mode == "Exercise" ? Color(red: 0.931, green: 0.956, blue: 0.981) : Color(red: 0.942, green: 0.964, blue: 0.942),
+                                        borderColor: item.mode == "Exercise" ? Color(red: 0.691, green: 0.803, blue: 0.914) : Color(red: 0.704, green: 0.804, blue: 0.585),
                                     )
                                     .frame(maxWidth: .infinity)
                                     .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
@@ -529,6 +535,7 @@ private struct InProgressCard: View {
     let mode: String
     let progress: Float
     let backgroundColor: Color
+    let borderColor: Color
     var iconName: String {
         switch category {
         case .alphabet:             return "a.square"
@@ -554,7 +561,7 @@ private struct InProgressCard: View {
                 .resizable()
                 .scaledToFit()
                 .frame(height: 70)
-                .foregroundColor(.black.opacity(0.6))
+                .foregroundColor(borderColor)
 
             VStack(spacing: 4) {
                 Text("Continue \(mode)")
@@ -565,6 +572,8 @@ private struct InProgressCard: View {
                     .font(.jakarta(size: 20))
                     .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
+                    .foregroundStyle(borderColor)
+
             }
 
             Spacer(minLength: 0)
@@ -592,7 +601,11 @@ private struct InProgressCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: 220)
         .background(backgroundColor)
-        .cornerRadius(20)
+        .cornerRadius(15)
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .strokeBorder(borderColor, lineWidth: 2)
+        )
     }
 }
 
@@ -612,8 +625,9 @@ private struct DailyChallengeCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 
                 HStack(spacing: 4) {
-                    Text("🔥")
-                        .font(.jakarta(size: 14))
+                    Image(systemName: "flame.fill")
+                       // .font(.jakarta(size: 14))
+                        .foregroundColor(Color(red: 0.90, green: 0.72, blue: 0.30))
                     Text("\(streak) Day Streak")
                         .font(.jakarta(size: 14))
                         .fontWeight(.medium)
@@ -663,6 +677,10 @@ private struct DailyChallengeCard: View {
         .padding(24)
         .background(Color(red: 0.99, green: 0.95, blue: 0.86))
         .cornerRadius(24)
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .strokeBorder(Color(red: 0.963, green: 0.86, blue: 0.609), lineWidth: 2)
+        )
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
 }
