@@ -24,6 +24,20 @@ class SearchViewModel: ObservableObject {
         TermCategory.allCases
     }
     
+    var alphabetTerms: [Term] {
+        Term.words(for: .alphabet)
+    }
+    
+    var numberTerms: [Term] {
+        Term.words(for: .numbers)
+    }
+    
+    var vocabTerms: [Term] {
+        Term.allCases
+            .filter { $0.category != .alphabet && $0.category != .numbers }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+    
     var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
@@ -51,6 +65,12 @@ class SearchViewModel: ObservableObject {
     func selectCategory(_ category: TermCategory) {
         searchText = category.rawValue
         results = Term.words(for: category)
+    }
+    
+    func selectTerm(_ term: Term) {
+        searchText = term.displayName
+        results = [term]
+        saveRecentSearch(term.displayName)
     }
     
     func saveRecentSearch(_ query: String) {

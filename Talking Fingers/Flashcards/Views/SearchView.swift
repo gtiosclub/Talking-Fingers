@@ -77,16 +77,7 @@ struct SearchView: View {
                         
                         VStack(spacing: 0) {
                             ForEach(vm.results, id: \.self) { term in
-                                VStack(spacing: 0) {
-                                    HStack {
-                                        Text(term.displayName.capitalized)
-                                            .font(.jakarta(size: 19))
-                                        Spacer()
-                                    }
-                                    .padding(.vertical, 14)
-                                    
-                                    Divider()
-                                }
+                                termRow(for: term)
                             }
                         }
                     }
@@ -142,6 +133,12 @@ struct SearchView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                        
+                        termSection(title: "Alphabet", terms: vm.alphabetTerms)
+                        
+                        termSection(title: "Numbers", terms: vm.numberTerms)
+                        
+                        termSection(title: "Vocab", terms: vm.vocabTerms)
                     }
                 }
                 
@@ -185,6 +182,42 @@ struct SearchView: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color(red: 248/255, green: 188/255, blue: 57/255), lineWidth: 1.5)
         )
+    }
+    
+    @ViewBuilder
+    private func termSection(title: String, terms: [Term]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.jakarta(size: 28, weight: .bold))
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            
+            ForEach(terms, id: \.self) { term in
+                Button {
+                    vm.selectTerm(term)
+                    isFocused = true
+                } label: {
+                    termRow(for: term)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func termRow(for term: Term) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(term.displayName.capitalized)
+                    .font(.jakarta(size: 19))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+            
+            Divider()
+        }
     }
     
     private func placeholderIcon(for category: TermCategory) -> String {
