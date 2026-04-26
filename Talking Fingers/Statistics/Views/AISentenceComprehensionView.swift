@@ -21,6 +21,9 @@ struct AISentenceComprehensionView: View {
     @State private var totalAttemptCount: Int = 0
     @State private var isResultBookmarked: Bool = false
     @State private var macCarouselIndex: Int = 0
+    #if os(macOS)
+    @FocusState private var isMacCarouselFocused: Bool
+    #endif
 
     private let chipTextColor = Color(hex: "#464646")
     private let chipBorderColor = Color(hex: "#F0F0F0")
@@ -69,6 +72,22 @@ struct AISentenceComprehensionView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: submitState)
         .onAppear { setupChips() }
+        #if os(macOS)
+        .focusable()
+        .focused($isMacCarouselFocused)
+        .focusEffectDisabled()
+        .onAppear { isMacCarouselFocused = true }
+        .onMoveCommand { direction in
+            switch direction {
+            case .left:
+                moveMacCarousel(by: -1)
+            case .right:
+                moveMacCarousel(by: 1)
+            default:
+                break
+            }
+        }
+        #endif
     }
 
     // MARK: - Sign Images Grid
@@ -85,8 +104,7 @@ struct AISentenceComprehensionView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    guard !glossTerms.isEmpty else { return }
-                    macCarouselIndex = max(0, clampedMacCarouselIndex - 1)
+                    moveMacCarousel(by: -1)
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.jakarta(size: 14, weight: .semibold))
@@ -108,8 +126,7 @@ struct AISentenceComprehensionView: View {
                 }
 
                 Button {
-                    guard !glossTerms.isEmpty else { return }
-                    macCarouselIndex = min(glossTerms.count - 1, clampedMacCarouselIndex + 1)
+                    moveMacCarousel(by: 1)
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.jakarta(size: 14, weight: .semibold))
@@ -142,8 +159,33 @@ struct AISentenceComprehensionView: View {
         guard !glossTerms.isEmpty else { return 0 }
         return min(max(0, macCarouselIndex), glossTerms.count - 1)
     }
+
+    private func moveMacCarousel(by offset: Int) {
+        guard !glossTerms.isEmpty else { return }
+        let nextIndex = clampedMacCarouselIndex + offset
+        macCarouselIndex = min(max(0, nextIndex), glossTerms.count - 1)
+    }
     
     private func signPlaceholderCard(for term: Term) -> some View {
+#if os(macOS)
+        Group {
+            if let gifFileName = term.defaultGifFileName {
+                GIFView(gifFileName: gifFileName)
+                    .id(gifFileName)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(spacing: 2) {
+                    Image(systemName: "person.fill")
+                        .font(.jakarta(size: 24))
+                        .foregroundColor(.gray.opacity(0.5))
+                    Text("No GIF")
+                        .font(.jakarta(size: 9))
+                        .foregroundColor(.gray.opacity(0.65))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+#else
         VStack(spacing: 4) {
             Group {
                 if let gifFileName = term.defaultGifFileName {
@@ -172,6 +214,7 @@ struct AISentenceComprehensionView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(white: 0.93))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+#endif
     }
 
     // MARK: - Answer Area (bordered box — red/green/gray border)
@@ -233,7 +276,7 @@ struct AISentenceComprehensionView: View {
     // MARK: - Word Bank
 
     private var wordBankView: some View {
-        CompWrappingHStack(horizontalSpacing: 10, verticalSpacing: 10) {
+        CompWrappingHStack(horizontalSpacing: 10, verticalSpacing: 10, horizontalAlignment: .center) {
             ForEach(allChips) { chip in
                 if lineChips.contains(where: { $0.id == chip.id }) {
                     // Shadow placeholder
@@ -365,6 +408,7 @@ private struct CompWordChip: Identifiable, Equatable {
 private struct CompWrappingHStack: Layout {
     var horizontalSpacing: CGFloat
     var verticalSpacing: CGFloat
+    var horizontalAlignment: HorizontalAlignment = .leading
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = computeRows(proposal: proposal, subviews: subviews)
@@ -383,7 +427,7 @@ private struct CompWrappingHStack: Layout {
         for (i, row) in rows.enumerated() {
             if i > 0 { y += verticalSpacing }
             let rowHeight = row.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
-            var x = bounds.minX
+            var x = startX(for: row, in: bounds)
             for subview in row {
                 let size = subview.sizeThatFits(.unspecified)
                 subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
@@ -408,6 +452,26 @@ private struct CompWrappingHStack: Layout {
             currentRowWidth += size.width + horizontalSpacing
         }
         return rows
+    }
+
+    private func startX(for row: [LayoutSubviews.Element], in bounds: CGRect) -> CGFloat {
+        let rowWidth = width(for: row)
+        switch horizontalAlignment {
+        case .center:
+            return bounds.minX + max(0, (bounds.width - rowWidth) / 2)
+        case .trailing:
+            return bounds.maxX - rowWidth
+        default:
+            return bounds.minX
+        }
+    }
+
+    private func width(for row: [LayoutSubviews.Element]) -> CGFloat {
+        guard !row.isEmpty else { return 0 }
+        let contentWidth = row.reduce(CGFloat.zero) { partialResult, subview in
+            partialResult + subview.sizeThatFits(.unspecified).width
+        }
+        return contentWidth + CGFloat(row.count - 1) * horizontalSpacing
     }
 }
 

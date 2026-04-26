@@ -65,8 +65,6 @@ struct LiveSigningView: View {
             .padding(.vertical, 10)
 
             // Live camera tied to the current target word.
-            // Negative horizontal padding extends past the parent's 24pt
-            // padding so the preview sits close to the screen edges.
             ZStack(alignment: .bottomTrailing) {
                 SigningPracticeView(
                     signName: currentTargetWord.lowercased(),
@@ -95,7 +93,11 @@ struct LiveSigningView: View {
                     .padding(.bottom, 16)
                 }
             }
-            .padding(.horizontal, -16)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(.white.opacity(0.15), lineWidth: 1)
+            )
             .padding(.bottom, 24)
 
             // Word progress circles
@@ -143,28 +145,40 @@ struct LiveSigningView: View {
 
     // MARK: Word Progress Circles
     private var wordProgressCircles: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(Array(glossWords.enumerated()), id: \.offset) { index, _ in
-                        circleIcon(for: index)
-                            .id("circle-\(index)")
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .onChange(of: currentWordIndex) { _, newIndex in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    proxy.scrollTo("circle-\(newIndex)", anchor: .center)
-                }
+        HStack(spacing: 0) {
+            ForEach(visibleProgressIndices, id: \.self) { index in
+                circleIcon(for: index)
+                    .frame(maxWidth: .infinity)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)
+                        )
+                    )
             }
         }
+        .frame(maxWidth: .infinity)
+        .clipped()
+        .animation(.easeInOut(duration: 0.3), value: visibleProgressIndices)
     }
 
-    /// Fixed column width so horizontal spacing between steps stays visually even
-    /// (same circle size for every state; current is highlighted with a ring).
-    private static let progressCircleColumnWidth: CGFloat = 72
+    private var visibleProgressIndices: [Int] {
+        let visibleCount = min(4, glossWords.count)
+        guard visibleCount > 0 else { return [] }
+        guard glossWords.count > visibleCount else {
+            return Array(0..<visibleCount)
+        }
+
+        let activeIndex = min(currentWordIndex, glossWords.count - 1)
+        let maxStartIndex = glossWords.count - visibleCount
+        let startIndex = activeIndex < 3 ? 0 : min(activeIndex - 2, maxStartIndex)
+        return Array(startIndex..<(startIndex + visibleCount))
+    }
+
+    /// Fixed carousel slot sizing keeps 1-4 visible dots evenly distributed.
+    private static let progressCircleColumnWidth: CGFloat = 92
     private static let progressCircleDiameter: CGFloat = 52
+    private static let currentProgressCircleDiameter: CGFloat = 68
 
     @ViewBuilder
     private func circleIcon(for index: Int) -> some View {
@@ -172,13 +186,13 @@ struct LiveSigningView: View {
         let isSkipped = skippedWords.contains(index)
         let isCurrent = index == currentWordIndex && !isFinished
         let wordLabel = glossWords[safe: index]?.rawValue ?? ""
-        let d = Self.progressCircleDiameter
+        let d = isCurrent ? Self.currentProgressCircleDiameter : Self.progressCircleDiameter
 
         VStack(spacing: 6) {
             ZStack {
                 Circle()
                     .fill(circleFill(isCompleted: isCompleted, isSkipped: isSkipped, isCurrent: isCurrent))
-                    .frame(width: isCurrent ? d + 10 : d, height: isCurrent ? d + 10 : d)
+                    .frame(width: d, height: d)
 
                 if isCompleted {
                     Image(systemName: "checkmark")

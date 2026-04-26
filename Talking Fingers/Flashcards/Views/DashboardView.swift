@@ -32,12 +32,13 @@ struct DashboardView: View {
     
     @State private var activeFlow: ActiveFlow? = nil
     @Environment(SwiftDataVM.self) private var dataVM
+    @Environment(\.modelContext) private var modelContext
     @Query private var users: [User]
     @State private var selectedTab: Int = 0
     
     // Compute categories that are in progress (have at least one non-new and non-mastered card)
     private var inProgressCategories: [(category: TermCategory, progress: Float, mode: String)] {
-        let grouped = Dictionary(grouping: flashcardVM.fakeFlashcards) { $0.category }
+        let grouped = Dictionary(grouping: categoryScopedCards) { $0.category }
         return grouped.compactMap { (category, cards) in
             let progress = flashcardVM.returnProgress(flashcards: cards)
             // Only show categories that are actually in progress (not 0% and not 100%)
@@ -60,13 +61,18 @@ struct DashboardView: View {
         flashcardVM.generateDailyReviewQueue(limit: 5)
     }
     
+    private var categoryScopedCards: [FlashcardModel] {
+        // Guard against mismatched remote records: category views should only show
+        // cards whose term actually belongs to that category.
+        flashcardVM.flashcards.filter { $0.term.category == $0.category }
+    }
+    
     private var foundationsCompleted: Bool {
         isLearnCompleted(for: .alphabet) && isLearnCompleted(for: .numbers)
     }
     
     private func isLearnCompleted(for category: TermCategory) -> Bool {
-        let key = "learnCompleted_\(category.rawValue)"
-        return UserDefaults.standard.bool(forKey: key)
+        categoryScopedCards.contains { $0.category == category && $0.progress != .new }
     }
     
     private func canAccessCategory(_ category: TermCategory) -> Bool {
@@ -144,11 +150,17 @@ struct DashboardView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            .onAppear {
+                loadUserFlashcardsIfNeeded()
+            }
          }
 #else
         // MARK: - iOS Layout
         NavigationStack {
             ZStack(alignment: .bottom) {
+                Color(red: 0.96, green: 0.97, blue: 0.99)
+                    .ignoresSafeArea()
+                
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         
@@ -167,9 +179,9 @@ struct DashboardView: View {
                                     .navigationBarBackButtonHidden(true)
                             } label: {
                                 Image(systemName: "magnifyingglass")
-                                    .font(.jakarta(size: 22))
-                                    .foregroundStyle(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
-                            }
+                                    .font(.jakarta(size: 20))
+                                    .foregroundColor(Color(red: 0.569, green: 0.724, blue: 0.879)) // TF Blue
+                            }                            
                         }
                         .padding(.horizontal)
                         .padding(.top, 10)
@@ -227,7 +239,8 @@ struct DashboardView: View {
                                                     category: item.category,
                                                     mode: item.mode,
                                                     progress: item.progress,
-                                                    backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
+                                                    backgroundColor: item.mode == "Exercise" ? Color(red: 0.931, green: 0.956, blue: 0.981) : Color(red: 0.942, green: 0.964, blue: 0.942),
+                                                    borderColor: item.mode == "Exercise" ? Color(red: 0.691, green: 0.803, blue: 0.914) : Color(red: 0.704, green: 0.804, blue: 0.585)
                                                 )
                                                 .frame(width: 155) // Keeps cards properly sized within the bubble
                                                 .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
@@ -242,6 +255,10 @@ struct DashboardView: View {
                             }
                             .background(Color.white)
                             .cornerRadius(24)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .strokeBorder(Color.gray.opacity(0.6), lineWidth: 2)
+                            )
                             .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
                             .padding(.horizontal, 16)
                         }
@@ -295,8 +312,19 @@ struct DashboardView: View {
                         Spacer(minLength: 120) // Give space for the floating tab bar
                     }
                     .padding(.top, 8)
+                    .background(alignment: .top) {
+                        LinearGradient(
+                            colors: [
+                                Color(red: 238/255, green: 246/255, blue: 251/255), // #EEF6FB
+                                Color(red: 222/255, green: 236/255, blue: 248/255)  // #DEECF8
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 320)
+                        .ignoresSafeArea(edges: .top)
+                    }
                 }
-                .background(Color(red: 0.96, green: 0.97, blue: 0.99)) // Light background
                 
                 // MARK: - Floating Tab Bar Overlay
                 FloatingTabBar(selectedTab: $selectedTab)
@@ -338,6 +366,9 @@ struct DashboardView: View {
                     .environment(dataVM)
                 }
             }
+            .onAppear {
+                loadUserFlashcardsIfNeeded()
+            }
         }
         
 #endif
@@ -367,7 +398,7 @@ struct DashboardView: View {
                         
                         Image(systemName: "magnifyingglass")
                             .font(.jakarta(size: 20))
-                            .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
+                            .foregroundColor(Color(red: 0.569, green: 0.724, blue: 0.879)) // TF Blue
                             .padding(.leading, 8)
                     }
                 }
@@ -423,7 +454,8 @@ struct DashboardView: View {
                                         category: item.category,
                                         mode: item.mode,
                                         progress: item.progress,
-                                        backgroundColor: item.mode == "Exercise" ? Color.blue.opacity(0.15) : Color.green.opacity(0.15)
+                                        backgroundColor: item.mode == "Exercise" ? Color(red: 0.931, green: 0.956, blue: 0.981) : Color(red: 0.942, green: 0.964, blue: 0.942),
+                                        borderColor: item.mode == "Exercise" ? Color(red: 0.691, green: 0.803, blue: 0.914) : Color(red: 0.704, green: 0.804, blue: 0.585),
                                     )
                                     .frame(maxWidth: .infinity)
                                     .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
@@ -508,6 +540,15 @@ struct DashboardView: View {
     }
 }
     
+extension DashboardView {
+    private func loadUserFlashcardsIfNeeded() {
+        guard flashcardVM.flashcards.isEmpty, !flashcardVM.isLoading else { return }
+        Task {
+            await flashcardVM.loadFlashcards(modelContext: modelContext)
+        }
+    }
+}
+    
 // MARK: - In Progress Card
 
 private struct InProgressCard: View {
@@ -515,6 +556,7 @@ private struct InProgressCard: View {
     let mode: String
     let progress: Float
     let backgroundColor: Color
+    let borderColor: Color
     var iconName: String {
         switch category {
         case .alphabet:             return "a.square"
@@ -540,7 +582,7 @@ private struct InProgressCard: View {
                 .resizable()
                 .scaledToFit()
                 .frame(height: 70)
-                .foregroundColor(.black.opacity(0.6))
+                .foregroundColor(borderColor)
 
             VStack(spacing: 4) {
                 Text("Continue \(mode)")
@@ -551,6 +593,8 @@ private struct InProgressCard: View {
                     .font(.jakarta(size: 20))
                     .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
+                    .foregroundStyle(borderColor)
+
             }
 
             Spacer(minLength: 0)
@@ -578,7 +622,11 @@ private struct InProgressCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: 220)
         .background(backgroundColor)
-        .cornerRadius(20)
+        .cornerRadius(15)
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .strokeBorder(borderColor, lineWidth: 2)
+        )
     }
 }
 
@@ -598,8 +646,9 @@ private struct DailyChallengeCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 
                 HStack(spacing: 4) {
-                    Text("🔥")
-                        .font(.jakarta(size: 14))
+                    Image(systemName: "flame.fill")
+                       // .font(.jakarta(size: 14))
+                        .foregroundColor(Color(red: 0.90, green: 0.72, blue: 0.30))
                     Text("\(streak) Day Streak")
                         .font(.jakarta(size: 14))
                         .fontWeight(.medium)
@@ -649,6 +698,10 @@ private struct DailyChallengeCard: View {
         .padding(24)
         .background(Color(red: 0.99, green: 0.95, blue: 0.86))
         .cornerRadius(24)
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .strokeBorder(Color(red: 0.963, green: 0.86, blue: 0.609), lineWidth: 2)
+        )
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
 }

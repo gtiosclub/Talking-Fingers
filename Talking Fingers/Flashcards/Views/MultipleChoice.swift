@@ -360,10 +360,8 @@ struct MultipleChoice: View {
         guard let selected = selectedAnswer else { return }
         let isCorrect = (selected == correctAnswer)
 
-        // Update spaced repetition progress
-        if let currentUser = users.first {
-            flashcardVM.handleAnswer(for: currentCard, correct: isCorrect, user: currentUser, dataVM: dataVM)
-        }
+        // Update spaced repetition progress even when user profile is absent.
+        flashcardVM.handleAnswer(for: currentCard, correct: isCorrect, user: users.first, dataVM: dataVM)
 
         if isCorrect {
             withAnimation(.easeInOut(duration: 0.25)) {
