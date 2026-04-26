@@ -83,10 +83,10 @@ struct GenerateSentencesView: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                Text("Training Name")
+                Text("Practice Name")
                     .font(.jakarta(size: 15, weight: .semibold))
                 
-                TextField("Enter training name", text: $trainingName)
+                TextField("Enter practice name", text: $trainingName)
                     .font(.jakarta(size: 17))
                     .textFieldStyle(.plain)
                     .focused($isTrainingNameFocused)
