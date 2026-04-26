@@ -14,6 +14,7 @@ import Observation
 
 struct CameraView: View {
     @State private var cameraVM = CameraVM()
+    @Environment(AuthenticationViewModel.self) private var authVM
 
     @State private var hands: [VNHumanHandPoseObservation] = []
     @State private var bodies: [VNHumanBodyPoseObservation] = []
@@ -179,6 +180,7 @@ struct CameraView: View {
             }
         }
         .onAppear {
+            cameraVM.userHandedness = authVM.effectiveHandedness
             cameraVM.isMirrored = true
 
             cameraVM.onPoseDetected = { handObservations, _ in
@@ -194,6 +196,9 @@ struct CameraView: View {
             if let activeSignName {
                 cameraVM.startComparing(forSign: activeSignName)
             }
+        }
+        .onChange(of: authVM.effectiveHandedness) { _, newValue in
+            cameraVM.userHandedness = newValue
         }
         .task {
             try? await Task.sleep(for: .milliseconds(250))

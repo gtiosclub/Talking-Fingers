@@ -15,6 +15,7 @@ class User {
     var email: String
     var password: String
     var birthday: Date
+    var handedness: String? // "left" or "right"
     
     @Relationship(deleteRule: .cascade)
     var flashcards: [FlashcardModel]
@@ -23,7 +24,7 @@ class User {
     var streakCount: Int = 0
     var lastActivity: Date?
     
-    init(userId: String, name: String, email: String) {
+    init(userId: String, name: String, email: String, handedness: String? = nil) {
         self.userId = userId
         self.name = name
         self.email = email
@@ -33,5 +34,6 @@ class User {
         self.unlockedCategories = []
         self.streakCount = 0
         self.lastActivity = nil
+        self.handedness = handedness
     }
 }

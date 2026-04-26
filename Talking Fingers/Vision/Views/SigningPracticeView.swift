@@ -164,6 +164,7 @@ struct SigningPracticeView: View {
             }
         }
         .onAppear {
+            cameraVM.userHandedness = authVM.effectiveHandedness
             cameraVM.checkPermission()
 
             cameraVM.onPoseDetected = { handObservations, pts in
@@ -176,6 +177,9 @@ struct SigningPracticeView: View {
                 bodies = bodyObservations
             }
             cameraVM.startComparing(forSign: signName ?? "")
+        }
+        .onChange(of: authVM.effectiveHandedness) { _, newValue in
+            cameraVM.userHandedness = newValue
         }
         .task {
             try? await Task.sleep(for: .milliseconds(300))
@@ -443,6 +447,7 @@ private struct CameraAspectModifier: ViewModifier {
 #if os(macOS)
 struct SigningPracticeView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AuthenticationViewModel.self) private var authVM
 
     /// Optional sign reference name to compare the user's pose against.
     /// When `nil`, the comparison overlay (Bad/Okay/Good label) is hidden
@@ -569,6 +574,7 @@ struct SigningPracticeView: View {
             }
         }
         .onAppear {
+            cameraVM.userHandedness = authVM.effectiveHandedness
             if ownsCameraLifecycle {
                 cameraVM.isMirrored = true
                 cameraVM.checkPermission()
@@ -585,6 +591,9 @@ struct SigningPracticeView: View {
             if let signName {
                 cameraVM.startComparing(forSign: signName)
             }
+        }
+        .onChange(of: authVM.effectiveHandedness) { _, newValue in
+            cameraVM.userHandedness = newValue
         }
         .task {
             guard ownsCameraLifecycle else { return }

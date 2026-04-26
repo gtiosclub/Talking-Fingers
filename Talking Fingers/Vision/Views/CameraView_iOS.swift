@@ -210,6 +210,7 @@ struct CameraView: View {
         }
         .navigationTitle("Camera")
         .onAppear {
+            cameraVM.userHandedness = authVM.effectiveHandedness
             cameraVM.checkPermission()
 
             cameraVM.onPoseDetected = { handObservations, pts in
@@ -236,6 +237,9 @@ struct CameraView: View {
         }
         .onDisappear {
             cameraVM.stop()
+        }
+        .onChange(of: authVM.effectiveHandedness) { _, newValue in
+            cameraVM.userHandedness = newValue
         }
         .onChange(of: cameraMode) { _, newValue in
             if newValue == .compare {

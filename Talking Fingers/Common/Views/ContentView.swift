@@ -101,6 +101,7 @@ struct MainNavigationView: View {
         switch section {
         case .home:
             DashboardView()
+                .environment(authVM)
             
         case .flashcards:
             NavigationStack {
@@ -145,7 +146,7 @@ struct MainNavigationView: View {
             
         case .practice:
             NavigationStack {
-                SigningPracticeView()
+                OnboardingView()
                     .environment(authVM)
             }
         }
