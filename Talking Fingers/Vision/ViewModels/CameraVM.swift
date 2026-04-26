@@ -48,6 +48,13 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // Track mirroring so overlays can align with preview when needed
     var isMirrored = true
+    var userHandedness: String? {
+        didSet {
+            guard userHandedness?.lowercased() != oldValue?.lowercased() else { return }
+            guard let currentComparisonSignName else { return }
+            startComparing(forSign: currentComparisonSignName)
+        }
+    }
     
     // MARK: - Sign recognition
     var frameBuffer: SignReference = SignReference()
@@ -83,6 +90,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private var comparisonReference: SignReference?
     private var smoothedConfidence: Double = 0.0
     private let smoothingFactor: Double = 0.3
+    private var currentComparisonSignName: String?
 
     #if os(iOS)
     private let motionManager = CMMotionManager()
@@ -225,6 +233,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func startComparing(forSign signName: String) {
         let normalizedName = signName.lowercased().trimmingCharacters(in: .whitespaces)
         guard !normalizedName.isEmpty else { return }
+        currentComparisonSignName = normalizedName
         do {
             let refs = try loadSignReferences(forSign: normalizedName)
             comparisonReference = refs.first
@@ -251,6 +260,7 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     func stopComparing() {
         isComparing = false
         comparisonReference = nil
+        currentComparisonSignName = nil
         activeComparisonType = nil
         referenceComplexity = 0
         confidenceScore = 0
@@ -310,6 +320,21 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             return "left" + String(key.dropFirst(5))
         }
         return nil
+    }
+
+    private var shouldMirrorReferencesForCurrentUser: Bool {
+        userHandedness?.lowercased() == "left"
+    }
+
+    private func adaptedReference(_ reference: SignReference) -> SignReference {
+        guard shouldMirrorReferencesForCurrentUser else { return reference }
+
+        return SignReference(
+            id: reference.id,
+            signName: reference.signName,
+            signType: reference.signType,
+            frames: reference.frames.map { $0.mirroredHorizontally() }
+        )
     }
 
     private func jointWeight(for key: String) -> Double {
@@ -809,7 +834,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         if FileManager.default.fileExists(atPath: fileURL.path) {
             let data = try Data(contentsOf: fileURL)
             if !data.isEmpty {
-                return try JSONDecoder().decode([SignReference].self, from: data)
+                let references = try JSONDecoder().decode([SignReference].self, from: data)
+                return references.map(adaptedReference)
             }
         }
         let bundleURL = Bundle.main.url(forResource: signName, withExtension: "json", subdirectory: "Vision/References")
@@ -817,7 +843,8 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         if let url = bundleURL {
             let data = try Data(contentsOf: url)
             if !data.isEmpty {
-                return try JSONDecoder().decode([SignReference].self, from: data)
+                let references = try JSONDecoder().decode([SignReference].self, from: data)
+                return references.map(adaptedReference)
             }
         }
         return []

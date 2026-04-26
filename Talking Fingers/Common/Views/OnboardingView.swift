@@ -10,31 +10,48 @@ import SwiftUI
 #if os(iOS)
 import UIKit
 struct OnboardingView: View {
+    @Environment(AuthenticationViewModel.self) var authVM
     @State private var page = 0
     @State private var name = ""
+    @State private var handedness: String? = nil
+    let onFinished: (String, String?) -> Void
+    init(onFinished: @escaping (String, String?) -> Void = { _, _ in }) {
+        self.onFinished = onFinished
+    }
     var body: some View {
-        if page == 0 {
-            ObView1 {
-                page = 1
+        Group {
+            if page == 0 {
+                ObView1 {
+                    page = 1
+                }
+            } else if page == 1 {
+                ObView2(
+                    onNext: {
+                        page = 2
+                    },
+                    name: $name,
+                    handedness: $handedness
+                )
+            } else if page == 2 {
+                ObView3(
+                    onNext: {
+                        page = 3
+                    },
+                    name: name
+                )
+            } else if page == 3 {
+                ObView4(onNext: {
+                    onFinished(name, handedness)
+                }, name: name)
             }
-        } else if page == 1 {
-            ObView2(
-                onNext: {
-                    page = 2
-                },
-                name: $name
-            )
-        } else if page == 2 {
-            ObView3(
-                onNext: {
-                    page = 3
-                },
-                name: name
-            )
-        } else if page == 3 {
-            ObView4(onNext: {page = 4}, name: name)
         }
-        
+        .navigationBarBackButtonHidden(true)
+        .onAppear {
+            authVM.setSessionHandedness(handedness)
+        }
+        .onChange(of: handedness) { _, newValue in
+            authVM.setSessionHandedness(newValue)
+        }
     }
 }
 
@@ -90,6 +107,7 @@ struct ObView2: View {
         case right
     }
     @Binding var name: String
+    @Binding var handedness: String?
     @State private var selectedHand: Handedness? = nil
     var body: some View {
         ScrollView {
@@ -176,7 +194,12 @@ struct ObView2: View {
                     .padding(.bottom)
                     .padding(.top)
                     
-                    Button (action: {onNext()}){
+                    Button (action: {
+                        if let hand = selectedHand {
+                            handedness = hand == .left ? "left" : "right"
+                        }
+                        onNext()
+                    }){
                         ZStack {
                             RoundedRectangle(cornerRadius: 100)
                                 .foregroundColor(Color(UIColor(hex: "#97C171")))
@@ -494,8 +517,14 @@ private extension Color {
 }
 
 struct OnboardingView: View {
+    @Environment(AuthenticationViewModel.self) var authVM
     @State private var page = 0
     @State private var name = ""
+    @State private var handedness: String? = nil
+    let onFinished: (String, String?) -> Void
+    init(onFinished: @escaping (String, String?) -> Void = { _, _ in }) {
+        self.onFinished = onFinished
+    }
 
     var body: some View {
         Group {
@@ -503,14 +532,30 @@ struct OnboardingView: View {
             case 0:
                 MacObView1 { page = 1 }
             case 1:
-                MacObView2(onNext: { page = 2 }, name: $name)
+                MacObView2(onNext: { page = 2 }, name: $name, handedness: $handedness)
             case 2:
                 MacObView3(onNext: { page = 3 }, name: name)
             case 3:
-                MacObView4(onNext: { page = 4 }, name: name)
+                MacObView4(onNext: {
+                    // Move to a terminal page before finishing to avoid re-entering this case
+                    page = 4
+                    // Call completion on the next runloop to let navigation update cleanly
+                    DispatchQueue.main.async {
+                        self.onFinished(self.name, self.handedness)
+                    }
+                }, name: name)
+            case 4:
+                EmptyView()
             default:
                 MacObView1 { page = 1 }
             }
+        }
+        .navigationBarBackButtonHidden(true)
+        .onAppear {
+            authVM.setSessionHandedness(handedness)
+        }
+        .onChange(of: handedness) { _, newValue in
+            authVM.setSessionHandedness(newValue)
         }
     }
 }
@@ -563,6 +608,7 @@ private struct MacObView2: View {
     let onNext: () -> Void
     enum Handedness { case left, right }
     @Binding var name: String
+    @Binding var handedness: String?
     @State private var selectedHand: Handedness? = nil
 
     var body: some View {
@@ -594,7 +640,12 @@ private struct MacObView2: View {
                         SelectHandButton(title: "Left", isSelected: selectedHand == .left) { selectedHand = .left }
                         SelectHandButton(title: "Right", isSelected: selectedHand == .right) { selectedHand = .right }
                     }
-                    Button(action: onNext) {
+                    Button(action: {
+                        if let hand = selectedHand {
+                            handedness = hand == .left ? "left" : "right"
+                        }
+                        onNext()
+                    }) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 100)
                                 .foregroundColor(Color(hexString: "#97C171"))

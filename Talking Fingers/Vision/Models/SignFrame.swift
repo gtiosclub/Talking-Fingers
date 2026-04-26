@@ -122,6 +122,22 @@ struct SignFrame: Identifiable, Codable {
         self.normalizedJoints = SignFrame.computeNormalizedJoints(from: tempJoints)
     }
 
+    init(
+        id: UUID = UUID(),
+        timestamp: CMTime,
+        sourceWidth: Double,
+        sourceHeight: Double,
+        joints: [String: Joint]
+    ) {
+        self.id = id
+        self.seconds = timestamp.seconds
+        self.timescale = timestamp.timescale
+        self.sourceWidth = sourceWidth
+        self.sourceHeight = sourceHeight
+        self.joints = joints
+        self.normalizedJoints = SignFrame.computeNormalizedJoints(from: joints)
+    }
+
     // MARK: - Codable (backward-compatible with JSON that lacks normalizedJoints)
 
     private enum CodingKeys: String, CodingKey {
@@ -184,6 +200,52 @@ struct SignFrame: Identifiable, Codable {
         }
 
         return normalized
+    }
+}
+
+extension SignFrame {
+    func mirroredHorizontally() -> SignFrame {
+        var mirroredJoints: [String: Joint] = [:]
+        mirroredJoints.reserveCapacity(joints.count)
+
+        for (key, joint) in joints {
+            let mirroredKey = SignFrame.mirroredJointKey(for: key)
+            mirroredJoints[mirroredKey] = Joint(
+                x: 1 - joint.x,
+                y: joint.y,
+                confidence: joint.confidence
+            )
+        }
+
+        return SignFrame(
+            id: id,
+            timestamp: timestamp,
+            sourceWidth: sourceWidth,
+            sourceHeight: sourceHeight,
+            joints: mirroredJoints
+        )
+    }
+
+    private static func mirroredJointKey(for key: String) -> String {
+        if key.hasPrefix("leftVNHLK") {
+            return "right" + String(key.dropFirst(4))
+        }
+        if key.hasPrefix("rightVNHLK") {
+            return "left" + String(key.dropFirst(5))
+        }
+        if key.hasPrefix("left_") {
+            return "right_" + String(key.dropFirst(5))
+        }
+        if key.hasPrefix("right_") {
+            return "left_" + String(key.dropFirst(6))
+        }
+        if key.hasPrefix("left") {
+            return "right" + String(key.dropFirst(4))
+        }
+        if key.hasPrefix("right") {
+            return "left" + String(key.dropFirst(5))
+        }
+        return key
     }
 }
 // MARK: - JSON encode/decode helpers (SignFrame array)

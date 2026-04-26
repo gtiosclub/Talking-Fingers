@@ -107,6 +107,7 @@ struct MainNavigationView: View {
         switch section {
         case .home:
             DashboardView()
+                .environment(authVM)
             
         case .flashcards:
             NavigationStack {
