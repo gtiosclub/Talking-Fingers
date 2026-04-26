@@ -170,9 +170,9 @@ struct DashboardView: View {
                                     .navigationBarBackButtonHidden(true)
                             } label: {
                                 Image(systemName: "magnifyingglass")
-                                    .font(.jakarta(size: 22))
-                                    .foregroundStyle(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
-                            }
+                                    .font(.jakarta(size: 20))
+                                    .foregroundColor(Color(red: 0.569, green: 0.724, blue: 0.879)) // TF Blue
+                            }                            
                         }
                         .padding(.horizontal)
                         .padding(.top, 10)
@@ -386,7 +386,7 @@ struct DashboardView: View {
                         
                         Image(systemName: "magnifyingglass")
                             .font(.jakarta(size: 20))
-                            .foregroundColor(Color(red: 0.30, green: 0.55, blue: 0.85)) // TF Blue
+                            .foregroundColor(Color(red: 0.569, green: 0.724, blue: 0.879)) // TF Blue
                             .padding(.leading, 8)
                     }
                 }

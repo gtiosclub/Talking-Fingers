@@ -186,10 +186,12 @@ struct FlexibleStartCardComponent: View {
                     Text(context.title)
                         .font(.jakarta(size: 40))
                         .foregroundColor(.black.opacity(0.7))
+                        .multilineTextAlignment(.center)
                     
                     Text(context.subtitle)
                         .font(.jakarta(size: 42, weight: .bold))
                         .foregroundColor(context.title == "Learn" ? Color(red: 0.56, green: 0.72, blue: 0.44) : Color(red: 0.58, green: 0.72, blue: 0.85))
+                        .multilineTextAlignment(.center)
                 }
 
                 if case .dailyChallenge = context {
@@ -199,12 +201,15 @@ struct FlexibleStartCardComponent: View {
                     Text("\(total) words to go!")
                         .font(.jakarta(size: 16, weight: .medium))
                         .foregroundColor(Color.black.opacity(0.35))
+                        .multilineTextAlignment(.center)
                 }
 
-                ProgressView(value: progress)
-                    .tint(Color(red: 0.70, green: 0.80, blue: 0.90))
-                    .scaleEffect(y: 1.5)
-                    .padding(.horizontal, 60)
+                if case .dailyChallenge = context {
+                    ProgressView(value: progress)
+                        .tint(Color(red: 0.70, green: 0.80, blue: 0.90))
+                        .scaleEffect(y: 1.5)
+                        .padding(.horizontal, 60)
+                }
 
                 Spacer()
 
