@@ -87,10 +87,12 @@ struct FlexibleStartCardComponent: View {
     let closeAction: () -> Void
     
     @State private var flashcardVM = FlashcardVM()
+    @State private var allUserFlashcards: [FlashcardModel] = []
     @State private var isActive: Bool = false
     @State private var showEndScreen: Bool = false
     
     @Environment(SwiftDataVM.self) private var dataVM
+    @Environment(\.modelContext) private var modelContext
 
     var progress: CGFloat {
         CGFloat(Double(completed) / Double(max(total, 1)))
@@ -253,6 +255,11 @@ struct FlexibleStartCardComponent: View {
         .padding(.horizontal, 16)
         .onAppear {
             configureCardsForContext()
+            Task {
+                await flashcardVM.loadFlashcards(modelContext: modelContext)
+                allUserFlashcards = flashcardVM.flashcards
+                configureCardsForContext()
+            }
         }
         .onChange(of: context.id) { _, _ in
             configureCardsForContext()
@@ -260,20 +267,24 @@ struct FlexibleStartCardComponent: View {
     }
     
     private func configureCardsForContext() {
+        let sourceCards = allUserFlashcards.isEmpty ? flashcardVM.flashcards : allUserFlashcards
+        
         switch context {
         case .learn(let category), .exercise(let category):
-            flashcardVM.flashcards = fallbackCards(for: category)
+            let categoryCards = sourceCards
+                .filter { $0.category == category && $0.term.category == category }
+            flashcardVM.flashcards = categoryCards.isEmpty ? fallbackCards(for: category) : categoryCards
         case .dailyChallenge:
-            flashcardVM.flashcards = FlashcardVM.dummyFlashcards
+            let validCards = sourceCards.filter { $0.term.category == $0.category }
+            flashcardVM.flashcards = validCards.isEmpty ? FlashcardVM.dummyFlashcards : validCards
             flashcardVM.flashcards = flashcardVM.generateDailyReviewQueue(limit: total).cards
         }
         flashcardVM.lastCardID = nil
     }
     
     private func markLearnCompletedIfNeeded() {
-        guard case .learn(let category) = context else { return }
-        let key = "learnCompleted_\(category.rawValue)"
-        UserDefaults.standard.set(true, forKey: key)
+        guard case .learn = context else { return }
+        // Completion is inferred from persisted card progress and synced via Firebase.
     }
     
     private func fallbackCards(for category: TermCategory) -> [FlashcardModel] {
@@ -390,7 +401,7 @@ private struct ExerciseSessionFlow: View {
         let distractors = Array(
             Set(
                 pool
-                    .filter { $0.id != card.id }
+                    .filter { $0.id != card.id && $0.category == card.category && $0.term.category == card.category }
                     .map { $0.term.displayName }
                     .filter { $0 != correct }
             )
@@ -399,19 +410,10 @@ private struct ExerciseSessionFlow: View {
 
         var options = Array(distractors.prefix(max(0, targetCount - 1)))
         options.append(correct)
-
-        // If the category pool is too small, backfill with global unique terms.
-        if options.count < targetCount {
-            let existing = Set(options)
-            let fallback = Term.allCases
-                .map(\.displayName)
-                .filter { !existing.contains($0) }
-                .shuffled()
-                .prefix(targetCount - options.count)
-            options.append(contentsOf: fallback)
-        }
-
-        return Array(Set(options)).shuffled()
+        
+        // Keep choices category-scoped only.
+        let unique = Array(Set(options)).shuffled()
+        return Array(unique.prefix(min(targetCount, unique.count)))
     }
 }
 
@@ -436,9 +438,7 @@ private struct LearnFlow: View {
     var body: some View {
         let learnVM = LearnModeVM(flashcard: currentCard)
         learnVM.onAnswer = { wasCorrect in
-            if let currentUser = users.first {
-                vm.handleAnswer(for: currentCard, correct: wasCorrect, user: currentUser, dataVM: dataVM)
-            }
+            vm.handleAnswer(for: currentCard, correct: wasCorrect, user: users.first, dataVM: dataVM)
             advance()
         }
         

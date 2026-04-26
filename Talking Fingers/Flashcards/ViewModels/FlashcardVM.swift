@@ -14,7 +14,6 @@ class FlashcardVM {
     var isLoading = false
     var isSyncing = false
     private let firebaseService = FlashcardsServices()
-    var fakeFlashcards: [FlashcardModel] = FlashcardVM.dummyFlashcards
     var lastCardID: UUID?
 
     static let dummyFlashcards: [FlashcardModel] = {
@@ -45,16 +44,7 @@ class FlashcardVM {
         ]
     }()
     
-    init() {
-        let dummyID = UUID(uuidString: "GifDiagramTest") ?? UUID() // change to static diagram test to test static diagram
-        let dummyCard = FlashcardModel(
-            term: .hello,
-            id: dummyID,
-            category: .commonObjects,
-            gifFileName: "a34a6e11-0fa6-4b52-abad-0454bd74ea5a.gif"
-        )
-        self.flashcards = [dummyCard]
-    }
+    init() {}
     
     func searchFlashCard(input: String) -> [String] {
         var results = [String]()
@@ -100,16 +90,14 @@ class FlashcardVM {
         flashcards = fetchFromSwiftData(modelContext)
         isLoading = false
         isSyncing = true
-        Task {
-            do {
-                let remoteCards = try await firebaseService.downloadFlashcards()
-                await saveToSwiftData(remoteCards, modelContext: modelContext)
-                flashcards = fetchFromSwiftData(modelContext)
-            } catch {
-                print("Firebase sync failed: \(error)")
-            }
-            isSyncing = false
+        do {
+            let remoteCards = try await firebaseService.downloadFlashcards()
+            await saveToSwiftData(remoteCards, modelContext: modelContext)
+            flashcards = fetchFromSwiftData(modelContext)
+        } catch {
+            print("Firebase sync failed: \(error)")
         }
+        isSyncing = false
     }
 
     private func fetchFromSwiftData(_ modelContext: ModelContext) -> [FlashcardModel] {
@@ -164,8 +152,10 @@ class FlashcardVM {
         return card
     }
     
-    func handleAnswer(for card: FlashcardModel, correct: Bool, user: User, dataVM: SwiftDataVM) {
-        dataVM.updateStreak(for: user)
+    func handleAnswer(for card: FlashcardModel, correct: Bool, user: User?, dataVM: SwiftDataVM) {
+        if let user {
+            dataVM.updateStreak(for: user)
+        }
         
         let newProgress: ProgressType
 
@@ -185,12 +175,20 @@ class FlashcardVM {
         case (.learning, false):
             newProgress = .learning
         case (.new, false):
-            newProgress = .new
+            // Any learn/exercise exposure should move new cards forward so a full
+            // learn round unlocks exercise even if the user skips or gets all wrong.
+            newProgress = .learning
         }
 
         let updatedCard = updateStatus(for: card, to: newProgress)
         if correct {
             updatedCard.lastSucceeded = Date()
+        }
+        
+        if let modelContext = dataVM.modelContext {
+            Task {
+                await updateFlashcard(updatedCard, modelContext: modelContext)
+            }
         }
     }
     

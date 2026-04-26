@@ -32,12 +32,13 @@ struct DashboardView: View {
     
     @State private var activeFlow: ActiveFlow? = nil
     @Environment(SwiftDataVM.self) private var dataVM
+    @Environment(\.modelContext) private var modelContext
     @Query private var users: [User]
     @State private var selectedTab: Int = 0
     
     // Compute categories that are in progress (have at least one non-new and non-mastered card)
     private var inProgressCategories: [(category: TermCategory, progress: Float, mode: String)] {
-        let grouped = Dictionary(grouping: flashcardVM.fakeFlashcards) { $0.category }
+        let grouped = Dictionary(grouping: categoryScopedCards) { $0.category }
         return grouped.compactMap { (category, cards) in
             let progress = flashcardVM.returnProgress(flashcards: cards)
             // Only show categories that are actually in progress (not 0% and not 100%)
@@ -60,13 +61,18 @@ struct DashboardView: View {
         flashcardVM.generateDailyReviewQueue(limit: 5)
     }
     
+    private var categoryScopedCards: [FlashcardModel] {
+        // Guard against mismatched remote records: category views should only show
+        // cards whose term actually belongs to that category.
+        flashcardVM.flashcards.filter { $0.term.category == $0.category }
+    }
+    
     private var foundationsCompleted: Bool {
         isLearnCompleted(for: .alphabet) && isLearnCompleted(for: .numbers)
     }
     
     private func isLearnCompleted(for category: TermCategory) -> Bool {
-        let key = "learnCompleted_\(category.rawValue)"
-        return UserDefaults.standard.bool(forKey: key)
+        categoryScopedCards.contains { $0.category == category && $0.progress != .new }
     }
     
     private func canAccessCategory(_ category: TermCategory) -> Bool {
@@ -143,6 +149,9 @@ struct DashboardView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            }
+            .onAppear {
+                loadUserFlashcardsIfNeeded()
             }
          }
 #else
@@ -357,6 +366,9 @@ struct DashboardView: View {
                     .environment(dataVM)
                 }
             }
+            .onAppear {
+                loadUserFlashcardsIfNeeded()
+            }
         }
         
 #endif
@@ -525,6 +537,15 @@ struct DashboardView: View {
             Spacer()
         }
         .padding()
+    }
+}
+    
+extension DashboardView {
+    private func loadUserFlashcardsIfNeeded() {
+        guard flashcardVM.flashcards.isEmpty, !flashcardVM.isLoading else { return }
+        Task {
+            await flashcardVM.loadFlashcards(modelContext: modelContext)
+        }
     }
 }
     

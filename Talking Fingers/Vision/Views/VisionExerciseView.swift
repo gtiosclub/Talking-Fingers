@@ -162,16 +162,12 @@ struct VisionExerciseView: View {
     }
 
     private func handlePass() {
-        if let currentUser = users.first {
-            flashcardVM.handleAnswer(for: currentCard, correct: true, user: currentUser, dataVM: dataVM)
-        }
+        flashcardVM.handleAnswer(for: currentCard, correct: true, user: users.first, dataVM: dataVM)
         advanceToNext()
     }
 
     private func handleSkip() {
-        if let currentUser = users.first {
-            flashcardVM.handleAnswer(for: currentCard, correct: false, user: currentUser, dataVM: dataVM)
-        }
+        flashcardVM.handleAnswer(for: currentCard, correct: false, user: users.first, dataVM: dataVM)
         advanceToNext()
     }
 
