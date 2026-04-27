@@ -144,13 +144,9 @@ struct MacSidebarView: View {
     }
 
     fileprivate static let items: [Item] = [
-        .init(section: .home,       title: "Home",          systemImage: "house"),
-        .init(section: .flashcards, title: "Flashcards",    systemImage: "rectangle.stack"),
-        .init(section: .sentences,  title: "Practice",      systemImage: "hand.wave"),
-        .init(section: .stats,      title: "Profile",       systemImage: "person"),
-        .init(section: .camera,     title: "Vision",        systemImage: "eyeglasses"),
-        .init(section: .review,     title: "Review",        systemImage: "film.stack"),
-        .init(section: .practice,   title: "Practice Test", systemImage: "pencil.and.scribble"),
+        .init(section: .home,     title: "Home",     systemImage: "house.fill"),
+        .init(section: .practice, title: "Practice", systemImage: "hand.raised.fill"),
+        .init(section: .stats,    title: "Profile",  systemImage: "person.fill"),
     ]
 }
 
