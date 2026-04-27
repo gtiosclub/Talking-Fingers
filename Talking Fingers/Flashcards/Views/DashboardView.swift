@@ -25,6 +25,7 @@ enum ActiveFlow: Identifiable {
 struct DashboardView: View {
     @State private var flashcardVM = FlashcardVM()
     @State private var currentView: String = "Home"
+    @State private var showOnboarding: Bool = false
     
     // for learn/exercise popup
     @State private var showModePopup: Bool = false
@@ -173,6 +174,14 @@ struct DashboardView: View {
                                 .foregroundColor(Color.gray.opacity(0.8))
                                 .padding(.leading, 24)
                             Spacer()
+                            Button {
+                                showOnboarding = true
+                            } label: {
+                                Image(systemName: "questionmark.circle")
+                                    .font(.jakarta(size: 20))
+                                    .foregroundColor(Color(red: 0.569, green: 0.724, blue: 0.879))
+                            }
+                            .padding(.trailing, 12)
                             
                             NavigationLink {
                                 SearchView()
@@ -326,8 +335,8 @@ struct DashboardView: View {
                     }
                 }
                 
-                // MARK: - Floating Tab Bar Overlay
-                FloatingTabBar(selectedTab: $selectedTab)
+                // MARK: - Floating Tab Bar Overlay (disabled: non-functional duplicate tab bar)
+                // FloatingTabBar(selectedTab: $selectedTab)
             }
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
@@ -369,6 +378,11 @@ struct DashboardView: View {
             .onAppear {
                 loadUserFlashcardsIfNeeded()
             }
+            .universalFullScreenCover(isPresented: $showOnboarding) {
+                OnboardingView { _, _ in
+                    showOnboarding = false
+                }
+            }
         }
         
 #endif
@@ -403,6 +417,18 @@ struct DashboardView: View {
                     }
                 }
                 .buttonStyle(.plain)
+
+                HStack {
+                    Spacer()
+                    Button {
+                        showOnboarding = true
+                    } label: {
+                        Label("View Onboarding", systemImage: "questionmark.circle")
+                            .font(.jakarta(size: 16, weight: .semibold))
+                            .foregroundColor(Color(red: 0.569, green: 0.724, blue: 0.879))
+                    }
+                    .buttonStyle(.plain)
+                }
                 
                 // MARK: - Welcome Header
                 HStack(spacing: 16) {
@@ -516,6 +542,11 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .universalFullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView { _, _ in
+                showOnboarding = false
+            }
+        }
     }
 
     
