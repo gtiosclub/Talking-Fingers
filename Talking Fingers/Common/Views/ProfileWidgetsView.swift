@@ -52,6 +52,7 @@ struct ProfileWidgetsView: View {
     @StateObject private var vm = ProfileWidgetsVM()
     @State private var mode: ScreenMode = .regular
     @Environment(AuthenticationViewModel.self) var authVM
+    @State private var showProfile = false
     
     private let presentation: PresentationStyle
     
@@ -124,6 +125,21 @@ struct ProfileWidgetsView: View {
                     .padding(.vertical, 8)
                 }
             }
+            
+            if showProfile {
+                ZStack {
+                    Color.black.opacity(0.25)
+                        .ignoresSafeArea()
+                        .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { showProfile = false } }
+                    profileSheet(onClose: { withAnimation(.easeInOut(duration: 0.2)) { showProfile = false } })
+                        .environment(authVM)
+                        .background(TFWidgetColors.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.2), radius: 16, x: 0, y: 8)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                .animation(.easeInOut(duration: 0.2), value: showProfile)
+            }
         }
     }
     
@@ -133,13 +149,59 @@ struct ProfileWidgetsView: View {
                 .font(.system(size: 34, weight: .bold))
                 .fontWeight(.bold)
             Spacer()
-            Image(systemName: "person.circle")
-                .font(.system(size: 26, weight: .regular))
-                .foregroundStyle(TFWidgetColors.black)
+            Button {showProfile.toggle()} label : {
+                Image(systemName: "person.circle")
+                    .font(.system(size: 26, weight: .regular))
+                    .foregroundStyle(TFWidgetColors.black)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 6)
+    }
+    struct profileSheet: View {
+        let onClose: () -> Void
+        @Environment(AuthenticationViewModel.self) var authVM
+        var body: some View {
+            VStack(spacing: 0) {
+                // Header with dismiss button on the top-right
+                HStack {
+                    Spacer()
+                    Button(action: { onClose() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(TFWidgetColors.black)
+                            .padding(8)
+                            .background(TFWidgetColors.pill)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding([.top, .horizontal], 12)
+
+                // Content
+                VStack(spacing: 12) {
+                    Text(authVM.currentUser?.name ?? "Loading...")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(TFWidgetColors.black)
+
+                    Button(action: { authVM.signOut(); onClose() }) {
+                        Text("Log Out")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(TFWidgetColors.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.red)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+            }
+            .frame(width: 280)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.bottom, 16)
+        }
     }
     
     private var actionRow: some View {
@@ -997,8 +1059,11 @@ struct AccuracyPreview: View {
     }
 }
 
+
+
 #if os(iOS)
 #Preview {
     ProfileWidgetsView()
 }
 #endif
+
