@@ -701,55 +701,58 @@ private struct MacObView3: View {
     var body: some View {
         VStack {
             ScrollView {
-                VStack(alignment: .leading) {
-                    Text("Nice to meet you,")
-                        .font(.system(size: 40))
-                        .foregroundColor(Color(hexString: "#464646"))
-                    Text("\(name)!")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundColor(Color(hexString: "#559AD2"))
-                        .padding(.bottom)
-                    (Text("Learning to fingerspell is essential for your ASL journey. ")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color(hexString: "#464646"))
-                     + Text("Let’s start with your name!")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(Color(hexString: "#464646")))
-                }
-                .padding([.bottom, .trailing, .leading])
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(name.lowercased()), id: \.self) { letter in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image("\(letter)")
-                                .resizable()
-                                .frame(width: 54, height: 72)
-                            Text(letter.uppercased())
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundColor(Color(hexString: "#464646"))
-                            Text(signDescription(for: letter))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .font(.system(size: 16))
-                                .foregroundColor(Color(hexString: "#464646"))
-                                .multilineTextAlignment(.leading)
+                VStack {
+                    Spacer()
+                    VStack(alignment: .leading) {
+                        Text("Nice to meet you,")
+                            .font(.system(size: 40))
+                            .foregroundColor(Color(hexString: "#464646"))
+                        Text("\(name)!")
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundColor(Color(hexString: "#559AD2"))
+                            .padding(.bottom)
+                        (Text("Learning to fingerspell is essential for your ASL journey. ")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(hexString: "#464646"))
+                         + Text("Let’s start with your name!")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(Color(hexString: "#464646")))
+                    }
+                    .padding([.bottom, .trailing, .leading])
+                    
+                    Divider()
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(name.lowercased()), id: \.self) { letter in
+                            HStack(alignment: .top, spacing: 12) {
+                                Image("\(letter)")
+                                    .resizable()
+                                    .frame(width: 54, height: 72)
+                                Text(letter.uppercased())
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(Color(hexString: "#464646"))
+                                Text(signDescription(for: letter))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(Color(hexString: "#464646"))
+                                    .multilineTextAlignment(.leading)
+                            }
                         }
                     }
-                }
-                .padding()
-
-                Button(action: onNext) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 100)
-                            .foregroundColor(Color(hexString: "#97C171"))
-                            .frame(width: 338, height: 45)
-                        Text("Try It Out")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
+                    .padding()
+                    
+                    Button(action: onNext) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 100)
+                                .foregroundColor(Color(hexString: "#97C171"))
+                                .frame(width: 338, height: 45)
+                            Text("Try It Out")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

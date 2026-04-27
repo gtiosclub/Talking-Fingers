@@ -17,6 +17,7 @@ struct MacProfileView: View {
     @State private var isEditing: Bool = false
     @State private var showingAddWidgets: Bool = false
     @State private var draggingWidgetID: UUID?
+    @State private var showingSettings: Bool = false
 
     // Persisted user choices.
     @AppStorage("mac_profile_avatar_data") private var avatarData: Data = Data()
@@ -89,6 +90,41 @@ struct MacProfileView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 40)
+        }
+        .overlay(alignment: .topTrailing) {
+            Button(action: { showingSettings.toggle() }) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(TFWidgetColors.darkerGray)
+                    .padding(6)
+                    .background(TFWidgetColors.pill)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle().stroke(TFWidgetColors.border, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+            .padding(.trailing, 16)
+            .popover(isPresented: $showingSettings, arrowEdge: .top) {
+                VStack(spacing: 12) {
+                    Text(authVM.currentUser?.name ?? "")
+                        .font(.jakarta(size: 14, weight: .regular))
+                        .foregroundStyle(TFWidgetColors.black)
+                        .lineLimit(1)
+                    Button(action: { authVM.signOut(); showingSettings = false }) {
+                        Text("Log Out")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(TFWidgetColors.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.red)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+            }
         }
         .padding(.bottom, 16)
     }
@@ -576,3 +612,4 @@ struct MacAddWidgetsSheet: View {
     }
 }
 #endif
+
