@@ -55,44 +55,14 @@ struct MainNavigationView: View {
         .ignoresSafeArea(.container, edges: .top)
         .configureMacWindowChrome()
         #else
-        TabView(selection: $selectedSection) {
-            detailView(for: .home)
-                .tabItem {
-                    Label("Home", systemImage: "house")
-                }
-                .tag(NavigationSection.home)
-            detailView(for: .flashcards)
-                .tabItem {
-                    Label("Flashcards", systemImage: "rectangle.stack.fill")
-                }
-                .tag(NavigationSection.flashcards)
-            detailView(for: .sentences)
-                .tabItem {
-                    Label("Sentences", systemImage: "text.bubble")
-                }
-                .tag(NavigationSection.sentences)
-            detailView(for: .stats)
-                .tabItem {
-                    Label("Profile", systemImage: "person.circle")
-                }
-                .tag(NavigationSection.stats)
-            detailView(for: .camera)
-                .tabItem {
-                    Label("Vision", systemImage: "eyeglasses")
-                }
-                .tag(NavigationSection.camera)
-            detailView(for: .review)
-                .tabItem {
-                    Label("Review", systemImage: "film.stack")
-                }
-                .tag(NavigationSection.review)
-            detailView(for: .practice)
-                .tabItem {
-                    Label("Practice", systemImage: "pencil.and.scribble")
-                }
-                .tag(NavigationSection.practice)
+        ZStack(alignment: .bottom) {
+            detailView(for: selectedSection)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            MainFloatingTabBar(selectedSection: $selectedSection)
         }
         .environment(authVM)
+        .background(Color.white.ignoresSafeArea())
         #endif
     }
     
@@ -102,34 +72,6 @@ struct MainNavigationView: View {
         case .home:
             DashboardView()
                 .environment(authVM)
-            
-        case .flashcards:
-            NavigationStack {
-                let dummyCard = FlashcardModel(
-                    term: .hello,
-                    id: UUID(),
-                    category: .greetings
-                )
-
-                StartCardComponent(
-                    modeTitle: "Exercise",
-                    topic: "Greetings",
-                    completed: 0,
-                    total: 12,
-                    imageName: "greetingsIllustration",
-                    primaryAction: {},
-                    secondaryAction: {},
-                    closeAction: {
-                        selectedSection = .home
-                    },
-                    learnFlashcard: dummyCard,
-                    learnProgress: 0.25
-                )
-            }
-        case .sentences:
-            NavigationStack {
-                SavedPracticeView()
-            }
         case .stats:
             StatsView()
             
@@ -146,16 +88,86 @@ struct MainNavigationView: View {
             
         case .practice:
             NavigationStack {
-                OnboardingView()
-                    .environment(authVM)
+                SavedPracticeView()
             }
         }
     }
     
     enum NavigationSection: Hashable {
-        case home, flashcards, sentences, stats, camera, review, practice
+        case home, stats, camera, review, practice
     }
 }
+
+#if os(iOS)
+private struct MainFloatingTabBar: View {
+    @Binding var selectedSection: MainNavigationView.NavigationSection
+    
+    var body: some View {
+        HStack {
+            Spacer()
+            tabButton(
+                icon: "house.fill",
+                title: "Home",
+                section: .home
+            )
+            Spacer()
+            tabButton(
+                icon: "hand.raised.fill",
+                title: "Practice",
+                section: .practice
+            )
+            Spacer()
+            tabButton(
+                icon: "person.fill",
+                title: "Profile",
+                section: .stats
+            )
+            Spacer()
+        }
+        .padding(.vertical, 9)
+        .background(Color.white)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.08), radius: 15, x: 0, y: 5)
+        .padding(.horizontal, 30)
+        .padding(.bottom, -20)
+    }
+    
+    private func tabButton(
+        icon: String,
+        title: String,
+        section: MainNavigationView.NavigationSection
+    ) -> some View {
+        let isSelected = selectedSection == section
+        return Button {
+            selectedSection = section
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.jakarta(size: 22))
+                Text(title)
+                    .font(.jakarta(size: 10))
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(
+                isSelected
+                ? Color(red: 0.30, green: 0.55, blue: 0.85)
+                : Color.gray.opacity(0.6)
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(
+                        isSelected
+                        ? Color(red: 0.30, green: 0.55, blue: 0.85).opacity(0.15)
+                        : Color.clear
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+#endif
 struct StatsView: View {
     var body: some View {
         #if os(iOS)
