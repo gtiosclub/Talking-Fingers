@@ -98,8 +98,8 @@ struct ObView1: View {
                 }
                 .frame(maxWidth: 338)
             }
-            .frame(maxWidth: 390, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: 338, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 }
@@ -127,8 +127,8 @@ struct ObView2: View {
                         .minimumScaleFactor(0.8)
                         .frame(alignment: .leading)
                 }
-                .frame(maxWidth: 390, alignment: .leading)
-                .padding(.trailing)
+                .frame(maxWidth: 338, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
                 Rectangle()
                     .frame(height: 1)
                     .foregroundColor(.gray)
