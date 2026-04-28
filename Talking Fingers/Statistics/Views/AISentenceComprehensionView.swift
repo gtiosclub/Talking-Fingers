@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct AISentenceComprehensionView: View {
     @Binding var sentenceModel: AISentenceModel
@@ -23,6 +26,7 @@ struct AISentenceComprehensionView: View {
     @State private var macCarouselIndex: Int = 0
     #if os(macOS)
     @FocusState private var isMacCarouselFocused: Bool
+    @State private var macKeyMonitor: Any?
     #endif
 
     private let chipTextColor = Color(hex: "#464646")
@@ -76,7 +80,13 @@ struct AISentenceComprehensionView: View {
         .focusable()
         .focused($isMacCarouselFocused)
         .focusEffectDisabled()
-        .onAppear { isMacCarouselFocused = true }
+        .onAppear {
+            isMacCarouselFocused = true
+            installMacCarouselKeyMonitor()
+        }
+        .onDisappear {
+            removeMacCarouselKeyMonitor()
+        }
         .onMoveCommand { direction in
             switch direction {
             case .left:
@@ -165,6 +175,32 @@ struct AISentenceComprehensionView: View {
         let nextIndex = clampedMacCarouselIndex + offset
         macCarouselIndex = min(max(0, nextIndex), glossTerms.count - 1)
     }
+
+#if os(macOS)
+    private func installMacCarouselKeyMonitor() {
+        guard macKeyMonitor == nil else { return }
+        macKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard NSApp.isActive else { return event }
+
+            switch event.keyCode {
+            case 123: // Left arrow
+                moveMacCarousel(by: -1)
+                return nil
+            case 124: // Right arrow
+                moveMacCarousel(by: 1)
+                return nil
+            default:
+                return event
+            }
+        }
+    }
+
+    private func removeMacCarouselKeyMonitor() {
+        guard let macKeyMonitor else { return }
+        NSEvent.removeMonitor(macKeyMonitor)
+        self.macKeyMonitor = nil
+    }
+#endif
     
     private func signPlaceholderCard(for term: Term) -> some View {
 #if os(macOS)
