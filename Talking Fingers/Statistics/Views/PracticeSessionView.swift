@@ -306,7 +306,7 @@ struct PracticeSessionView: View {
                             onSentenceFinished: { average in
                                 signingSentenceAverageScore = average
                                 isSigningSentenceFavorited = false
-                                withAnimation(.easeInOut(duration: 0.2)) {
+                                withAnimation(.easeOut(duration: 0.16)) {
                                     showSigningSentenceCompletionOverlay = true
                                 }
                             },
@@ -382,7 +382,11 @@ struct PracticeSessionView: View {
                 )
                 .frame(maxWidth: .infinity)
                 .ignoresSafeArea(edges: .bottom)
+                #if os(macOS)
+                .transition(.opacity)
+                #else
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+                #endif
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

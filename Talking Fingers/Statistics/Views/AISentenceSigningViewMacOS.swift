@@ -163,6 +163,11 @@ struct LiveSigningViewMacOS: View {
         glossWords[safe: currentWordIndex]?.rawValue ?? ""
     }
 
+    private var currentComparisonTarget: String? {
+        guard !isFinished else { return nil }
+        return currentTargetWord.lowercased()
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // English sentence + scrollable gloss row (left-aligned)
@@ -183,7 +188,7 @@ struct LiveSigningViewMacOS: View {
             // Camera with "Skip word" overlay — fills all available height
             ZStack(alignment: .bottomTrailing) {
                 SigningPracticeView(
-                    signName: currentTargetWord.lowercased(),
+                    signName: currentComparisonTarget,
                     onConfidenceChange: { confidence in
                         handleThresholdReached(confidence: confidence)
                     },
@@ -297,6 +302,7 @@ struct LiveSigningViewMacOS: View {
     }
 
     private func finalizeAndComplete() {
+        externalCameraVM?.stopComparing()
         let rawScores = (0..<glossWords.count).map { wordMaxScores[$0] ?? 0 }
         let scores = rawScores.map { Self.userFacingSigningScore(from: $0) }
         sentenceModel.wordScores = scores

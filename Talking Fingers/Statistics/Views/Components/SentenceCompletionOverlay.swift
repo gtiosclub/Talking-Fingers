@@ -67,7 +67,16 @@ struct SentenceCompletionOverlay: View {
     private var overlayBackground: Color { tier.background }
     private var titleText: String { tier.title }
 
+    @ViewBuilder
     var body: some View {
+        #if os(macOS)
+        macBanner
+        #else
+        iosSheet
+        #endif
+    }
+
+    private var overlayContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
@@ -81,9 +90,15 @@ struct SentenceCompletionOverlay: View {
                 Spacer()
 
                 Button(action: { isFavorited.toggle() }) {
-                    Image(systemName: isFavorited ? "bookmark.fill" : "bookmark")
-                        .font(.jakarta(size: 22, weight: .medium))
-                        .foregroundColor(textAccent)
+                    HStack(spacing: 4) {
+                        Image(systemName: isFavorited ? "bookmark.fill" : "bookmark")
+                            .font(.jakarta(size: 22, weight: .medium))
+                        #if os(macOS)
+                        Text("Save")
+                            .font(.jakarta(size: 17, weight: .semibold))
+                        #endif
+                    }
+                    .foregroundColor(textAccent)
                 }
                 .buttonStyle(.plain)
             }
@@ -104,6 +119,10 @@ struct SentenceCompletionOverlay: View {
             .buttonStyle(.plain)
             .padding(.bottom, 20)
         }
+    }
+
+    private var iosSheet: some View {
+        overlayContent
         .padding(.horizontal, 16)
         .padding(.top, 16)
         // Inset content from the home indicator; the fill extends under it (see below).
@@ -126,4 +145,20 @@ struct SentenceCompletionOverlay: View {
         }
         .ignoresSafeArea(edges: .bottom)
     }
+
+    #if os(macOS)
+    private var macBanner: some View {
+        overlayContent
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.bottom, 0)
+            .frame(maxWidth: 760, alignment: .top)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(overlayBackground)
+            )
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+    }
+    #endif
 }
