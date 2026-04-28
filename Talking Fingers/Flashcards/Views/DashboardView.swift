@@ -158,12 +158,13 @@ struct DashboardView: View {
 #else
         // MARK: - iOS Layout
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                Color(red: 0.96, green: 0.97, blue: 0.99)
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+            GeometryReader { proxy in
+                ZStack(alignment: .bottom) {
+                    Color(red: 0.96, green: 0.97, blue: 0.99)
+                        .ignoresSafeArea()
+                    
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
                         
                         // MARK: - Top Nav
                         HStack {
@@ -319,24 +320,25 @@ struct DashboardView: View {
                         .padding(.horizontal)
                         
                         Spacer(minLength: 120) // Give space for the floating tab bar
+                        }
+                        .padding(.top, proxy.safeAreaInsets.top + 8)
+                        .background(alignment: .top) {
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 238/255, green: 246/255, blue: 251/255), // #EEF6FB
+                                    Color(red: 222/255, green: 236/255, blue: 248/255)  // #DEECF8
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 320 + proxy.safeAreaInsets.top)
+                        }
                     }
-                    .padding(.top, 8)
-                    .background(alignment: .top) {
-                        LinearGradient(
-                            colors: [
-                                Color(red: 238/255, green: 246/255, blue: 251/255), // #EEF6FB
-                                Color(red: 222/255, green: 236/255, blue: 248/255)  // #DEECF8
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: 320)
-                        .ignoresSafeArea(edges: .top)
-                    }
+                    .ignoresSafeArea(edges: .top)
+                    
+                    // MARK: - Floating Tab Bar Overlay (disabled: non-functional duplicate tab bar)
+                    // FloatingTabBar(selectedTab: $selectedTab)
                 }
-                
-                // MARK: - Floating Tab Bar Overlay (disabled: non-functional duplicate tab bar)
-                // FloatingTabBar(selectedTab: $selectedTab)
             }
             .popupHost(isPresented: $showModePopup) {
                 ModePopupView(
