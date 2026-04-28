@@ -186,34 +186,23 @@ struct AISentenceComprehensionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 #else
-        VStack(spacing: 4) {
-            Group {
-                if let gifFileName = term.defaultGifFileName {
-                    GIFView(gifFileName: gifFileName)
-                        .id(gifFileName)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    VStack(spacing: 2) {
-                        Image(systemName: "person.fill")
-                            .font(.jakarta(size: 24))
-                            .foregroundColor(.gray.opacity(0.5))
-                        Text("No GIF")
-                            .font(.jakarta(size: 9))
-                            .foregroundColor(.gray.opacity(0.65))
-                    }
+        Group {
+            if let gifFileName = term.defaultGifFileName {
+                GIFView(gifFileName: gifFileName)
+                    .id(gifFileName)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(spacing: 2) {
+                    Image(systemName: "person.fill")
+                        .font(.jakarta(size: 24))
+                        .foregroundColor(.gray.opacity(0.5))
+                    Text("No GIF")
+                        .font(.jakarta(size: 9))
+                        .foregroundColor(.gray.opacity(0.65))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Text(term.rawValue.lowercased())
-                .font(.jakarta(size: 9))
-                .foregroundColor(.gray.opacity(0.65))
-                .lineLimit(1)
         }
-        .padding(6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(white: 0.93))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
 #endif
     }
 
