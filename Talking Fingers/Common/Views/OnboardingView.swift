@@ -77,12 +77,10 @@ struct ObView1: View {
             
             VStack (alignment: .leading) {
                 Text("Welcome to")
-                    .font(.system(size:40))
-                    .fontWeight(.regular)
+                    .font(.jakarta(size: 40, weight: .regular))
                     .foregroundColor(Color(UIColor(hex: "#464646")))
                 Text("Talking Fingers")
-                    .font(.system(size:48))
-                    .fontWeight(.bold)
+                    .font(.jakarta(size: 48, weight: .bold))
                     .foregroundColor(Color(UIColor(hex: "#464646")))
                     .frame(alignment: .leading)
                 Button (action: {onNext()}){
@@ -91,7 +89,7 @@ struct ObView1: View {
                             .foregroundColor(Color(UIColor(hex: "#97C171")))
                             .frame(width: 338, height: 45)
                         Text("Get Started")
-                            .font(Font.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
@@ -114,12 +112,10 @@ struct ObView2: View {
             VStack {
                 VStack (alignment: .leading) {
                     Text("Welcome to")
-                        .font(.system(size:40))
-                        .fontWeight(.regular)
+                        .font(.jakarta(size: 40, weight: .regular))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                     Text("Talking Fingers")
-                        .font(.system(size:48))
-                        .fontWeight(.bold)
+                        .font(.jakarta(size: 48, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                         .frame(alignment: .leading)
                 }
@@ -132,10 +128,11 @@ struct ObView2: View {
                     .padding(.bottom)
                 VStack (alignment: .leading) {
                     Text ("Let's set you up.")
-                        .font(Font.system(size: 20, weight: .bold))
+                        .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                         .padding(.bottom)
                     TextField("Your Name", text: $name)
+                        .font(.jakarta(size: 17))
                         .disableAutocorrection(true)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
@@ -145,11 +142,11 @@ struct ObView2: View {
                         .cornerRadius(12)
                         .padding(.bottom)
                     Text("In American Sign Language (ASL), dominant hand determines how you sign. ")
-                        .font(Font.system(size: 20, weight: .regular))
+                        .font(.jakarta(size: 20, weight: .regular))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                     +
                     Text("Select your dominant hand.")
-                        .font(Font.system(size: 20, weight: .bold))
+                        .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                     HStack {
                         Button {
@@ -166,7 +163,7 @@ struct ObView2: View {
                                 VStack {
                                     Image("left")
                                     Text("Left")
-                                        .font(Font.system(size: 20, weight: .regular))
+                                        .font(.jakarta(size: 20, weight: .regular))
                                         .foregroundColor(Color(UIColor(hex: "#464646")))
                                 }
                             }
@@ -185,7 +182,7 @@ struct ObView2: View {
                                 VStack {
                                     Image("right")
                                     Text("Right")
-                                        .font(Font.system(size: 20, weight: .regular))
+                                        .font(.jakarta(size: 20, weight: .regular))
                                         .foregroundColor(Color(UIColor(hex: "#464646")))
                                 }
                             }
@@ -205,7 +202,7 @@ struct ObView2: View {
                                 .foregroundColor(Color(UIColor(hex: "#97C171")))
                                 .frame(width: 338, height: 45)
                             Text("Start Learning")
-                                .font(Font.system(size: 20, weight: .semibold))
+                                .font(.jakarta(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                             if selectedHand == nil || name.isEmpty {
                                 RoundedRectangle(cornerRadius: 100)
@@ -258,18 +255,18 @@ struct ObView3: View {
             ScrollView {
                 VStack (alignment: .leading){
                     Text("Nice to meet you,")
-                        .font(Font.system(size: 40, weight: .regular))
+                        .font(.jakarta(size: 40, weight: .regular))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                     Text("\(name)!")
-                        .font(Font.system(size: 48, weight: .bold))
+                        .font(.jakarta(size: 48, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#559AD2")))
                         .padding(.bottom)
                     Text("Learning to fingerspell is essential for your ASL journey. ")
-                        .font(Font.system(size: 20, weight: .regular))
+                        .font(.jakarta(size: 20, weight: .regular))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                     +
                     Text("Let’s start with your name!")
-                        .font(Font.system(size: 20, weight: .bold))
+                        .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                 }
                 .padding(.bottom)
@@ -290,12 +287,12 @@ struct ObView3: View {
                                 .resizable()
                                 .frame(width: 54, height: 72)
                             Text(letter.uppercased())
-                                .font(Font.system(size: 32, weight: .bold))
+                                .font(.jakarta(size: 32, weight: .bold))
                                 .foregroundColor(Color(UIColor(hex: "#464646")))
                             VStack {
                                 Text(signDescription(for: letter))
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .font(Font.system(size: 16, weight: .regular))
+                                    .font(.jakarta(size: 16, weight: .regular))
                                     .foregroundColor(Color(UIColor(hex: "#464646")))
                                     .multilineTextAlignment(.leading)
                                     .lineLimit(nil)
@@ -312,7 +309,7 @@ struct ObView3: View {
                             .foregroundColor(Color(UIColor(hex: "#97C171")))
                             .frame(width: 338, height: 45)
                         Text("Try It Out")
-                            .font(Font.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
@@ -358,18 +355,18 @@ struct ObView4: View {
         VStack(spacing: 16) {
             VStack(alignment: .leading) {
                 Text("Try fingerspelling your name!")
-                    .font(Font.system(size: 17, weight: .regular))
+                    .font(.jakarta(size: 17, weight: .regular))
                     .foregroundColor(Color(UIColor(hex: "#464646")))
             }
             HStack(spacing: 8) {
                 ForEach(letters.indices, id: \.self) { i in
                     Text(String(letters[i]))
-                        .font(Font.system(size: 32, weight: .semibold))
+                        .font(.jakarta(size: 32, weight: .semibold))
                         .foregroundColor(i == currentIndex ? Color(UIColor(hex: "#464646")) : Color(UIColor(hex: "#CCCCCC")))
 
                     if i != letters.count - 1 {
                         Text("-")
-                            .font(Font.system(size: 32, weight: .semibold))
+                            .font(.jakarta(size: 32, weight: .semibold))
                             .foregroundColor(Color(UIColor(hex: "#CCCCCC")))
                     }
                 }
@@ -411,7 +408,7 @@ struct ObView4: View {
                             .foregroundColor(Color(UIColor(hex: "#97C171")))
                             .frame(width: 338, height: 45)
                         Text("Next")
-                            .font(Font.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
@@ -476,7 +473,7 @@ struct ObView4: View {
             .frame(width: Self.progressCircleColumnWidth, height: Self.progressCircleColumnWidth, alignment: .center)
 
             Text(wordLabel)
-                .font(.system(size: 17, weight: .bold))
+                .font(.jakarta(size: 17, weight: .bold))
                 .foregroundColor(Color(hex: "#767676"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -582,10 +579,10 @@ private struct MacObView1: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("Welcome to")
-                    .font(.system(size: 40))
+                    .font(.jakarta(size: 40, weight: .regular))
                     .foregroundColor(Color(hexString: "#464646"))
                 Text("Talking Fingers")
-                    .font(.system(size: 48)).bold()
+                    .font(.jakarta(size: 48, weight: .bold))
                     .foregroundColor(Color(hexString: "#464646"))
                 Button(action: onNext) {
                     ZStack {
@@ -593,7 +590,7 @@ private struct MacObView1: View {
                             .foregroundColor(Color(hexString: "#97C171"))
                             .frame(width: 338, height: 45)
                         Text("Get Started")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
@@ -616,25 +613,26 @@ private struct MacObView2: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Welcome to")
-                        .font(.system(size: 40))
+                        .font(.jakarta(size: 40, weight: .regular))
                         .foregroundColor(Color(hexString: "#464646"))
                     Text("Talking Fingers")
-                        .font(.system(size: 48)).bold()
+                        .font(.jakarta(size: 48, weight: .bold))
                         .foregroundColor(Color(hexString: "#464646"))
                 }
                 Divider()
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Let's set you up.")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(hexString: "#464646"))
                     TextField("Your Name", text: $name)
+                        .font(.jakarta(size: 17))
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 338)
                     (Text("In American Sign Language (ASL), dominant hand determines how you sign. ")
-                        .font(.system(size: 20))
+                        .font(.jakarta(size: 20, weight: .regular))
                         .foregroundColor(Color(hexString: "#464646"))
                      + Text("Select your dominant hand.")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(hexString: "#464646")))
                     HStack(spacing: 12) {
                         SelectHandButton(title: "Left", isSelected: selectedHand == .left) { selectedHand = .left }
@@ -651,7 +649,7 @@ private struct MacObView2: View {
                                 .foregroundColor(Color(hexString: "#97C171"))
                                 .frame(width: 338, height: 45)
                             Text("Start Learning")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.jakarta(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                             if selectedHand == nil || name.isEmpty {
                                 RoundedRectangle(cornerRadius: 100)
@@ -685,7 +683,7 @@ private struct MacObView2: View {
                         .font(.system(size: 40))
                         .foregroundColor(Color(hexString: "#464646"))
                     Text(title)
-                        .font(.system(size: 20))
+                        .font(.jakarta(size: 20, weight: .regular))
                         .foregroundColor(Color(hexString: "#464646"))
                 }
             }
@@ -705,17 +703,17 @@ private struct MacObView3: View {
                     Spacer()
                     VStack(alignment: .leading) {
                         Text("Nice to meet you,")
-                            .font(.system(size: 40))
+                            .font(.jakarta(size: 40, weight: .regular))
                             .foregroundColor(Color(hexString: "#464646"))
                         Text("\(name)!")
-                            .font(.system(size: 48, weight: .bold))
+                            .font(.jakarta(size: 48, weight: .bold))
                             .foregroundColor(Color(hexString: "#559AD2"))
                             .padding(.bottom)
                         (Text("Learning to fingerspell is essential for your ASL journey. ")
-                            .font(.system(size: 20))
+                            .font(.jakarta(size: 20, weight: .regular))
                             .foregroundColor(Color(hexString: "#464646"))
                          + Text("Let’s start with your name!")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.jakarta(size: 20, weight: .bold))
                             .foregroundColor(Color(hexString: "#464646")))
                     }
                     .padding([.bottom, .trailing, .leading])
@@ -729,11 +727,11 @@ private struct MacObView3: View {
                                     .resizable()
                                     .frame(width: 54, height: 72)
                                 Text(letter.uppercased())
-                                    .font(.system(size: 32, weight: .bold))
+                                    .font(.jakarta(size: 32, weight: .bold))
                                     .foregroundColor(Color(hexString: "#464646"))
                                 Text(signDescription(for: letter))
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .font(.system(size: 16))
+                                    .font(.jakarta(size: 16, weight: .regular))
                                     .foregroundColor(Color(hexString: "#464646"))
                                     .multilineTextAlignment(.leading)
                             }
@@ -747,7 +745,7 @@ private struct MacObView3: View {
                                 .foregroundColor(Color(hexString: "#97C171"))
                                 .frame(width: 338, height: 45)
                             Text("Try It Out")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.jakarta(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                         }
                     }
@@ -805,17 +803,17 @@ private struct MacObView4: View {
         VStack(spacing: 16) {
             VStack(alignment: .leading) {
                 Text("Try fingerspelling your name!")
-                    .font(.system(size: 17))
+                    .font(.jakarta(size: 17, weight: .regular))
                     .foregroundColor(Color(hexString: "#464646"))
             }
             HStack(spacing: 8) {
                 ForEach(letters.indices, id: \.self) { i in
                     Text(String(letters[i]))
-                        .font(.system(size: 32, weight: .semibold))
+                        .font(.jakarta(size: 32, weight: .semibold))
                         .foregroundColor(i == currentIndex ? Color(hexString: "#464646") : Color(hexString: "#CCCCCC"))
                     if i != letters.count - 1 {
                         Text("-")
-                            .font(.system(size: 32, weight: .semibold))
+                            .font(.jakarta(size: 32, weight: .semibold))
                             .foregroundColor(Color(hexString: "#CCCCCC"))
                     }
                 }
@@ -852,7 +850,7 @@ private struct MacObView4: View {
                             .foregroundColor(Color(hexString: "#97C171"))
                             .frame(width: 338, height: 45)
                         Text("Next")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
@@ -917,7 +915,7 @@ private struct MacObView4: View {
             }
             .frame(width: Self.progressCircleColumnWidth, height: Self.progressCircleColumnWidth, alignment: .center)
             Text(wordLabel)
-                .font(.system(size: 17, weight: .bold))
+                .font(.jakarta(size: 17, weight: .bold))
                 .foregroundColor(Color(hexString: "#767676"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
