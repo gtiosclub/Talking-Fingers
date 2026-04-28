@@ -15,7 +15,10 @@ struct ContentView: View {
     
     var body: some View {
         Group {
-            if authVM.currentUser != nil {
+            if authVM.isInitializingSession {
+                Color.white
+                    .ignoresSafeArea()
+            } else if authVM.currentUser != nil {
                 MainNavigationView()
             } else {
                 EntryView()

@@ -13,6 +13,7 @@ import Observation
 class AuthenticationViewModel {
     var errorMessage: String?
     var isLoading = false
+    var isInitializingSession = true
     var isLoggedIn = false
     var currentUser: User?
     var sessionHandedness: String?
@@ -36,6 +37,7 @@ class AuthenticationViewModel {
                 DispatchQueue.main.async {
                     self.currentUser = nil
                     self.isLoggedIn = false
+                    self.isInitializingSession = false
                     self.sessionHandedness = nil
                 }
             }
@@ -146,6 +148,7 @@ class AuthenticationViewModel {
                 self.sessionHandedness = handedness
                 self.isLoggedIn = true
                 self.isLoading = false
+                self.isInitializingSession = false
                 if isLoggingIn {
                     print("Signed in as \(authUser.uid)")
                 }
@@ -164,6 +167,7 @@ class AuthenticationViewModel {
                 self.sessionHandedness = self.normalizeHandedness(self.sessionHandedness)
                 self.isLoggedIn = true
                 self.isLoading = false
+                self.isInitializingSession = false
                 if isLoggingIn {
                     print("Signed in as \(authUser.uid)")
                 }
