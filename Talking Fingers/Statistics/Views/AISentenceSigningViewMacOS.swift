@@ -151,6 +151,8 @@ struct LiveSigningViewMacOS: View {
     @State private var currentWordMaxScore: Double = 0
     @State private var wordMaxScores: [Int: Double] = [:]
     @State private var showHintSheet: Bool = false
+    @State private var showCorrectCheckmark: Bool = false
+    @State private var correctCheckmarkTask: Task<Void, Never>?
 
     private let autoAdvanceDelay: Duration = .seconds(0.5)
 
@@ -192,6 +194,12 @@ struct LiveSigningViewMacOS: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
+                if showCorrectCheckmark {
+                    SigningCorrectCheckmarkOverlay()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                }
+
                 if !isFinished {
                     Button(action: skipWord) {
                         Text("Skip word")
@@ -219,6 +227,8 @@ struct LiveSigningViewMacOS: View {
         .onDisappear {
             autoAdvanceTask?.cancel()
             autoAdvanceTask = nil
+            correctCheckmarkTask?.cancel()
+            correctCheckmarkTask = nil
         }
         .sheet(isPresented: $showHintSheet) {
             SignHintSheetView(
@@ -239,6 +249,7 @@ struct LiveSigningViewMacOS: View {
         }
         passedThreshold = true
         currentWordMaxScore = confidence
+        flashCorrectCheckmark()
 
         autoAdvanceTask?.cancel()
         autoAdvanceTask = Task { @MainActor in
@@ -258,6 +269,9 @@ struct LiveSigningViewMacOS: View {
     private func advance(markingCurrentAs outcome: WordOutcome) {
         autoAdvanceTask?.cancel()
         autoAdvanceTask = nil
+        correctCheckmarkTask?.cancel()
+        correctCheckmarkTask = nil
+        showCorrectCheckmark = false
 
         guard currentWordIndex < glossWords.count else {
             if isFinished { finalizeAndComplete() }
@@ -293,6 +307,20 @@ struct LiveSigningViewMacOS: View {
 
     private static func userFacingSigningScore(from raw: Double) -> Double { min(100, raw * 1.2) }
     private static let skippedWordRawScore: Double = 50.0 / 1.2
+
+    private func flashCorrectCheckmark() {
+        correctCheckmarkTask?.cancel()
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.75)) {
+            showCorrectCheckmark = true
+        }
+        correctCheckmarkTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            if Task.isCancelled { return }
+            withAnimation(.easeOut(duration: 0.18)) {
+                showCorrectCheckmark = false
+            }
+        }
+    }
 
     // MARK: Gloss Row
 
@@ -391,6 +419,21 @@ struct LiveSigningViewMacOS: View {
         if isSkipped   { return Color.gray.opacity(0.25) }
         if isCurrent   { return Color(hex: "#FDF2D8") }
         return Color.gray.opacity(0.12)
+    }
+}
+
+private struct SigningCorrectCheckmarkOverlay: View {
+    var body: some View {
+        Circle()
+            .fill(Color(hex: "#EAF3E3").opacity(0.95))
+            .frame(width: 160, height: 160)
+            .overlay {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 82, weight: .semibold))
+                    .foregroundColor(Color(hex: "#71A046"))
+            }
+            .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
+            .allowsHitTesting(false)
     }
 }
 

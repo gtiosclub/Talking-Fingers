@@ -31,6 +31,8 @@ struct LiveSigningView: View {
     @State private var wordMaxScores: [Int: Double] = [:]
     // Controls visibility of the hint sheet
     @State private var showHintSheet: Bool = false
+    @State private var showCorrectCheckmark: Bool = false
+    @State private var correctCheckmarkTask: Task<Void, Never>?
 
     /// How long to wait after reaching the threshold before auto-advancing
     /// if the user hasn't manually tapped Continue.
@@ -77,6 +79,12 @@ struct LiveSigningView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 480)
 
+                if showCorrectCheckmark {
+                    SigningCorrectCheckmarkOverlay()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                }
+
                 // Skip word button overlay
                 if !isFinished {
                     Button(action: skipWord) {
@@ -107,6 +115,8 @@ struct LiveSigningView: View {
         .onDisappear {
             autoAdvanceTask?.cancel()
             autoAdvanceTask = nil
+            correctCheckmarkTask?.cancel()
+            correctCheckmarkTask = nil
         }
         .sheet(isPresented: $showHintSheet) {
             SignHintSheetView(
@@ -269,6 +279,7 @@ struct LiveSigningView: View {
         
         passedThreshold = true
         currentWordMaxScore = confidence
+        flashCorrectCheckmark()
 
         autoAdvanceTask?.cancel()
         autoAdvanceTask = Task { @MainActor in
@@ -293,6 +304,9 @@ struct LiveSigningView: View {
     private func advance(markingCurrentAs outcome: WordOutcome) {
         autoAdvanceTask?.cancel()
         autoAdvanceTask = nil
+        correctCheckmarkTask?.cancel()
+        correctCheckmarkTask = nil
+        showCorrectCheckmark = false
 
         guard currentWordIndex < glossWords.count else {
             if isFinished { finalizeAndComplete() }
@@ -340,6 +354,35 @@ struct LiveSigningView: View {
 
     /// Raw score that becomes exactly 50 after +20% inflation.
     private static let skippedWordRawScore: Double = 50.0 / 1.2
+
+    private func flashCorrectCheckmark() {
+        correctCheckmarkTask?.cancel()
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.75)) {
+            showCorrectCheckmark = true
+        }
+        correctCheckmarkTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            if Task.isCancelled { return }
+            withAnimation(.easeOut(duration: 0.18)) {
+                showCorrectCheckmark = false
+            }
+        }
+    }
+}
+
+private struct SigningCorrectCheckmarkOverlay: View {
+    var body: some View {
+        Circle()
+            .fill(Color(hex: "#EAF3E3").opacity(0.95))
+            .frame(width: 160, height: 160)
+            .overlay {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 82, weight: .semibold))
+                    .foregroundColor(Color(hex: "#71A046"))
+            }
+            .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
+            .allowsHitTesting(false)
+    }
 }
 
 extension Array {
