@@ -160,7 +160,7 @@ struct DashboardView: View {
         NavigationStack {
             GeometryReader { proxy in
                 ZStack(alignment: .bottom) {
-                    Color(red: 0.96, green: 0.97, blue: 0.99)
+                    Color.white
                         .ignoresSafeArea()
                     
                     ScrollView {
