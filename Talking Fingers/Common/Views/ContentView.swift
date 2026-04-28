@@ -66,6 +66,7 @@ struct MainNavigationView: View {
         }
         .environment(authVM)
         .background(Color.white.ignoresSafeArea())
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         #endif
     }
     
