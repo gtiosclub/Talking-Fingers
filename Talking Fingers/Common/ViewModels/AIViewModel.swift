@@ -142,7 +142,7 @@ import FirebaseFirestore
         var seenGlossKeys: Set<String> = []
 
         for sentenceData in sentencesResponse {
-            let glossWordStrings = tokenizeGloss(sentenceData.sentence)
+            let glossWordStrings = normalizeFirstPersonPronouns(in: tokenizeGloss(sentenceData.sentence))
             guard !glossWordStrings.isEmpty else { continue }
             guard glossWordStrings.allSatisfy({ allowedTokenSet.contains($0) }) else { continue }
             
@@ -194,6 +194,29 @@ import FirebaseFirestore
                     .uppercased()
             }
             .filter { !$0.isEmpty }
+    }
+
+    private func normalizeFirstPersonPronouns(in tokens: [String]) -> [String] {
+        tokens.enumerated().map { index, token in
+            guard token == Term.i.rawValue, !isFingerspelledLetter(at: index, in: tokens) else {
+                return token
+            }
+            return Term.me.rawValue
+        }
+    }
+
+    private func isFingerspelledLetter(at index: Int, in tokens: [String]) -> Bool {
+        guard tokens.indices.contains(index),
+              Term(rawValue: tokens[index])?.category == .alphabet else {
+            return false
+        }
+
+        let hasAlphabetBefore = tokens.indices.contains(index - 1)
+            && Term(rawValue: tokens[index - 1])?.category == .alphabet
+        let hasAlphabetAfter = tokens.indices.contains(index + 1)
+            && Term(rawValue: tokens[index + 1])?.category == .alphabet
+
+        return hasAlphabetBefore || hasAlphabetAfter || tokens.allSatisfy { Term(rawValue: $0)?.category == .alphabet }
     }
 }
 
