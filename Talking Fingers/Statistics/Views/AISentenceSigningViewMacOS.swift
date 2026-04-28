@@ -305,8 +305,8 @@ struct LiveSigningViewMacOS: View {
         onSentenceFinished?(average)
     }
 
-    private static func userFacingSigningScore(from raw: Double) -> Double { min(100, raw * 1.2) }
-    private static let skippedWordRawScore: Double = 50.0 / 1.2
+    private static func userFacingSigningScore(from raw: Double) -> Double { min(100, raw * 1.3) }
+    private static let skippedWordRawScore: Double = 50.0 / 1.3
 
     private func flashCorrectCheckmark() {
         correctCheckmarkTask?.cancel()

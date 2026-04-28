@@ -337,7 +337,7 @@ struct LiveSigningView: View {
     }
     
     private func finalizeAndComplete() {
-        // Build array of word scores in order, then apply a +20% user-facing
+        // Build array of word scores in order, then apply a user-facing
         // boost (capped 0…100) before persisting and averaging.
         let rawScores = (0..<glossWords.count).map { wordMaxScores[$0] ?? 0 }
         let scores = rawScores.map { Self.userFacingSigningScore(from: $0) }
@@ -347,13 +347,13 @@ struct LiveSigningView: View {
         onSentenceFinished?(average)
     }
 
-    /// +20% boost on raw per-word confidence (0–100), still capped at 100.
+    /// User-facing boost on raw per-word confidence (0–100), still capped at 100.
     private static func userFacingSigningScore(from raw: Double) -> Double {
-        min(100, raw * 1.2)
+        min(100, raw * 1.3)
     }
 
-    /// Raw score that becomes exactly 50 after +20% inflation.
-    private static let skippedWordRawScore: Double = 50.0 / 1.2
+    /// Raw score that becomes exactly 50 after inflation.
+    private static let skippedWordRawScore: Double = 50.0 / 1.3
 
     private func flashCorrectCheckmark() {
         correctCheckmarkTask?.cancel()
