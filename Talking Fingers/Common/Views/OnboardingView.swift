@@ -348,6 +348,8 @@ struct ObView4: View {
     @State private var isPassed: Bool = false
     @State private var finished = false
     @State private var completedWords: Set<Int> = []
+    @State private var onboardingCameraVM = CameraVM()
+    @State private var advanceTask: Task<Void, Never>?
     private let passThreshold: Double = 0.85
 
     var body: some View {
@@ -382,8 +384,10 @@ struct ObView4: View {
                                 isPassed = true
                                 completedWords.insert(currentIndex)
                             }
-                            // Advance to next letter after a brief delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            advanceTask?.cancel()
+                            advanceTask = Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(500))
+                                if Task.isCancelled { return }
                                 isPassed = false
                                 completedWords.insert(currentIndex)
                                 if currentIndex < letters.count - 1 {
@@ -393,9 +397,14 @@ struct ObView4: View {
                                 }
                             }
                         }
-                    }
+                    },
+                    showsLeaveButton: false,
+                    usesInternalPadding: false,
+                    externalCameraVM: onboardingCameraVM
                 )
-                .id(currentIndex)
+                .frame(maxWidth: .infinity)
+                .frame(height: 480)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 nameProgressCircles
                     .padding(.bottom, 24)
             }
@@ -416,6 +425,11 @@ struct ObView4: View {
             }
         }
         .padding()
+        .onDisappear {
+            advanceTask?.cancel()
+            advanceTask = nil
+            onboardingCameraVM.stop()
+        }
     }
     private var nameProgressCircles: some View {
         let letters = Array(name.uppercased())
@@ -796,6 +810,8 @@ private struct MacObView4: View {
     @State private var isPassed: Bool = false
     @State private var finished = false
     @State private var completedWords: Set<Int> = []
+    @State private var onboardingCameraVM = CameraVM()
+    @State private var advanceTask: Task<Void, Never>?
     private let passThreshold: Double = 0.85
 
     var body: some View {
@@ -827,7 +843,10 @@ private struct MacObView4: View {
                                 isPassed = true
                                 completedWords.insert(currentIndex)
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            advanceTask?.cancel()
+                            advanceTask = Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(500))
+                                if Task.isCancelled { return }
                                 isPassed = false
                                 completedWords.insert(currentIndex)
                                 if currentIndex < letters.count - 1 {
@@ -837,9 +856,13 @@ private struct MacObView4: View {
                                 }
                             }
                         }
-                    }
+                    },
+                    showsLeaveButton: false,
+                    usesInternalPadding: false,
+                    externalCameraVM: onboardingCameraVM
                 )
-                .id(currentIndex)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 nameProgressCircles
                     .padding(.bottom, 24)
             }
@@ -859,6 +882,19 @@ private struct MacObView4: View {
             }
         }
         .padding()
+        .onAppear {
+            onboardingCameraVM.isMirrored = true
+            onboardingCameraVM.checkPermission()
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            onboardingCameraVM.start()
+        }
+        .onDisappear {
+            advanceTask?.cancel()
+            advanceTask = nil
+            onboardingCameraVM.stop()
+        }
     }
 
     private var nameProgressCircles: some View {
