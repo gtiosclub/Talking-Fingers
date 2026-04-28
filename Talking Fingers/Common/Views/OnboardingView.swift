@@ -82,18 +82,24 @@ struct ObView1: View {
                 Text("Talking Fingers")
                     .font(.jakarta(size: 48, weight: .bold))
                     .foregroundColor(Color(UIColor(hex: "#464646")))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .frame(alignment: .leading)
                 Button (action: {onNext()}){
                     ZStack {
                         RoundedRectangle(cornerRadius: 100)
                             .foregroundColor(Color(UIColor(hex: "#97C171")))
-                            .frame(width: 338, height: 45)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 45)
                         Text("Get Started")
                             .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
+                .frame(maxWidth: 338)
             }
+            .frame(maxWidth: 390, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -117,8 +123,11 @@ struct ObView2: View {
                     Text("Talking Fingers")
                         .font(.jakarta(size: 48, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .frame(alignment: .leading)
                 }
+                .frame(maxWidth: 390, alignment: .leading)
                 .padding(.trailing)
                 Rectangle()
                     .frame(height: 1)
@@ -136,7 +145,8 @@ struct ObView2: View {
                         .disableAutocorrection(true)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
-                        .frame(width: 338, height: 56)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
                         .background(Color.gray.opacity(0.1))
                         .border(Color(UIColor(hex: "#E2E2E2")))
                         .cornerRadius(12)
@@ -148,13 +158,14 @@ struct ObView2: View {
                     Text("Select your dominant hand.")
                         .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
-                    HStack {
+                    HStack(spacing: 8) {
                         Button {
                             selectedHand = .left
                         } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 24)
-                                    .frame(width: 165, height: 181)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 181)
                                     .foregroundColor(selectedHand == .left ? Color(UIColor(hex: "#FDF2D8")): Color(UIColor(hex: "#FCFCFC")))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 24)
@@ -168,12 +179,14 @@ struct ObView2: View {
                                 }
                             }
                         }
+                        .frame(maxWidth: 165)
                         Button {
                             selectedHand = .right
                         } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 24)
-                                    .frame(width: 165, height: 181)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 181)
                                     .foregroundColor(selectedHand == .right ? Color(UIColor(hex: "#FDF2D8")): Color(UIColor(hex: "#FCFCFC")))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 24)
@@ -187,7 +200,9 @@ struct ObView2: View {
                                 }
                             }
                         }
+                        .frame(maxWidth: 165)
                     }
+                    .frame(maxWidth: .infinity)
                     .padding(.bottom)
                     .padding(.top)
                     
@@ -200,21 +215,25 @@ struct ObView2: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: 100)
                                 .foregroundColor(Color(UIColor(hex: "#97C171")))
-                                .frame(width: 338, height: 45)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 45)
                             Text("Start Learning")
                                 .font(.jakarta(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                             if selectedHand == nil || name.isEmpty {
                                 RoundedRectangle(cornerRadius: 100)
                                     .foregroundColor(Color.white.opacity(0.4))
-                                    .frame(width: 338, height: 45)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 45)
                             }
                         }
                     }
                     .disabled(selectedHand == nil || name.isEmpty)
                 }
+                .frame(maxWidth: 338, alignment: .leading)
                 .padding()
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -269,6 +288,7 @@ struct ObView3: View {
                         .font(.jakarta(size: 20, weight: .bold))
                         .foregroundColor(Color(UIColor(hex: "#464646")))
                 }
+                .frame(maxWidth: 338, alignment: .leading)
                 .padding(.bottom)
                 .padding(.trailing)
                 .padding(.leading)
@@ -300,6 +320,7 @@ struct ObView3: View {
                         }
                     }
                 }
+                .frame(maxWidth: 338, alignment: .leading)
                 .padding()
                 
                 
@@ -307,13 +328,16 @@ struct ObView3: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 100)
                             .foregroundColor(Color(UIColor(hex: "#97C171")))
-                            .frame(width: 338, height: 45)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 45)
                         Text("Try It Out")
                             .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
+                .frame(maxWidth: 338)
             }
+            .frame(maxWidth: .infinity)
         }
     }
     func signDescription(for letter: Character) -> String {
@@ -415,12 +439,14 @@ struct ObView4: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 100)
                             .foregroundColor(Color(UIColor(hex: "#97C171")))
-                            .frame(width: 338, height: 45)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 45)
                         Text("Next")
                             .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
+                .frame(maxWidth: 338)
                 .padding(.top, 8)
             }
         }
@@ -434,22 +460,25 @@ struct ObView4: View {
     private var nameProgressCircles: some View {
         let letters = Array(name.uppercased())
         return Group {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(Array(letters.enumerated()), id: \.offset) { index, _ in
-                            circleIcon2(for: index)
-                                .id("circle-\(index)")
+            GeometryReader { geometry in
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            ForEach(Array(letters.enumerated()), id: \.offset) { index, _ in
+                                circleIcon2(for: index)
+                                    .id("circle-\(index)")
+                            }
                         }
+                        .frame(minWidth: geometry.size.width, alignment: .center)
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .onChange(of: currentIndex) { _, newIndex in
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("circle-\(newIndex)", anchor: .center)
+                    .onChange(of: currentIndex) { _, newIndex in
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("circle-\(newIndex)", anchor: .center)
+                        }
                     }
                 }
             }
+            .frame(height: Self.progressCircleColumnWidth + 26)
         }
     }
     
@@ -598,18 +627,23 @@ private struct MacObView1: View {
                 Text("Talking Fingers")
                     .font(.jakarta(size: 48, weight: .bold))
                     .foregroundColor(Color(hexString: "#464646"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Button(action: onNext) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 100)
                             .foregroundColor(Color(hexString: "#97C171"))
-                            .frame(width: 338, height: 45)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 45)
                         Text("Get Started")
                             .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: 338)
             }
+            .frame(maxWidth: 390, alignment: .leading)
             .padding()
         }
     }
@@ -632,6 +666,8 @@ private struct MacObView2: View {
                     Text("Talking Fingers")
                         .font(.jakarta(size: 48, weight: .bold))
                         .foregroundColor(Color(hexString: "#464646"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 Divider()
                 VStack(alignment: .leading, spacing: 12) {
@@ -641,7 +677,7 @@ private struct MacObView2: View {
                     TextField("Your Name", text: $name)
                         .font(.jakarta(size: 17))
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 338)
+                        .frame(maxWidth: .infinity)
                     (Text("In American Sign Language (ASL), dominant hand determines how you sign. ")
                         .font(.jakarta(size: 20, weight: .regular))
                         .foregroundColor(Color(hexString: "#464646"))
@@ -661,21 +697,25 @@ private struct MacObView2: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: 100)
                                 .foregroundColor(Color(hexString: "#97C171"))
-                                .frame(width: 338, height: 45)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 45)
                             Text("Start Learning")
                                 .font(.jakarta(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                             if selectedHand == nil || name.isEmpty {
                                 RoundedRectangle(cornerRadius: 100)
                                     .foregroundColor(Color.white.opacity(0.4))
-                                    .frame(width: 338, height: 45)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 45)
                             }
                         }
                     }
                     .disabled(selectedHand == nil || name.isEmpty)
                     .buttonStyle(.plain)
                 }
+                .frame(maxWidth: 338, alignment: .leading)
             }
+            .frame(maxWidth: .infinity)
             .padding()
         }
     }
@@ -685,7 +725,8 @@ private struct MacObView2: View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24)
-                    .frame(width: 165, height: 181)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 181)
                     .foregroundColor(isSelected ? Color(hexString: "#FDF2D8") : Color(hexString: "#FCFCFC"))
                     .overlay(
                         RoundedRectangle(cornerRadius: 24)
@@ -702,6 +743,7 @@ private struct MacObView2: View {
                 }
             }
         }
+        .frame(maxWidth: 165)
         .buttonStyle(.plain)
     }
 }
@@ -757,15 +799,18 @@ private struct MacObView3: View {
                         ZStack {
                             RoundedRectangle(cornerRadius: 100)
                                 .foregroundColor(Color(hexString: "#97C171"))
-                                .frame(width: 338, height: 45)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 45)
                             Text("Try It Out")
                                 .font(.jakarta(size: 20, weight: .semibold))
                                 .foregroundColor(.white)
                         }
                     }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: 338)
                 }
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -871,13 +916,15 @@ private struct MacObView4: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 100)
                             .foregroundColor(Color(hexString: "#97C171"))
-                            .frame(width: 338, height: 45)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 45)
                         Text("Next")
                             .font(.jakarta(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                     }
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: 338)
                 .padding(.top, 8)
             }
         }
@@ -900,22 +947,25 @@ private struct MacObView4: View {
     private var nameProgressCircles: some View {
         let letters = Array(name.uppercased())
         return Group {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(Array(letters.enumerated()), id: \.offset) { index, _ in
-                            circleIcon2(for: index)
-                                .id("circle-\(index)")
+            GeometryReader { geometry in
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            ForEach(Array(letters.enumerated()), id: \.offset) { index, _ in
+                                circleIcon2(for: index)
+                                    .id("circle-\(index)")
+                            }
                         }
+                        .frame(minWidth: geometry.size.width, alignment: .center)
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .onChange(of: currentIndex) { _, newIndex in
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo("circle-\(newIndex)", anchor: .center)
+                    .onChange(of: currentIndex) { _, newIndex in
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("circle-\(newIndex)", anchor: .center)
+                        }
                     }
                 }
             }
+            .frame(height: Self.progressCircleColumnWidth + 26)
         }
     }
 

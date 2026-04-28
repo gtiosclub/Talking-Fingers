@@ -234,34 +234,38 @@ struct DashboardView: View {
                                     .padding(.horizontal, 20)
                                     .padding(.top, 20)
                                 
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
-                                            Button {
-                                                guard canAccessCategory(item.category) else { return }
-                                                if item.mode == "Learn" {
-                                                    activeFlow = .learn(item.category)
-                                                } else {
-                                                    activeFlow = .exercise(item.category)
+                                GeometryReader { geometry in
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 16) {
+                                            ForEach(Array(inProgressCategories.enumerated()), id: \.element.category) { index, item in
+                                                Button {
+                                                    guard canAccessCategory(item.category) else { return }
+                                                    if item.mode == "Learn" {
+                                                        activeFlow = .learn(item.category)
+                                                    } else {
+                                                        activeFlow = .exercise(item.category)
+                                                    }
+                                                } label: {
+                                                    InProgressCard(
+                                                        category: item.category,
+                                                        mode: item.mode,
+                                                        progress: item.progress,
+                                                        backgroundColor: item.mode == "Exercise" ? Color(red: 0.931, green: 0.956, blue: 0.981) : Color(red: 0.942, green: 0.964, blue: 0.942),
+                                                        borderColor: item.mode == "Exercise" ? Color(red: 0.691, green: 0.803, blue: 0.914) : Color(red: 0.704, green: 0.804, blue: 0.585)
+                                                    )
+                                                    .frame(width: 155)
+                                                    .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
                                                 }
-                                            } label: {
-                                                InProgressCard(
-                                                    category: item.category,
-                                                    mode: item.mode,
-                                                    progress: item.progress,
-                                                    backgroundColor: item.mode == "Exercise" ? Color(red: 0.931, green: 0.956, blue: 0.981) : Color(red: 0.942, green: 0.964, blue: 0.942),
-                                                    borderColor: item.mode == "Exercise" ? Color(red: 0.691, green: 0.803, blue: 0.914) : Color(red: 0.704, green: 0.804, blue: 0.585)
-                                                )
-                                                .frame(width: 155) // Keeps cards properly sized within the bubble
-                                                .opacity(canAccessCategory(item.category) ? 1.0 : 0.5)
+                                                .buttonStyle(.plain)
+                                                .disabled(!canAccessCategory(item.category))
                                             }
-                                            .buttonStyle(.plain)
-                                            .disabled(!canAccessCategory(item.category))
                                         }
+                                        .frame(minWidth: max(0, geometry.size.width - 40), alignment: .center)
+                                        .padding(.horizontal, 20)
+                                        .padding(.bottom, 20)
                                     }
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 20)
                                 }
+                                .frame(height: 240)
                             }
                             .background(Color.white)
                             .cornerRadius(24)
