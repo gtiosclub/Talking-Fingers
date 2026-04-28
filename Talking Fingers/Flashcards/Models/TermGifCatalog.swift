@@ -130,7 +130,7 @@ enum TermGifCatalog {
         case .he:
             return "he.gif"
         case .her:
-            return "her.gif"
+            return "his.gif"
         case .his:
             return "his.gif"
         case .its:
@@ -183,6 +183,14 @@ enum TermGifCatalog {
             return "daughter.gif"
         case .from:
             return "from.gif"
+        case .family:
+            return "family.gif"
+        case .father:
+            return "father.gif"
+        case .dad:
+            return "dad.gif"
+        case .child:
+            return "child.gif"
         case .grandfather:
             return "grandfather.gif"
         case .grandmother:
@@ -265,6 +273,8 @@ enum TermGifCatalog {
             return "angry.gif"
         case .bored:
             return "bored.gif"
+        case .confused:
+            return "confused.gif"
         case .excited:
             return "excited.gif"
         case .frustrated:
