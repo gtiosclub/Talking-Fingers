@@ -622,32 +622,48 @@ class CameraVM: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return CGPoint(x: x, y: y)
     }
     
-    // Returns translated list that treats some anchor joint (e.g. wrist) as the origin (0,0)
+    // Returns translated list that treats some anchor joint (e.g. rightWrist) as the origin (0,0)
     // and the locations of every other joint relative to it.
-    func convertAbsolutePointsToRelativePoints(
-        _ hand: VNHumanHandPoseObservation,
-        joints: [VNHumanHandPoseObservation.JointName],
-        anchor: VNHumanHandPoseObservation.JointName = .wrist,
+    func convert_Translation_Invariance(
+        _ frame: SignFrame,
+        joints: [String],
+        anchor: String = "rightWrist",
         minConf: Float = 0.5
     ) -> [CGPoint]? {
         guard
-            let a = try? hand.recognizedPoint(anchor),
-            a.confidence >= minConf
-        else { return nil }
+            let anchorJoint = frame.joints[anchor],
+            anchorJoint.confidence >= minConf
+        else {
+            return nil
+        }
 
         var rel: [CGPoint] = []
         rel.reserveCapacity(joints.count)
 
-        for j in joints {
-            guard let p = try? hand.recognizedPoint(j), p.confidence >= minConf else { return nil }
-            rel.append(CGPoint(x: p.location.x - a.location.x,
-                               y: p.location.y - a.location.y))
+        for jointName in joints {
+            guard
+                let joint = frame.joints[jointName],
+                joint.confidence >= minConf
+            else {
+                return nil
+            }
+
+            rel.append(
+                CGPoint(
+                    x: joint.x - anchorJoint.x,
+                    y: joint.y - anchorJoint.y
+                )
+            )
         }
+
         return rel
     }
 
     /// Returns body joints (shoulders + elbows) normalized relative to the body center,
     /// defined as the midpoint of both shoulders (body center = 0,0).
+    
+    
+    //*Note convert_Translation_Invariance above already translates all joints stored in SignFrame so this might be redundant?
     func convertBodyPointsToRelativePoints(
         _ body: VNHumanBodyPoseObservation,
         joints: [VNHumanBodyPoseObservation.JointName] = [.leftShoulder, .rightShoulder, .leftElbow, .rightElbow],
